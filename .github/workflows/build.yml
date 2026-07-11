@@ -203,10 +203,12 @@ jobs:
   resolve-et:
     name: resolve bundled et-client
     needs: dedupe
+    # Mirror the BUNDLE_ET gate: only resolve when an et-bin release is
+    # explicitly configured, so tag builds without one skip cleanly.
     if: |
       needs.dedupe.outputs.skip_heavy_ci != 'true'
       && (
-        (startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release)))
+        (startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release)) && vars.ET_BIN_RELEASE != '')
         || (github.event_name == 'workflow_dispatch' && inputs.et_bin_release != '')
       )
     runs-on: ubuntu-latest

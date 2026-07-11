@@ -232,13 +232,12 @@ jobs:
           echo "et_bin_release=${release}" >> "$GITHUB_OUTPUT"
 
   build:
-    # macOS and Windows builds require paid code-signing certificates
-    # (Apple Developer Program / Authenticode). Skip them here; Linux
-    # packages are built unsigned and freely distributable.
-    # Re-enable by removing the `if: false` condition once certs are available.
     name: ${{ needs.dedupe.outputs.skip_heavy_ci == 'true' && format('deduped build-{0}', matrix.name) || format('build-{0}', matrix.name) }}
     needs: [dedupe, resolve-mosh, resolve-et]
-    if: false
+    if: |
+      always()
+      && needs.dedupe.result == 'success'
+      && needs.dedupe.outputs.skip_heavy_ci != 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -267,7 +266,42 @@ jobs:
           cache: npm
       - name: Install deps
         run: npm ci
+
+      - name: Fetch bundled mosh-client
+        if: env.BUNDLE_MOSH == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ matrix.name }}" == "macos" ]]; then
+            npm run fetch:mosh -- --platform=darwin --arch=universal
+          elif [[ "${{ matrix.name }}" == "windows" ]]; then
+            npm run fetch:mosh -- --platform=win32 --arch=x64
+          fi
+
+      - name: Fetch bundled et-client
+        if: env.BUNDLE_ET == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ matrix.name }}" == "macos" ]]; then
+            npm run fetch:et -- --platform=darwin --arch=universal
+          elif [[ "${{ matrix.name }}" == "windows" ]]; then
+            npm run fetch:et -- --platform=win32 --arch=x64
+          fi
+
+      - name: Set version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" =~ $STRICT_VERSION_REF_RE ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-sha-${GITHUB_SHA:0:7}"
+          fi
+          echo "Setting version to ${VERSION}"
+          npm pkg set version="${VERSION}"
+
       - name: Build package
+        env:
+          ELECTRON_BUILDER_PUBLISH: "never"
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npm run ${{ matrix.pack_script }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -711,9 +745,7 @@ jobs:
   release:
     name: release
     runs-on: ubuntu-latest
-    # macOS/Windows builds are disabled (no paid code-signing certs).
-    # Release depends only on the two Linux jobs (x64 + arm64).
-    needs: [build-linux-x64, build-linux-arm64]
+    needs: [build, build-linux-x64, build-linux-arm64]
     # Only release on a strict v<MAJOR>.<MINOR>.<PATCH>[-pre] tag.
     # Manual workflow_dispatch can publish only when it is run from one
     # of those tags. PRs and branch pushes skip this job.
@@ -722,6 +754,7 @@ jobs:
     # skipped because no et-bin release is configured.
     if: |
       !cancelled()
+      && needs.build.result == 'success'
       && needs.build-linux-x64.result == 'success'
       && needs.build-linux-arm64.result == 'success'
       && startsWith(github.ref, 'refs/tags/v')
@@ -753,11 +786,7 @@ jobs:
       - name: Verify update metadata files
         run: |
           missing=0
-          # macOS/Windows builds are disabled.
-          # latest.yml = Windows updater (not built).
-          # latest-mac.yml = macOS updater (not built).
-          # Only require the two Linux update ymls.
-          for f in latest-linux.yml latest-linux-arm64.yml; do
+          for f in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::warning::Missing $f in merged artifacts, attempting recovery..."
               missing=1
@@ -765,11 +794,11 @@ jobs:
           done
           if [ "$missing" = "1" ]; then
             echo "Re-downloading individual artifacts to recover missing files..."
-            for name in magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
+            for name in magiesTerminal-macos magiesTerminal-windows magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
               tmpdir="/tmp/artifact-${name}"
               gh run download ${{ github.run_id }} --name "${name}" --dir "${tmpdir}" 2>/dev/null || true
               if [ -d "${tmpdir}" ]; then
-                for yml in "${tmpdir}"/latest-linux*.yml; do
+                for yml in "${tmpdir}"/latest*.yml; do
                   [ -f "$yml" ] && cp -v "$yml" artifacts/
                 done
               fi
@@ -777,14 +806,13 @@ jobs:
             echo "After recovery:"
             ls -la artifacts/*.yml 2>/dev/null || echo "(no yml files found)"
           fi
-          # Final check — only Linux update ymls required.
-          for f in latest-linux.yml latest-linux-arm64.yml; do
+          for f in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::error::$f is still missing after recovery attempt"
               exit 1
             fi
           done
-          echo "All Linux update metadata files present."
+          echo "All update metadata files present."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

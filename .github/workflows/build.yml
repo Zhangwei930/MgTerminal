@@ -629,14 +629,18 @@ jobs:
       - name: Install build dependencies
         run: |
           apt-get update
-          # Install clang-14 for C++20 support (latest available in Debian Bullseye).
-          # Note: lld-14 is not available in Debian Bullseye arm64 apt repos,
-          # so we keep the system ld (binutils) and only override CC/CXX.
+          # clang-14 is NOT in Debian Bullseye default apt repos.
+          # Add the official LLVM apt repo for Bullseye before installing.
+          apt-get install -y gnupg lsb-release ca-certificates
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key             | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg]             https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main"             > /etc/apt/sources.list.d/llvm.list
+          apt-get update
+          # Install clang-14 from LLVM repo; keep build-essential for make/ld.
           apt-get install -y curl clang-14 python3 git libfuse2 file rpm \
             libarchive-tools build-essential \
             libglib2.0-0 libgtk-3-0 libnss3 libxss1 libxtst6 libasound2 \
             libatk-bridge2.0-0 libdrm2 libgbm1 libx11-xcb1 libxcb-dri3-0
-          # Set clang-14 as CC/CXX for node-gyp native builds.
+          # Override CC/CXX for node-gyp native builds; keep system ld.
           export CC=clang-14
           export CXX=clang++-14
           echo "CC=clang-14" >> "${GITHUB_ENV}"

@@ -59,7 +59,10 @@ env:
   MOSH_BIN_RELEASE: ${{ github.event.inputs.mosh_bin_release || vars.MOSH_BIN_RELEASE || '' }}
   BUNDLE_MOSH: ${{ (startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release))) || (github.event_name == 'workflow_dispatch' && inputs.mosh_bin_release != '') }}
   ET_BIN_RELEASE: ${{ github.event.inputs.et_bin_release || vars.ET_BIN_RELEASE || '' }}
-  BUNDLE_ET: ${{ (startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release))) || (github.event_name == 'workflow_dispatch' && inputs.et_bin_release != '') }}
+  # Bundle et only when an et-bin release is explicitly configured (repo
+  # variable or dispatch input). This fork has no <owner>/MagiesTerminal-et-bin
+  # binary repository, so unconditional tag bundling would fail resolve-et.
+  BUNDLE_ET: ${{ (startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release)) && vars.ET_BIN_RELEASE != '') || (github.event_name == 'workflow_dispatch' && inputs.et_bin_release != '') }}
   STRICT_VERSION_REF_RE: '^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[A-Za-z][0-9A-Za-z-]*|[0-9A-Za-z][0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[A-Za-z][0-9A-Za-z-]*|[0-9A-Za-z][0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?$'
 
 jobs:
@@ -866,7 +869,9 @@ jobs:
             artifacts/*.blockmap
           generate_release_notes: true
           fail_on_unmatched_files: false
-          token: ${{ secrets.RELEASE_TOKEN }}
+          # Fall back to the workflow token (job has contents: write) when a
+          # dedicated RELEASE_TOKEN secret is not configured.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
   update-nix-release:
     name: update Nix release metadata
@@ -884,7 +889,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
-          token: ${{ secrets.RELEASE_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
@@ -933,6 +938,10 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           ARTIFACTS_DIR: artifacts
         run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "HOMEBREW_TAP_TOKEN is not configured; skipping homebrew tap bump."
+            exit 0
+          fi
           # Strip the leading "v" — Cask version is plain semver.
           VERSION="${GITHUB_REF_NAME#v}"
           export VERSION

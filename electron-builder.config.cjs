@@ -241,6 +241,11 @@ module.exports = {
         // installs only hicolor/1024x1024 and launchers miss the icon (#274,
         // #1340). Do NOT set linux.icon to a single 1024px PNG either.
         icon: 'icons',
+        // Keep the Linux binary/icon basename aligned with the rebrand:
+        // package.json "name" is magies-terminal, but install layout,
+        // Icon=magiesTerminal, and verify-linux-deb-artifact.sh expect
+        // /opt/MagiesTerminal/magiesTerminal.
+        executableName: 'magiesTerminal',
         target: ['AppImage', 'deb', 'rpm', 'pacman'],
         category: 'Development',
         extraResources: [...moshExtraResources('linux'), ...etExtraResources('linux')]
@@ -277,7 +282,7 @@ module.exports = {
         {
             provider: 'github',
             owner: 'JasonZhangDad',
-            repo: 'MagiesTerminal',
+            repo: 'MgTerminal',
             releaseType: 'release'
         }
     ]

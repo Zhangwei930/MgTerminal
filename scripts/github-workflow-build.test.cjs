@@ -29,8 +29,8 @@ test("build workflow uploads and releases Arch pacman artifacts", () => {
   const releaseUploadPatterns = buildWorkflow.match(/release\/\*\.pacman/g) ?? [];
   assert.equal(
     releaseUploadPatterns.length,
-    3,
-    "mac/windows aggregate upload plus both Linux jobs must include release/*.pacman",
+    2,
+    "both Linux jobs must include release/*.pacman",
   );
   assert.ok(
     buildWorkflow.includes("artifacts/*.pacman"),

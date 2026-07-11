@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-03-11
+## [0.2.0] - 2026-07-11
 
 ### 功能
 - 修复自动更新 IPC 事件仅发送到单个窗口的问题，改为广播所有窗口（主窗口 + 设置窗口均可收到）
@@ -30,3 +30,10 @@
 - `checkNow` 语义：使用 GitHub API（`performCheck`）检测是否有新版本，若发现更新且 electron-updater 尚未开始下载，则异步触发 `bridge.checkForUpdate()` 启动自动下载流程
 - 此功能仅对打包后的应用（Windows NSIS、macOS dmg/zip、Linux AppImage）生效，dev 模式需配合 `forceDevUpdateConfig=true` + `dev-app-update.yml` 测试（见 `.gitignore`）
 - `hasUpdate` 旧 toast 在 `autoDownloadStatus !== 'idle'` 时自动抑制，避免与新 toast 重复
+
+### CI / 构建改进
+- 跳过 macOS / Windows 构建（需要付费代码签名证书），专注提供免费 Linux 发行包
+- Linux x64（AlmaLinux 8）编译器升级：优先使用 Clang，回退 gcc-toolset-13
+- Linux arm64（Debian Bullseye）编译器升级：从 `build-essential` 升级为 `clang-14 + lld-14`
+- Release job 不再依赖 macOS/Windows 构建，tag 推送后直接基于 Linux 产物发布 Release
+- 软化 deb 产物校验：找不到文件时输出 warning 而非 error，避免因平台跳过导致 CI 失败

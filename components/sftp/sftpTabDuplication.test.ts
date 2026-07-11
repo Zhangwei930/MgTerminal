@@ -57,14 +57,14 @@ test("local SFTP tab duplication targets the local filesystem", () => {
         hostId: "local",
         hostLabel: "Local",
         isLocal: true,
-        currentPath: "/Users/damao/projects",
-        homeDir: "/Users/damao",
+        currentPath: "/Users/magies/projects",
+        homeDir: "/Users/magies",
       }),
       "currentPath",
     ),
     {
       kind: "local",
-      path: "/Users/damao/projects",
+      path: "/Users/magies/projects",
     },
   );
 });

@@ -1,11 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
 const { VALID_VARIANTS } = require("../electron/bridges/appIconManager.cjs");
 
 const APP_ICON_VARIANTS = [...VALID_VARIANTS];
+const OFFICIAL_ICON_SOURCE_SHA256 = "7c1d8c59e0000d8f42be3600e4f0e9c53a27df838b8ea84be19647906b440b2d";
 
 function paethPredictor(left, up, upperLeft) {
   const estimate = left + up - upperLeft;
@@ -17,7 +19,7 @@ function paethPredictor(left, up, upperLeft) {
   return upperLeft;
 }
 
-function readRgbaPngAlphaBounds(file) {
+function readRgbaPngAlphaBounds(file, inspectPixel) {
   const png = fs.readFileSync(file);
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
 
@@ -79,7 +81,14 @@ function readRgbaPngAlphaBounds(file) {
     }
 
     for (let x = 0; x < width; x += 1) {
-      if (current[x * bytesPerPixel + 3] <= 8) continue;
+      const pixelOffset = x * bytesPerPixel;
+      inspectPixel?.({
+        red: current[pixelOffset],
+        green: current[pixelOffset + 1],
+        blue: current[pixelOffset + 2],
+        alpha: current[pixelOffset + 3],
+      });
+      if (current[pixelOffset + 3] <= 8) continue;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x);
@@ -90,6 +99,41 @@ function readRgbaPngAlphaBounds(file) {
 
   return { minX, minY, maxX, maxY };
 }
+
+function assertContainsTerminalGradient(file) {
+  let greenPixels = 0;
+  let cyanPixels = 0;
+  readRgbaPngAlphaBounds(file, ({ red, green, blue, alpha }) => {
+    if (alpha <= 8) return;
+    if (green > 180 && red < 160 && blue < 190) greenPixels += 1;
+    if (green > 130 && blue > 150 && red < 100) cyanPixels += 1;
+  });
+  assert.ok(greenPixels > 500, `${file} must contain the official green terminal gradient`);
+  assert.ok(cyanPixels > 500, `${file} must contain the official cyan terminal gradient`);
+}
+
+test("release icons use the supplied terminal artwork", () => {
+  const projectRoot = path.join(__dirname, "..");
+  const source = path.join(projectRoot, "public/icon-source.png");
+  const sourceHash = crypto.createHash("sha256").update(fs.readFileSync(source)).digest("hex");
+  assert.equal(sourceHash, OFFICIAL_ICON_SOURCE_SHA256);
+
+  const appIcons = [
+    path.join(projectRoot, "public/icon.png"),
+    path.join(projectRoot, "public/icon-win.png"),
+    ...APP_ICON_VARIANTS.flatMap((variant) => [
+      path.join(projectRoot, "public/icons/variants", `${variant}.png`),
+      path.join(projectRoot, "public/icons/variants/macos", `${variant}.png`),
+    ]),
+  ];
+  for (const icon of appIcons) assertContainsTerminalGradient(icon);
+
+  for (const svgName of ["icon.svg", "logo.svg", "tray-iconTemplate.svg"]) {
+    const content = fs.readFileSync(path.join(projectRoot, "public", svgName), "utf8");
+    assert.equal(/cat|paw|squinty/i.test(content), false, `${svgName} still describes the legacy cat logo`);
+    assert.match(content, /icon-source\.png/, `${svgName} must derive from the official source icon`);
+  }
+});
 
 test("main process leaves macOS Dock icon to the packaged app bundle", () => {
   const mainProcess = fs.readFileSync(

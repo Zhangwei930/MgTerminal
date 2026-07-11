@@ -36,7 +36,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
     ],
     "/Users": [
       {
-        name: "damao",
+        name: "magies",
         type: "directory",
         size: 0,
         sizeFormatted: "--",
@@ -52,7 +52,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 86400000),
       },
     ],
-    "/Users/damao": [
+    "/Users/magies": [
       {
         name: "Desktop",
         type: "directory",
@@ -123,7 +123,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
     ],
     "C:/Users": [
       {
-        name: "damao",
+        name: "magies",
         type: "directory",
         size: 0,
         sizeFormatted: "--",
@@ -147,7 +147,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 172800000),
       },
     ],
-    "C:/Users/damao": [
+    "C:/Users/magies": [
       {
         name: "Desktop",
         type: "directory",
@@ -189,7 +189,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 900000),
       },
     ],
-    "C:/Users/damao/Desktop": [
+    "C:/Users/magies/Desktop": [
       {
         name: "MagiesTerminal",
         type: "directory",
@@ -215,7 +215,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 43200000),
       },
     ],
-    "C:/Users/damao/Desktop/MagiesTerminal": [
+    "C:/Users/magies/Desktop/MagiesTerminal": [
       {
         name: "src",
         type: "directory",
@@ -249,7 +249,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 86400000),
       },
     ],
-    "C:/Users/damao/Documents": [
+    "C:/Users/magies/Documents": [
       {
         name: "Work",
         type: "directory",
@@ -275,7 +275,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 259200000),
       },
     ],
-    "C:/Users/damao/Downloads": [
+    "C:/Users/magies/Downloads": [
       {
         name: "installer.exe",
         type: "file",
@@ -301,7 +301,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 86400000),
       },
     ],
-    "C:/Users/damao/Projects": [
+    "C:/Users/magies/Projects": [
       {
         name: "webapp",
         type: "directory",
@@ -319,7 +319,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 43200000),
       },
     ],
-    "/Users/damao/Desktop": [
+    "/Users/magies/Desktop": [
       {
         name: "MagiesTerminal",
         type: "directory",
@@ -345,7 +345,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 43200000),
       },
     ],
-    "/Users/damao/Desktop/MagiesTerminal": [
+    "/Users/magies/Desktop/MagiesTerminal": [
       {
         name: "src",
         type: "directory",
@@ -379,7 +379,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 86400000),
       },
     ],
-    "/Users/damao/Documents": [
+    "/Users/magies/Documents": [
       {
         name: "Work",
         type: "directory",
@@ -405,7 +405,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 259200000),
       },
     ],
-    "/Users/damao/Downloads": [
+    "/Users/magies/Downloads": [
       {
         name: "installer.exe",
         type: "file",
@@ -431,7 +431,7 @@ export function buildMockLocalFiles(path: string): SftpFileEntry[] {
         lastModifiedFormatted: formatDate(Date.now() - 86400000),
       },
     ],
-    "/Users/damao/Projects": [
+    "/Users/magies/Projects": [
       {
         name: "webapp",
         type: "directory",

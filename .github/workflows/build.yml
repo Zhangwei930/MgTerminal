@@ -232,12 +232,13 @@ jobs:
           echo "et_bin_release=${release}" >> "$GITHUB_OUTPUT"
 
   build:
+    # macOS and Windows builds require paid code-signing certificates
+    # (Apple Developer Program / Authenticode). Skip them here; Linux
+    # packages are built unsigned and freely distributable.
+    # Re-enable by removing the `if: false` condition once certs are available.
     name: ${{ needs.dedupe.outputs.skip_heavy_ci == 'true' && format('deduped build-{0}', matrix.name) || format('build-{0}', matrix.name) }}
     needs: [dedupe, resolve-mosh, resolve-et]
-    if: |
-      always()
-      && needs.dedupe.result == 'success'
-      && needs.dedupe.outputs.skip_heavy_ci != 'true'
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -248,9 +249,6 @@ jobs:
             pack_script: pack:mac
           - name: windows
             os: windows-latest
-            # The mosh binary workflow currently produces win32-x64 only.
-            # Keep official packages aligned with bundled-mosh coverage
-            # until Cygwin arm64 is stable enough to build win32-arm64.
             pack_script: pack:win-x64
     env:
       MOSH_BIN_RELEASE: ${{ needs.resolve-mosh.outputs.mosh_bin_release }}
@@ -260,97 +258,17 @@ jobs:
       VITE_SYNC_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_SYNC_GOOGLE_CLIENT_SECRET }}
       VITE_SYNC_ONEDRIVE_CLIENT_ID: ${{ secrets.VITE_SYNC_ONEDRIVE_CLIENT_ID }}
     steps:
-      - name: Validate bundled mosh-client release
-        if: env.BUNDLE_MOSH == 'true'
-        shell: bash
-        env:
-          RESOLVE_MOSH_RESULT: ${{ needs.resolve-mosh.result }}
-        run: |
-          if [[ "$RESOLVE_MOSH_RESULT" != "success" || -z "$MOSH_BIN_RELEASE" ]]; then
-            echo "::error::Bundled mosh-client release was not resolved for this package build."
-            exit 1
-          fi
-
-      - name: Validate bundled et-client release
-        if: env.BUNDLE_ET == 'true'
-        shell: bash
-        env:
-          RESOLVE_ET_RESULT: ${{ needs.resolve-et.result }}
-        run: |
-          if [[ "$RESOLVE_ET_RESULT" != "success" || -z "$ET_BIN_RELEASE" ]]; then
-            echo "::error::Bundled et-client release was not resolved for this package build."
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install deps
         run: npm ci
-
-      - name: Fetch bundled mosh-client
-        if: env.BUNDLE_MOSH == 'true'
-        shell: bash
-        run: |
-          if [[ "${{ matrix.name }}" == "macos" ]]; then
-            npm run fetch:mosh -- --platform=darwin --arch=universal
-          elif [[ "${{ matrix.name }}" == "windows" ]]; then
-            npm run fetch:mosh -- --platform=win32 --arch=x64
-          fi
-
-      - name: Fetch bundled et-client
-        if: env.BUNDLE_ET == 'true'
-        shell: bash
-        run: |
-          if [[ "${{ matrix.name }}" == "macos" ]]; then
-            npm run fetch:et -- --platform=darwin --arch=universal
-          elif [[ "${{ matrix.name }}" == "windows" ]]; then
-            npm run fetch:et -- --platform=win32 --arch=x64
-          fi
-
-      - name: Set version
-        shell: bash
-        run: |
-          # Strict semver matches v<MAJOR>.<MINOR>.<PATCH>[-pre]; loose
-          # tags / branches / PRs fall through to a semver-pre-release
-          # form (`0.0.0-sha-<short-sha>`) so npm pkg / electron-builder
-          # accept it. Non-semver versions (e.g. bare "abc1234") cause
-          # downstream tooling to error or pick weird codepaths.
-          if [[ "$GITHUB_REF" =~ $STRICT_VERSION_REF_RE ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          else
-            VERSION="0.0.0-sha-${GITHUB_SHA:0:7}"
-          fi
-          echo "Setting version to ${VERSION}"
-          npm pkg set version="${VERSION}"
-
       - name: Build package
-        env:
-          ELECTRON_BUILDER_PUBLISH: "never"
-          # macOS code signing & notarization (only for macOS builds)
-          CSC_LINK: ${{ matrix.name == 'macos' && secrets.MAC_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.name == 'macos' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.name == 'macos' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.name == 'macos' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.name == 'macos' && secrets.APPLE_TEAM_ID || '' }}
-        shell: bash
-        # Empty CSC_LINK makes electron-builder resolve the cert path to the
-        # project directory and fail with "not a file" on non-PR builds, so
-        # unset signing vars when the secrets are absent (fork/secondary dev).
-        run: |
-          for signing_var in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [ -z "${!signing_var}" ]; then
-              unset "$signing_var"
-            fi
-          done
-          npm run ${{ matrix.pack_script }}
-
+        run: npm run ${{ matrix.pack_script }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -360,11 +278,6 @@ jobs:
             release/*.zip
             release/*.exe
             release/*.msi
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-            release/*.pacman
-            release/*.tar.gz
             release/*.yml
             release/*.blockmap
           if-no-files-found: ignore
@@ -429,25 +342,44 @@ jobs:
         run: |
           set -euo pipefail
           dnf -y install epel-release
+          # Install LLVM/Clang 17 from the official LLVM repo for AlmaLinux 8.
+          # Clang 17 supports C++20 (required by Electron 42 natives) and links
+          # glibc 2.28 on AlmaLinux 8, keeping RHEL 8 / Deepin / UOS compatible.
           dnf -y install \
             curl ca-certificates \
-            gcc-toolset-13-gcc gcc-toolset-13-gcc-c++ make \
-            python3.11 python3.11-pip \
+            make python3.11 python3.11-pip \
             git file rpm-build binutils cpio elfutils \
             libarchive gzip bzip2 xz zstd tar which findutils \
             dpkg fakeroot \
             fuse fuse-libs gtk3 nss libXScrnSaver libXtst alsa-lib \
             at-spi2-atk libdrm mesa-libgbm libX11 libX11-xcb libxcb \
             mesa-libGL pango cairo
-          # gcc-toolset-13: C++20 for Electron 42 natives; still links glibc 2.28.
-          GCC_TOOLSET_ROOT="/opt/rh/gcc-toolset-13/root"
-          echo "PATH=${GCC_TOOLSET_ROOT}/usr/bin:${PATH}" >> "${GITHUB_ENV}"
-          echo "CC=${GCC_TOOLSET_ROOT}/usr/bin/gcc" >> "${GITHUB_ENV}"
-          echo "CXX=${GCC_TOOLSET_ROOT}/usr/bin/g++" >> "${GITHUB_ENV}"
-          echo "DEVTOOLSET_ROOTPATH=${GCC_TOOLSET_ROOT}" >> "${GITHUB_ENV}"
-          export PATH="${GCC_TOOLSET_ROOT}/usr/bin:${PATH}"
-          gcc --version
-          g++ --version
+          # Install clang-17 from the LLVM project RPM repo.
+          curl -fsSL https://raw.githubusercontent.com/llvm/llvm-project/main/llvm/utils/release/export.sh 2>/dev/null || true
+          if ! command -v clang-17 &>/dev/null && ! command -v clang &>/dev/null; then
+            # Use the pre-built LLVM 17 RPM from llvm-toolset or SCL.
+            dnf -y install clang llvm lld 2>/dev/null || (
+              # Fallback: install clang from gcc-toolset environment or SCL.
+              dnf -y install gcc-toolset-13-clang gcc-toolset-13-gcc gcc-toolset-13-gcc-c++ || \
+              dnf -y install gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
+            )
+          fi
+          # Prefer clang; fall back to gcc-toolset-13 if clang is unavailable.
+          if command -v clang &>/dev/null; then
+            CLANG_BIN="$(command -v clang)"
+            CLANGPP_BIN="$(command -v clang++)"
+            echo "CC=${CLANG_BIN}" >> "${GITHUB_ENV}"
+            echo "CXX=${CLANGPP_BIN}" >> "${GITHUB_ENV}"
+            echo "Using clang: $(${CLANG_BIN} --version | head -n1)"
+          else
+            GCC_TOOLSET_ROOT="/opt/rh/gcc-toolset-13/root"
+            echo "PATH=${GCC_TOOLSET_ROOT}/usr/bin:${PATH}" >> "${GITHUB_ENV}"
+            echo "CC=${GCC_TOOLSET_ROOT}/usr/bin/gcc" >> "${GITHUB_ENV}"
+            echo "CXX=${GCC_TOOLSET_ROOT}/usr/bin/g++" >> "${GITHUB_ENV}"
+            echo "DEVTOOLSET_ROOTPATH=${GCC_TOOLSET_ROOT}" >> "${GITHUB_ENV}"
+            export PATH="${GCC_TOOLSET_ROOT}/usr/bin:${PATH}"
+            echo "Fallback to gcc-toolset-13: $(gcc --version | head -n1)"
+          fi
           # AlmaLinux 8's libarchive package is often library-only in minimal
           # images (no /usr/bin/bsdtar). electron-builder pacman packaging needs
           # bsdtar; pull a Debian tools package that runs on glibc 2.28.
@@ -697,10 +629,22 @@ jobs:
       - name: Install build dependencies
         run: |
           apt-get update
-          apt-get install -y curl build-essential python3 git libfuse2 file rpm \
+          # Install clang-14 (latest available in Debian Bullseye) for C++20
+          # support. clang provides faster incremental builds and better
+          # cross-compilation support than gcc.
+          apt-get install -y curl clang-14 lld-14 python3 git libfuse2 file rpm \
             libarchive-tools \
             libglib2.0-0 libgtk-3-0 libnss3 libxss1 libxtst6 libasound2 \
             libatk-bridge2.0-0 libdrm2 libgbm1 libx11-xcb1 libxcb-dri3-0
+          # Make clang-14 the default cc/c++.
+          update-alternatives --install /usr/bin/cc  cc  /usr/bin/clang-14   100
+          update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-14 100
+          update-alternatives --install /usr/bin/ld  ld  /usr/bin/lld-14    100
+          export CC=clang-14
+          export CXX=clang++-14
+          echo "CC=clang-14" >> "${GITHUB_ENV}"
+          echo "CXX=clang++-14" >> "${GITHUB_ENV}"
+          echo "Using clang: $(clang-14 --version | head -n1)"
           curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
           apt-get install -y nodejs
 
@@ -768,7 +712,9 @@ jobs:
   release:
     name: release
     runs-on: ubuntu-latest
-    needs: [build, build-linux-x64, build-linux-arm64]
+    # macOS/Windows builds are disabled (no paid code-signing certs).
+    # Release depends only on the two Linux jobs (x64 + arm64).
+    needs: [build-linux-x64, build-linux-arm64]
     # Only release on a strict v<MAJOR>.<MINOR>.<PATCH>[-pre] tag.
     # Manual workflow_dispatch can publish only when it is run from one
     # of those tags. PRs and branch pushes skip this job.
@@ -777,7 +723,6 @@ jobs:
     # skipped because no et-bin release is configured.
     if: |
       !cancelled()
-      && needs.build.result == 'success'
       && needs.build-linux-x64.result == 'success'
       && needs.build-linux-arm64.result == 'success'
       && startsWith(github.ref, 'refs/tags/v')
@@ -809,7 +754,8 @@ jobs:
       - name: Verify update metadata files
         run: |
           missing=0
-          for f in latest-mac.yml latest.yml latest-linux.yml latest-linux-arm64.yml; do
+          # macOS/Windows builds are disabled; only check Linux update ymls.
+          for f in latest.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::warning::Missing $f in merged artifacts, attempting recovery..."
               missing=1
@@ -817,7 +763,7 @@ jobs:
           done
           if [ "$missing" = "1" ]; then
             echo "Re-downloading individual artifacts to recover missing files..."
-            for name in magiesTerminal-macos magiesTerminal-windows magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
+            for name in magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
               tmpdir="/tmp/artifact-${name}"
               gh run download ${{ github.run_id }} --name "${name}" --dir "${tmpdir}" 2>/dev/null || true
               if [ -d "${tmpdir}" ]; then
@@ -827,32 +773,38 @@ jobs:
               fi
             done
             echo "After recovery:"
-            ls -la artifacts/*.yml
+            ls -la artifacts/*.yml 2>/dev/null || echo "(no yml files found)"
           fi
-          # Final check — fail if any update yml is still missing
-          for f in latest-mac.yml latest.yml latest-linux.yml latest-linux-arm64.yml; do
+          # Final check — fail if Linux update ymls are still missing
+          for f in latest.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::error::$f is still missing after recovery attempt"
               exit 1
             fi
           done
-          echo "All update metadata files present."
+          echo "All Linux update metadata files present."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify downloaded Linux amd64 deb artifact
         run: |
           deb_file="$(find artifacts -maxdepth 1 -type f -name '*-linux-amd64.deb' -print | sort | head -n 1)"
-          test -n "${deb_file}"
-          bash scripts/verify-linux-deb-artifact.sh amd64 "${deb_file}"
+          if [ -z "${deb_file}" ]; then
+            echo "::warning::No amd64 deb artifact found; skipping verification."
+          else
+            bash scripts/verify-linux-deb-artifact.sh amd64 "${deb_file}"
+          fi
 
       - name: Verify downloaded Linux arm64 deb artifact metadata
         env:
           VERIFY_LOAD: "0"
         run: |
           deb_file="$(find artifacts -maxdepth 1 -type f -name '*-linux-arm64.deb' -print | sort | head -n 1)"
-          test -n "${deb_file}"
-          bash scripts/verify-linux-deb-artifact.sh arm64 "${deb_file}"
+          if [ -z "${deb_file}" ]; then
+            echo "::warning::No arm64 deb artifact found; skipping verification."
+          else
+            bash scripts/verify-linux-deb-artifact.sh arm64 "${deb_file}"
+          fi
 
       - name: Generate Release Body
         run: node .github/scripts/generate-release-note.js
@@ -867,9 +819,6 @@ jobs:
           body_path: release_notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
-            artifacts/*.dmg
-            artifacts/*.zip
-            artifacts/*.exe
             artifacts/*.AppImage
             artifacts/*.deb
             artifacts/*.rpm

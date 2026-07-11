@@ -286,7 +286,7 @@ export const useSftpConnections = ({
         let homeDir = await magiesTerminalBridge.get()?.getHomeDir?.();
         if (!homeDir) {
           const isWindows = navigator.platform.toLowerCase().includes("win");
-          homeDir = isWindows ? "C:\\Users\\damao" : "/Users/damao";
+          homeDir = isWindows ? "C:\\Users\\magies" : "/Users/magies";
         }
 
         const startPath = options?.initialPath || homeDir;

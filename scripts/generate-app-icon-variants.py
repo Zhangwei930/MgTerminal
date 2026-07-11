@@ -1,245 +1,152 @@
 #!/usr/bin/env python3
-"""Generate runtime app icon variants from public/icon.svg.
+"""Generate every product icon from public/icon-source.png.
 
-Outputs desktop PNGs under public/icons/variants/ and HIG-sized macOS PNGs
-under public/icons/variants/macos/ for Electron dock/taskbar switching.
 Run: python3 scripts/generate-app-icon-variants.py
-Requires: rsvg-convert (librsvg)
+Requires: Pillow (pip install Pillow)
 """
 from __future__ import annotations
 
-import re
-import subprocess
+from collections import deque
 from pathlib import Path
 
+from PIL import Image
+
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SVG = ROOT / "public" / "icon.svg"
-OUT_DIR = ROOT / "public" / "icons" / "variants"
-MACOS_OUT_DIR = OUT_DIR / "macos"
-MACOS_RUNTIME_VIEWBOX = "0 0 1024 1024"
-
-DETAIL_COLORS = [
-    "#1f2657",
-    "#18214c",
-    "#0c1943",
-    "#505c83",
-    "#919ab0",
-    "#022551",
-    "#032551",
-    "#0c1a4d",
-    "#98a2bf",
-    "#9ea6be",
-    "#132152",
-    "#6c7794",
-    "#6f7b97",
-    "#a8aec5",
-    "#677393",
-    "#01103f",
-    "#7581a0",
-    "#a7aec3",
-    "#adb2c9",
-    "#bec4d7",
-    "#9ba0b8",
-    "#9aa5bc",
-    "#adb1c6",
-    "#c9d0dc",
-    "#b5bfcb",
-    "#8193aa",
-]
-
-RAINBOW_GRADIENT = """
-    <linearGradient id="magiesTerminal-rainbow" x1="180" y1="1020" x2="1080" y2="260" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#EF4444"/>
-      <stop offset="16%" stop-color="#F97316"/>
-      <stop offset="33%" stop-color="#EAB308"/>
-      <stop offset="50%" stop-color="#22C55E"/>
-      <stop offset="66%" stop-color="#06B6D4"/>
-      <stop offset="83%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#A855F7"/>
-    </linearGradient>
-"""
-
-WHITE_BG = {
-    "bg": "#FFFFFF",
-    "border_color": "#CBD5E1",
-    "border_opacity": "0.85",
-}
-
-WHITE_CAT_FACE = "#FFFFFF"
-
-VARIANTS: dict[str, dict[str, str] | None] = {
-    "original": None,
-    "bright": {
-        "bg": "#0EA5E9",
-        "cat": "#FFFFFF",
-        "cat_alt": "#F0F9FF",
-        "detail": "#0369A1",
-        "border_color": "#ffffff",
-        "border_opacity": "0.55",
-    },
-    "dark": {
-        "bg": "#0F172A",
-        "cat": "#F8FAFC",
-        "cat_alt": "#E2E8F0",
-        "detail": "#334155",
-        "border_color": "#ffffff",
-        "border_opacity": "0.35",
-    },
-    "colorful": {
-        "bg": "#EA580C",
-        "cat": "#FFFFFF",
-        "cat_alt": "#FFF7ED",
-        "detail": "#C2410C",
-        "border_color": "#ffffff",
-        "border_opacity": "0.5",
-    },
-    "high-contrast": {
-        "bg": "#000000",
-        "cat": "#FACC15",
-        "cat_alt": "#FDE047",
-        "detail": "#A16207",
-        "border_color": "#ffffff",
-        "border_opacity": "0.9",
-    },
-    "white-navy": {
-        **WHITE_BG,
-        "cat": "#002551",
-        "cat_alt": "#0B3D78",
-        "detail": WHITE_CAT_FACE,
-    },
-    "white-sky": {
-        **WHITE_BG,
-        "cat": "#0284C7",
-        "cat_alt": "#38BDF8",
-        "detail": WHITE_CAT_FACE,
-    },
-    "white-rose": {
-        **WHITE_BG,
-        "cat": "#E11D48",
-        "cat_alt": "#FB7185",
-        "detail": WHITE_CAT_FACE,
-    },
-    "white-emerald": {
-        **WHITE_BG,
-        "cat": "#059669",
-        "cat_alt": "#34D399",
-        "detail": WHITE_CAT_FACE,
-    },
-    "white-amber": {
-        **WHITE_BG,
-        "cat": "#D97706",
-        "cat_alt": "#FBBF24",
-        "detail": WHITE_CAT_FACE,
-    },
-    "white-violet": {
-        **WHITE_BG,
-        "cat": "#7C3AED",
-        "cat_alt": "#A78BFA",
-        "detail": WHITE_CAT_FACE,
-    },
-    "rainbow": {
-        **WHITE_BG,
-        "mode": "rainbow",
-        "detail": WHITE_CAT_FACE,
-    },
-}
+SOURCE = ROOT / "public" / "icon-source.png"
+PUBLIC = ROOT / "public"
+VARIANTS = (
+    "original",
+    "bright",
+    "dark",
+    "colorful",
+    "high-contrast",
+    "white-navy",
+    "white-sky",
+    "white-rose",
+    "white-emerald",
+    "white-amber",
+    "white-violet",
+    "rainbow",
+)
+LINUX_SIZES = (16, 32, 48, 64, 128, 256, 512)
+ICO_SIZES = (16, 20, 24, 32, 40, 48, 64)
 
 
-def load_template() -> str:
-    if not SOURCE_SVG.exists():
-        raise SystemExit(f"source svg not found: {SOURCE_SVG}")
-    return SOURCE_SVG.read_text(encoding="utf-8")
+def remove_connected_black_background(source: Image.Image) -> Image.Image:
+    rgb = source.convert("RGB")
+    width, height = rgb.size
+    pixels = rgb.load()
+    exterior = bytearray(width * height)
+    queue: deque[tuple[int, int]] = deque()
+
+    def enqueue(x: int, y: int) -> None:
+        offset = y * width + x
+        if exterior[offset] or max(pixels[x, y]) > 40:
+            return
+        exterior[offset] = 1
+        queue.append((x, y))
+
+    for x in range(width):
+        enqueue(x, 0)
+        enqueue(x, height - 1)
+    for y in range(height):
+        enqueue(0, y)
+        enqueue(width - 1, y)
+
+    while queue:
+        x, y = queue.popleft()
+        if x > 0:
+            enqueue(x - 1, y)
+        if x + 1 < width:
+            enqueue(x + 1, y)
+        if y > 0:
+            enqueue(x, y - 1)
+        if y + 1 < height:
+            enqueue(x, y + 1)
+
+    rgba = rgb.convert("RGBA")
+    alpha = Image.new("L", rgb.size, 255)
+    alpha.putdata([0 if value else 255 for value in exterior])
+    rgba.putalpha(alpha)
+    bounds = alpha.getbbox()
+    if bounds is None:
+        raise SystemExit("source icon has no visible pixels")
+
+    return rgba.crop(bounds)
 
 
-def set_viewbox(svg: str, viewbox: str) -> str:
-    out, count = re.subn(r'viewBox="[^"]+"', f'viewBox="{viewbox}"', svg, count=1)
-    if count != 1:
-        raise SystemExit("source svg is missing a root viewBox")
-    return out
+def render_canvas(icon: Image.Image, size: int, inset: int = 0) -> Image.Image:
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    target_size = size - inset * 2
+    resized = icon.resize((target_size, target_size), Image.Resampling.LANCZOS)
+    canvas.alpha_composite(resized, (inset, inset))
+    return canvas
 
 
-def inject_rainbow_gradient(svg: str) -> str:
-    if "id=\"magiesTerminal-rainbow\"" in svg:
-        return svg
-    return svg.replace("<defs>", f"<defs>{RAINBOW_GRADIENT}", 1)
-
-
-def apply_solid_variant(svg: str, spec: dict[str, str]) -> str:
-    out = svg
-    out = out.replace('fill="#002551"', f'fill="{spec["bg"]}"', 1)
-    out = out.replace('fill="#f9f9f9"', f'fill="{spec["cat"]}"')
-    out = out.replace('fill="#f8f8f9"', f'fill="{spec["cat_alt"]}"')
-    for color in DETAIL_COLORS:
-        out = out.replace(f'fill="{color}"', f'fill="{spec["detail"]}"')
-    border_color = spec.get("border_color", "#ffffff")
-    border_opacity = spec.get("border_opacity", "0.4")
-    out = re.sub(
-        r'stroke="#ffffff" stroke-opacity="[^"]+"',
-        f'stroke="{border_color}" stroke-opacity="{border_opacity}"',
-        out,
-        count=1,
+def render_tray_template(icon: Image.Image, size: int) -> Image.Image:
+    rgb = icon.convert("RGB")
+    alpha = Image.new("L", rgb.size, 0)
+    rgb_bytes = rgb.tobytes()
+    source_pixels = (
+        (rgb_bytes[offset], rgb_bytes[offset + 1], rgb_bytes[offset + 2])
+        for offset in range(0, len(rgb_bytes), 3)
     )
-    return out
+    alpha.putdata([
+        max(0, min(255, (max(green, blue) - 80) * 4))
+        if green > 105 and max(green, blue) - red > 25
+        else 0
+        for red, green, blue in source_pixels
+    ])
+    bounds = alpha.getbbox()
+    if bounds is None:
+        raise SystemExit("could not isolate the terminal glyph for the tray icon")
+    glyph = alpha.crop(bounds)
+    target = size - max(4, size // 5)
+    glyph.thumbnail((target, target), Image.Resampling.LANCZOS)
+    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mask = Image.new("L", (size, size), 0)
+    offset = ((size - glyph.width) // 2, (size - glyph.height) // 2)
+    mask.paste(glyph, offset)
+    result.putalpha(mask)
+    return result
 
 
-def apply_rainbow_variant(svg: str, spec: dict[str, str]) -> str:
-    out = inject_rainbow_gradient(svg)
-    out = out.replace('fill="#002551"', f'fill="{spec["bg"]}"', 1)
-    rainbow_fill = 'fill="url(#magiesTerminal-rainbow)"'
-    out = out.replace('fill="#f9f9f9"', rainbow_fill)
-    out = out.replace('fill="#f8f8f9"', rainbow_fill)
-    face_color = spec.get("detail", WHITE_CAT_FACE)
-    for color in DETAIL_COLORS:
-        out = out.replace(f'fill="{color}"', f'fill="{face_color}"')
-    border_color = spec.get("border_color", "#CBD5E1")
-    border_opacity = spec.get("border_opacity", "0.85")
-    out = re.sub(
-        r'stroke="#ffffff" stroke-opacity="[^"]+"',
-        f'stroke="{border_color}" stroke-opacity="{border_opacity}"',
-        out,
-        count=1,
-    )
-    return out
-
-
-def apply_variant(svg: str, spec: dict[str, str]) -> str:
-    if spec.get("mode") == "rainbow":
-        return apply_rainbow_variant(svg, spec)
-    return apply_solid_variant(svg, spec)
-
-
-def render_png(svg_content: str, target: Path) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["rsvg-convert", "-w", "1024", "-h", "1024", "-o", str(target)],
-        input=svg_content.encode("utf-8"),
-        check=True,
-    )
+def save_png(image: Image.Image, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(path, format="PNG", optimize=True)
+    print(f"wrote {path.relative_to(ROOT)}")
 
 
 def main() -> None:
-    desktop_template = load_template()
-    macos_template = set_viewbox(desktop_template, MACOS_RUNTIME_VIEWBOX)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    MACOS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if not SOURCE.exists():
+        raise SystemExit(f"source icon not found: {SOURCE}")
 
-    for variant_id, spec in VARIANTS.items():
-        if spec is None:
-            desktop_path = OUT_DIR / f"{variant_id}.png"
-            render_png(desktop_template, desktop_path)
-            print(f"wrote {desktop_path.relative_to(ROOT)}")
+    icon = remove_connected_black_background(Image.open(SOURCE))
+    windows_icon = render_canvas(icon, 1024)
+    macos_icon = render_canvas(icon, 1024, 61)
+    macos_runtime_icon = render_canvas(icon, 1024, 100)
 
-            macos_path = MACOS_OUT_DIR / f"{variant_id}.png"
-            render_png(macos_template, macos_path)
-            print(f"wrote {macos_path.relative_to(ROOT)}")
-            continue
-        desktop_path = OUT_DIR / f"{variant_id}.png"
-        render_png(apply_variant(desktop_template, spec), desktop_path)
-        print(f"wrote {desktop_path.relative_to(ROOT)}")
+    save_png(macos_icon, PUBLIC / "icon.png")
+    save_png(windows_icon, PUBLIC / "icon-win.png")
+    for variant in VARIANTS:
+        save_png(macos_icon, PUBLIC / "icons" / "variants" / f"{variant}.png")
+        save_png(macos_runtime_icon, PUBLIC / "icons" / "variants" / "macos" / f"{variant}.png")
+    for size in LINUX_SIZES:
+        save_png(
+            windows_icon.resize((size, size), Image.Resampling.LANCZOS),
+            ROOT / "build" / "icons" / f"{size}x{size}.png",
+        )
 
-        macos_path = MACOS_OUT_DIR / f"{variant_id}.png"
-        render_png(apply_variant(macos_template, spec), macos_path)
-        print(f"wrote {macos_path.relative_to(ROOT)}")
+    save_png(windows_icon.resize((16, 16), Image.Resampling.LANCZOS), PUBLIC / "tray-icon.png")
+    save_png(windows_icon.resize((32, 32), Image.Resampling.LANCZOS), PUBLIC / "tray-icon@2x.png")
+    save_png(render_tray_template(icon, 22), PUBLIC / "tray-iconTemplate.png")
+    save_png(render_tray_template(icon, 44), PUBLIC / "tray-iconTemplate@2x.png")
+    windows_icon.save(
+        PUBLIC / "tray-icon.ico",
+        format="ICO",
+        sizes=[(size, size) for size in ICO_SIZES],
+    )
+    print("wrote public/tray-icon.ico")
 
 
 if __name__ == "__main__":

@@ -853,6 +853,10 @@ jobs:
             artifacts/*.deb
             artifacts/*.rpm
             artifacts/*.pacman
+            artifacts/*.dmg
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.msi
             artifacts/*.yml
             artifacts/*.blockmap
           generate_release_notes: true

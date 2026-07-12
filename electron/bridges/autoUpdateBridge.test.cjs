@@ -22,7 +22,7 @@ const ELECTRON_UPDATER_ID = "electron-updater";
  * assert on their interactions. Restores Module._load and the bridge cache on
  * exit so tests stay isolated.
  */
-async function withMocks({ autoUpdater, autoUpdaterExports, windowManager, globalShortcutBridge, dirtyEditorGuard, browserWindows } = {}, fn) {
+async function withMocks({ autoUpdater, autoUpdaterExports, windowManager, globalShortcutBridge, dirtyEditorGuard, browserWindows, isAutoUpdateSupported } = {}, fn) {
   const fakeAutoUpdater = autoUpdater || {
     autoDownload: true,
     autoInstallOnAppQuit: false,
@@ -89,6 +89,10 @@ async function withMocks({ autoUpdater, autoUpdaterExports, windowManager, globa
         // needs-save notice). Defaults to none.
         BrowserWindow: { getAllWindows: () => browserWindows || [] },
       },
+      // Linux CI runners are not AppImage processes, so the real platform check
+      // would short-circuit every install handler test. Default to supported
+      // unless a test explicitly opts into the unsupported path.
+      isAutoUpdateSupported: isAutoUpdateSupported || (() => true),
     });
     // Await so the Module._load patch stays installed for the *entire* test
     // body, including after the now-async install handler yields on its first
@@ -293,6 +297,48 @@ test("install handler is a no-op when the updater fails to load", async () => {
     assert.deepEqual(fakeWindowManager.calls, []);
     assert.equal(fakeGlobalShortcut.cleanupCount, 0);
   });
+});
+
+test("install handler returns unsupported without quitting when auto-update is unavailable", async () => {
+  const autoUpdater = {
+    autoDownload: true,
+    autoInstallOnAppQuit: false,
+    logger: undefined,
+    on() {},
+    quitAndInstall() {
+      throw new Error("quitAndInstall must not run on unsupported platforms");
+    },
+  };
+  const fakeWindowManager = {
+    calls: [],
+    setQuittingForUpdate(value) {
+      this.calls.push(value);
+    },
+    isQuittingForUpdate() {
+      return false;
+    },
+  };
+
+  await withMocks(
+    {
+      autoUpdater,
+      windowManager: fakeWindowManager,
+      isAutoUpdateSupported: () => false,
+    },
+    async ({ bridge, fakeGlobalShortcut }) => {
+      const ipcMain = makeIpcMain();
+      bridge.registerHandlers(ipcMain);
+      const result = await ipcMain.invoke("magiesTerminal:update:install");
+
+      assert.deepEqual(result, {
+        success: false,
+        unsupported: true,
+        error: "Auto-install is not supported on this platform. Download the latest release manually.",
+      });
+      assert.deepEqual(fakeWindowManager.calls, []);
+      assert.equal(fakeGlobalShortcut.cleanupCount, 0);
+    },
+  );
 });
 
 test("install handler rolls back quitting-for-update when quitAndInstall throws", async () => {

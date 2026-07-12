@@ -49,8 +49,12 @@ function writeAutoUpdatePreference(enabled) {
 /**
  * Returns true when the current packaging format supports electron-updater
  * (macOS zip/dmg, Windows NSIS, Linux AppImage).
+ *
+ * Overridable via init({ isAutoUpdateSupported }) so unit tests on Linux CI
+ * (no APPIMAGE env) can exercise the install path without pretending to be
+ * an AppImage process.
  */
-function isAutoUpdateSupported() {
+function defaultIsAutoUpdateSupported() {
   if (process.platform === "darwin" || process.platform === "win32") {
     return true;
   }
@@ -60,6 +64,12 @@ function isAutoUpdateSupported() {
     return true;
   }
   return false;
+}
+
+let _isAutoUpdateSupported = defaultIsAutoUpdateSupported;
+
+function isAutoUpdateSupported() {
+  return _isAutoUpdateSupported();
 }
 
 /** Lazily resolved autoUpdater — avoids importing electron-updater in
@@ -339,6 +349,9 @@ function scheduleQuittingForUpdateWatchdog() {
 
 function init(deps) {
   _deps = deps;
+  _isAutoUpdateSupported = typeof deps?.isAutoUpdateSupported === "function"
+    ? deps.isAutoUpdateSupported
+    : defaultIsAutoUpdateSupported;
   setupGlobalListeners();
 }
 

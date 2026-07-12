@@ -29,6 +29,15 @@ test('packaged Electron disables unsafe runtime switches and validates app.asar'
   });
 });
 
+test('deb verify loads native modules with build Electron after runAsNode fuse is disabled', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/verify-linux-deb-artifact.sh'), 'utf8');
+
+  assert.match(source, /node_modules\/\.bin\/electron/);
+  assert.match(source, /loading native module with build Electron runtime/);
+  assert.match(source, /electron_bin="\$\(build_electron_bin\)"/);
+  assert.doesNotMatch(source, /opt\/MagiesTerminal\/magiesTerminal[\s\S]*ELECTRON_RUN_AS_NODE/);
+});
+
 test('macOS hardened runtime does not disable library validation', () => {
   const entitlements = fs.readFileSync(path.join(root, 'electron/entitlements.mac.plist'), 'utf8');
 

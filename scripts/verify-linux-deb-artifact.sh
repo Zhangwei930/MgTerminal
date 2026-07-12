@@ -63,16 +63,29 @@ assert_file_arch() {
   fi
 }
 
+build_electron_bin() {
+  # Packaged builds disable the runAsNode fuse, so ELECTRON_RUN_AS_NODE no
+  # longer works against the shipped magiesTerminal binary. Load checks must
+  # use the build-time Electron binary (same ABI) instead.
+  local candidate="./node_modules/.bin/electron"
+  if [[ ! -x "${candidate}" ]]; then
+    echo "[deb-verify] missing build Electron at ${candidate}" >&2
+    exit 1
+  fi
+  echo "${candidate}"
+}
+
 assert_loadable_native_module() {
-  local electron_bin="$1"
-  local native_module="$2"
+  local native_module="$1"
+  local electron_bin
 
   if [[ "${VERIFY_LOAD:-1}" != "1" ]]; then
     echo "[deb-verify] skipping native module load check for ${native_module} (VERIFY_LOAD=${VERIFY_LOAD:-1})"
     return
   fi
 
-  echo "[deb-verify] loading native module with packaged Electron runtime: ${native_module}"
+  electron_bin="$(build_electron_bin)"
+  echo "[deb-verify] loading native module with build Electron runtime: ${native_module}"
   ELECTRON_RUN_AS_NODE=1 "${electron_bin}" -e '
     const path = require("node:path");
     require(path.resolve(process.argv[1]));
@@ -117,15 +130,14 @@ resolve_serialport_prebuild() {
 
 verify_native_module() {
   local label="$1"
-  local electron_bin="$2"
-  local file="$3"
-  local expected_machine="$4"
+  local file="$2"
+  local expected_machine="$3"
 
   assert_exists "${file}"
   echo "[deb-verify] verifying ${label}"
   log_file_info "${file}"
   assert_file_arch "${file}" "${expected_machine}"
-  assert_loadable_native_module "${electron_bin}" "${file}"
+  assert_loadable_native_module "${file}"
 }
 
 main() {
@@ -138,7 +150,6 @@ main() {
   local expected_machine
   local deb_file
   local control_arch
-  local electron_bin
   local main_binary
   local build_release_pty
   local prebuild_pty
@@ -184,7 +195,6 @@ main() {
   trap 'rm -rf "${TEMP_DIR:-}"' EXIT
   dpkg-deb -x "${deb_file}" "${TEMP_DIR}"
 
-  electron_bin="${TEMP_DIR}/opt/MagiesTerminal/magiesTerminal"
   main_binary="${TEMP_DIR}/opt/MagiesTerminal/magiesTerminal"
   build_release_pty="${TEMP_DIR}/opt/MagiesTerminal/resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node"
   prebuild_pty="${TEMP_DIR}/opt/MagiesTerminal/resources/app.asar.unpacked/node_modules/node-pty/prebuilds/linux-${prebuild_arch}/pty.node"
@@ -192,15 +202,15 @@ main() {
   build_release_serialport="${serialport_root}/build/Release/bindings.node"
   prebuild_serialport="$(resolve_serialport_prebuild "${serialport_root}" "${prebuild_arch}")"
 
-  assert_executable "${electron_bin}"
+  assert_executable "${main_binary}"
 
   echo "[deb-verify] verifying packaged binary architectures"
   log_file_info "${main_binary}"
   assert_file_arch "${main_binary}" "${expected_machine}"
-  verify_native_module "node-pty build/Release" "${electron_bin}" "${build_release_pty}" "${expected_machine}"
-  verify_native_module "node-pty prebuild" "${electron_bin}" "${prebuild_pty}" "${expected_machine}"
-  verify_native_module "serialport build/Release" "${electron_bin}" "${build_release_serialport}" "${expected_machine}"
-  verify_native_module "serialport glibc prebuild" "${electron_bin}" "${prebuild_serialport}" "${expected_machine}"
+  verify_native_module "node-pty build/Release" "${build_release_pty}" "${expected_machine}"
+  verify_native_module "node-pty prebuild" "${prebuild_pty}" "${expected_machine}"
+  verify_native_module "serialport build/Release" "${build_release_serialport}" "${expected_machine}"
+  verify_native_module "serialport glibc prebuild" "${prebuild_serialport}" "${expected_machine}"
 
   echo "[deb-verify] deb artifact verification passed for ${deb_file}"
 }

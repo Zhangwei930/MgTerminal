@@ -109,7 +109,7 @@ interface SettingsSystemTabProps {
   // Unified update state — from useUpdateCheck hook in SettingsPageContent
   updateState: UpdateState;
   checkNow: () => Promise<unknown>;
-  installUpdate: () => void;
+  installUpdate: () => void | Promise<void>;
   openReleasePage: () => void;
   startDownload: () => void;
 }
@@ -495,7 +495,7 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
 
                 {/* Install button — shown when download is complete */}
                 {updateState.autoDownloadStatus === 'ready' && (
-                  <Button variant="default" size="sm" onClick={installUpdate}>
+                  <Button variant="default" size="sm" onClick={() => void installUpdate()}>
                     <RotateCcw size={14} className="mr-1.5" />
                     {t('settings.update.restartNow')}
                   </Button>

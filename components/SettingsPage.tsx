@@ -301,6 +301,7 @@ const SettingsPageContent: React.FC<{ settings: SettingsState }> = ({ settings }
         // Install blocked by unsaved editors in the main window — surface a toast
         // here so a click from the Settings window isn't a silent no-op (#1215).
         onNeedsSave: () => toast.warning(t('update.needsSave.message'), t('update.needsSave.title')),
+        onInstallFailed: (message) => toast.error(message, t('update.downloadFailed.title')),
     });
     const [activeTab, setActiveTab] = useState("application");
     const [mountedTabs, setMountedTabs] = useState(() => new Set(["application"]));

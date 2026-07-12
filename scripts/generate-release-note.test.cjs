@@ -16,7 +16,7 @@ test("release notes include Arch pacman downloads for x64 and arm64", (t) => {
       ...process.env,
       VERSION: "1.2.3",
       GITHUB_REF_NAME: "v1.2.3",
-      GITHUB_REPOSITORY: "JasonZhangDad/MagiesTerminal",
+      GITHUB_REPOSITORY: "JasonZhangDad/MgTerminal",
       GITHUB_SHA: "0123456789abcdef",
     },
     stdio: "pipe",
@@ -27,10 +27,10 @@ test("release notes include Arch pacman downloads for x64 and arm64", (t) => {
   assert.match(notes, /ArchPackage arm64/);
   assert.match(
     notes,
-    /https:\/\/github\.com\/JasonZhangDad\/MagiesTerminal\/releases\/download\/v1\.2\.3\/MagiesTerminal-1\.2\.3-linux-x64\.pacman/,
+    /https:\/\/github\.com\/JasonZhangDad\/MgTerminal\/releases\/download\/v1\.2\.3\/MagiesTerminal-1\.2\.3-linux-x64\.pacman/,
   );
   assert.match(
     notes,
-    /https:\/\/github\.com\/JasonZhangDad\/MagiesTerminal\/releases\/download\/v1\.2\.3\/MagiesTerminal-1\.2\.3-linux-aarch64\.pacman/,
+    /https:\/\/github\.com\/JasonZhangDad\/MgTerminal\/releases\/download\/v1\.2\.3\/MagiesTerminal-1\.2\.3-linux-aarch64\.pacman/,
   );
 });

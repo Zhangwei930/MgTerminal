@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpCircle, Bug, Check, Github, Loader2, MessageCircle, Newspaper, RefreshCcw } from "lucide-react";
+import { ArrowUpCircle, Bug, Check, Loader2, MessageCircle, Newspaper, RefreshCcw } from "lucide-react";
 import AppLogo from "./AppLogo";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
@@ -15,7 +15,7 @@ type AppInfo = {
   platform?: string;
 };
 
-const REPO_URL = "https://github.com/JasonZhangDad/MagiesTerminal";
+const REPO_URL = "https://github.com/JasonZhangDad/MgTerminal";
 const BUG_REPORT_TEMPLATE = "bug_report.yml";
 
 const mapIssuePlatform = (platform?: string) => {
@@ -188,7 +188,7 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
                 {/* Update badge - reflects auto-download state */}
                 {updateState.latestRelease && (updateState.hasUpdate || updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'ready') && (
                   <button
-                    onClick={() => updateState.autoDownloadStatus === 'ready' ? installUpdate() : updateState.autoDownloadStatus === 'downloading' ? undefined : startDownload()}
+                    onClick={() => updateState.autoDownloadStatus === 'ready' ? void installUpdate() : updateState.autoDownloadStatus === 'downloading' ? undefined : startDownload()}
                     className={cn(
                       "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
                       updateState.autoDownloadStatus === 'ready'
@@ -245,12 +245,6 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
               title={t("settings.application.community")}
               subtitle={t("settings.application.community.subtitle")}
               onClick={() => void handleOpenExternal(discussionsUrl)}
-            />
-            <ActionRow
-              icon={<Github size={18} />}
-              title="GitHub"
-              subtitle={t("settings.application.github.subtitle")}
-              onClick={() => void handleOpenExternal(REPO_URL)}
             />
             <ActionRow
               icon={<Newspaper size={18} />}

@@ -587,6 +587,7 @@ function App({ settings }: { settings: SettingsState }) {
     // process broadcasts this; show an actionable toast telling the user to save
     // and click "Restart Now" again.
     onNeedsSave: () => toast.warning(t('update.needsSave.message'), t('update.needsSave.title')),
+    onInstallFailed: (message) => toast.error(message, t('update.downloadFailed.title')),
   });
 
   // Window controls - must be before update toast effect which uses openSettingsWindow

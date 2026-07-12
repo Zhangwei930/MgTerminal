@@ -42,7 +42,7 @@ export interface UseUpdateCheckResult {
   checkNow: () => Promise<UpdateCheckResult | null>;
   dismissUpdate: () => void;
   openReleasePage: () => void;
-  installUpdate: () => void;
+  installUpdate: () => Promise<void>;
   startDownload: () => void;
   isUpdateDemoMode: boolean;
 }
@@ -53,7 +53,12 @@ export interface UseUpdateCheckResult {
  * - Respects dismissed version to avoid nagging
  * - Provides manual check capability
  */
-export function useUpdateCheck(options?: { autoUpdateEnabled?: boolean; enabled?: boolean; onNeedsSave?: () => void }): UseUpdateCheckResult {
+export function useUpdateCheck(options?: {
+  autoUpdateEnabled?: boolean;
+  enabled?: boolean;
+  onNeedsSave?: () => void;
+  onInstallFailed?: (message: string) => void;
+}): UseUpdateCheckResult {
   const enabled = options?.enabled !== false;
   // Accept auto-update toggle from the caller (e.g. useSettingsState) so it
   // reacts immediately in the same window. Falls back to reading localStorage
@@ -67,6 +72,8 @@ export function useUpdateCheck(options?: { autoUpdateEnabled?: boolean; enabled?
   // this hook only owns the bridge subscription (toasts live in the view layer).
   const onNeedsSaveRef = useRef(options?.onNeedsSave);
   onNeedsSaveRef.current = options?.onNeedsSave;
+  const onInstallFailedRef = useRef(options?.onInstallFailed);
+  onInstallFailedRef.current = options?.onInstallFailed;
 
   const [updateState, setUpdateState] = useState<UpdateState>({
     isChecking: false,
@@ -318,7 +325,7 @@ export function useUpdateCheck(options?: { autoUpdateEnabled?: boolean; enabled?
             tagName: 'v1.0.0',
             name: 'MagiesTerminal v1.0.0',
             body: 'Demo release for testing update notification',
-            htmlUrl: 'https://github.com/JasonZhangDad/MagiesTerminal/releases',
+            htmlUrl: 'https://github.com/JasonZhangDad/MgTerminal/releases',
             publishedAt: new Date().toISOString(),
             assets: [],
           },
@@ -534,10 +541,43 @@ export function useUpdateCheck(options?: { autoUpdateEnabled?: boolean; enabled?
     window.open(url, '_blank', 'noopener,noreferrer');
   }, [updateState.latestRelease]);
 
-  const installUpdate = useCallback(() => {
+  const installUpdate = useCallback(async () => {
     if (!enabled) return;
-    magiesTerminalBridge.get()?.installUpdate?.();
-  }, [enabled]);
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.installUpdate) {
+      onInstallFailedRef.current?.(
+        'Update install is unavailable in this build. Open the release page to download manually.',
+      );
+      openReleasePage();
+      return;
+    }
+
+    try {
+      const result = await bridge.installUpdate();
+      if (!result || result.success || result.needsSave) {
+        return;
+      }
+      if (result.unsupported) {
+        openReleasePage();
+      }
+      if (result.error) {
+        onInstallFailedRef.current?.(result.error);
+        setUpdateState((prev) => ({
+          ...prev,
+          autoDownloadStatus: 'error',
+          downloadError: result.error || 'Install failed',
+        }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Install failed';
+      onInstallFailedRef.current?.(message);
+      setUpdateState((prev) => ({
+        ...prev,
+        autoDownloadStatus: 'error',
+        downloadError: message,
+      }));
+    }
+  }, [enabled, openReleasePage]);
 
   const startDownload = useCallback(async () => {
     if (!enabled) return;

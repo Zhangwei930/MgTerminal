@@ -12,8 +12,8 @@ import { magiesTerminalBridge } from "./magiesTerminalBridge";
 // Part 1: GitHub API Version Check
 // ================================
 
-const GITHUB_API_URL = 'https://api.github.com/repos/JasonZhangDad/MagiesTerminal/releases/latest';
-const RELEASES_PAGE_URL = 'https://github.com/JasonZhangDad/MagiesTerminal/releases';
+const GITHUB_API_URL = 'https://api.github.com/repos/JasonZhangDad/MgTerminal/releases/latest';
+const RELEASES_PAGE_URL = 'https://github.com/JasonZhangDad/MgTerminal/releases';
 
 export interface ReleaseInfo {
   version: string;       // e.g. "1.0.0" (without 'v' prefix)
@@ -193,9 +193,14 @@ export async function downloadUpdate(): Promise<{ success: boolean; error?: stri
   return bridge.downloadUpdate();
 }
 
-export function installUpdate(): void {
+export async function installUpdate(): Promise<{
+  success: boolean;
+  error?: string;
+  needsSave?: boolean;
+  unsupported?: boolean;
+} | void> {
   const bridge = magiesTerminalBridge.get();
-  bridge?.installUpdate?.();
+  return bridge?.installUpdate?.();
 }
 
 export function onDownloadProgress(

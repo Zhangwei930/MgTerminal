@@ -17,21 +17,15 @@ test("before-quit dirty editor guard queries hidden app content windows", () => 
   assert.doesNotMatch(guardSetup, /isVisible|isMinimized/);
 });
 
-test("before-quit dirty editor guard foregrounds dirty windows through the focus recovery helper", () => {
+test("before-quit allows quitAndInstall to proceed without preventDefault", () => {
   const source = readFileSync(path.join(__dirname, "main.cjs"), "utf8");
   const beforeQuitIndex = source.indexOf('app.on("before-quit"');
-  const dirtyResultsIndex = source.indexOf(".then((dirtyResults) => {", beforeQuitIndex);
-  const loopIndex = source.indexOf("for (const win of dirtyWindows)", dirtyResultsIndex);
-  const hasDirtyCommentIndex = source.indexOf("// hasDirty:", loopIndex);
-  const foregroundBlock = source.slice(loopIndex, hasDirtyCommentIndex);
+  const busyIndex = source.indexOf("if (quitGuardChannelBusy)", beforeQuitIndex);
+  const updateFastPath = source.slice(beforeQuitIndex, busyIndex);
 
   assert.notEqual(beforeQuitIndex, -1);
-  assert.notEqual(dirtyResultsIndex, -1);
-  assert.notEqual(loopIndex, -1);
-  assert.notEqual(hasDirtyCommentIndex, -1);
-  assert.match(foregroundBlock, /wm\.showAndFocusMainWindow\?\.\(win\)/);
-  assert.match(foregroundBlock, /try\s*\{[\s\S]*wm\.showAndFocusMainWindow\?\.\(win\);[\s\S]*\}\s*catch\s*\{/);
-  assert.doesNotMatch(foregroundBlock, /commitQuit\(\)/);
-  assert.doesNotMatch(foregroundBlock, /win\.show\(\)/);
-  assert.doesNotMatch(foregroundBlock, /win\.focus\(\)/);
+  assert.notEqual(busyIndex, -1);
+  assert.match(updateFastPath, /isQuittingForUpdate\?\.\(\)/);
+  assert.match(updateFastPath, /quitConfirmed = true/);
+  assert.doesNotMatch(updateFastPath, /event\.preventDefault/);
 });

@@ -12,7 +12,12 @@ declare global {
       error?: string;
     }>;
     downloadUpdate?(): Promise<{ success: boolean; error?: string }>;
-    installUpdate?(): void;
+    installUpdate?(): Promise<{
+      success: boolean;
+      error?: string;
+      needsSave?: boolean;
+      unsupported?: boolean;
+    } | void>;
     getUpdateStatus?(): Promise<{ status: 'idle' | 'available' | 'downloading' | 'ready' | 'error'; percent: number; error: string | null; version: string | null; isChecking?: boolean }>;
 
     onUpdateDownloadProgress?(cb: (progress: {

@@ -326,6 +326,9 @@ function scheduleQuittingForUpdateWatchdog() {
     // Still alive after the grace period — the install did not quit the app.
     console.warn("[AutoUpdate] App still running after quitAndInstall; clearing quitting-for-update state");
     setQuittingForUpdate(false);
+    broadcastToAllWindows("magiesTerminal:update:error", {
+      error: "Update install did not restart the app. Please download the latest release manually.",
+    });
   }, QUITTING_FOR_UPDATE_WATCHDOG_MS);
   // Don't let the watchdog keep the event loop (and thus the process) alive —
   // if the app is otherwise ready to quit, the timer must not block it.
@@ -476,8 +479,18 @@ function registerHandlers(ipcMain) {
 
   // ---- Install (quit & install) ------------------------------------------
   ipcMain.handle("magiesTerminal:update:install", async () => {
+    if (!isAutoUpdateSupported()) {
+      return {
+        success: false,
+        unsupported: true,
+        error: "Auto-install is not supported on this platform. Download the latest release manually.",
+      };
+    }
+
     const updater = getAutoUpdater();
-    if (!updater) return;
+    if (!updater) {
+      return { success: false, error: "Update module not available." };
+    }
 
     // Check for unsaved editors BEFORE committing to a quit (#1215 review).
     //
@@ -503,7 +516,7 @@ function registerHandlers(ipcMain) {
         // Broadcast so the notice reaches whichever window the user clicked
         // from (main or Settings), not just the main window we queried.
         notifyNeedsSave();
-        return;
+        return { success: false, needsSave: true };
       }
     }
 
@@ -536,7 +549,9 @@ function registerHandlers(ipcMain) {
       // guard (#1215 review).
       console.error("[AutoUpdate] quitAndInstall failed:", err?.message || err);
       setQuittingForUpdate(false);
-      return;
+      const message = err?.message || "Install failed";
+      broadcastToAllWindows("magiesTerminal:update:error", { error: message });
+      return { success: false, error: message };
     }
 
     // quitAndInstall can also fail to quit asynchronously (e.g. Squirrel.Mac's
@@ -545,6 +560,7 @@ function registerHandlers(ipcMain) {
     // still alive shortly after, so the app doesn't get stuck in a state where
     // every window close bypasses close-to-tray and the dirty-editor guard.
     scheduleQuittingForUpdateWatchdog();
+    return { success: true };
   });
 
   // ---- Get auto-update preference -----------------------------------------

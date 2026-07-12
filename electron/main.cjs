@@ -1147,13 +1147,16 @@ if (!gotLock) {
     // app.quit() re-fired before-quit. Let it through.
     if (quitConfirmed) return;
 
-    // NOTE: an update install (quitAndInstall) intentionally still runs the
-    // dirty-editor check below. setQuittingForUpdate(true) only bypasses
-    // close-to-tray (so the window actually closes and Squirrel.Mac's ShipIt
-    // can swap the bundle); it must NOT skip the unsaved-work guard, or
-    // clicking "Restart Now" with a dirty SFTP editor would silently lose
-    // edits (#1215 review). If the user cancels to save, the quit is aborted
-    // and autoUpdateBridge's watchdog clears the quitting-for-update flags.
+    // Update install path: autoUpdateBridge already ran the dirty-editor check
+    // BEFORE calling quitAndInstall(). Cancelling that quit with preventDefault
+    // aborts electron-updater / Squirrel's in-place install, which makes the
+    // toast "Restart Now" button look like a no-op. Allow the quit through.
+    const wmForUpdate = getWindowManager();
+    if (wmForUpdate.isQuittingForUpdate?.()) {
+      wmForUpdate.setIsQuitting(true);
+      quitConfirmed = true;
+      return;
+    }
 
     // A check is already in flight — swallow this event; the in-flight handler
     // will issue commitQuit() when it completes if appropriate.

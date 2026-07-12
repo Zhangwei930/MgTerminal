@@ -81,7 +81,11 @@ export function useAppStartupEffects(ctx: StartupEffectsContext) {
           title: t('update.readyToInstall.title'),
           duration: 0,
           actionLabel: t('update.restartNow'),
-          onClick: () => installUpdate(),
+          onClick: () => {
+            void Promise.resolve(installUpdate()).catch((err) => {
+              console.error('[App] installUpdate failed:', err);
+            });
+          },
         }
       );
     } else if (updateState.autoDownloadStatus === 'error') {

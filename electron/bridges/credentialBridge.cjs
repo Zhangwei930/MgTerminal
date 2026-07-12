@@ -9,11 +9,17 @@
  * - No double-encryption
  * - Future re-keying with enc:v2: etc.
  *
- * When safeStorage is unavailable (e.g. Linux without libsecret), all values
- * pass through unmodified so the app still works.
+ * Encryption and encrypted-value decryption fail closed when safeStorage is
+ * unavailable. Plaintext reads remain supported for one-time migration.
  */
 
 const ENC_PREFIX = "enc:v1:";
+
+function credentialError(code, message, cause) {
+  const error = new Error(message, cause ? { cause } : undefined);
+  error.code = code;
+  return error;
+}
 
 let safeStorage = null;
 
@@ -34,7 +40,10 @@ function registerHandlers(ipcMain, electronModule) {
       return plaintext ?? "";
     }
     if (!safeStorage?.isEncryptionAvailable?.()) {
-      return plaintext;
+      throw credentialError(
+        "ERR_CREDENTIAL_ENCRYPTION_UNAVAILABLE",
+        "Credential encryption is unavailable",
+      );
     }
     // If value looks like it might already be encrypted, verify by attempting
     // to decode and decrypt.  If it succeeds the value is genuinely encrypted
@@ -54,8 +63,11 @@ function registerHandlers(ipcMain, electronModule) {
       const encrypted = safeStorage.encryptString(plaintext);
       return ENC_PREFIX + encrypted.toString("base64");
     } catch (err) {
-      console.warn("[Credentials] encrypt failed, returning plaintext:", err?.message || err);
-      return plaintext;
+      throw credentialError(
+        "ERR_CREDENTIAL_ENCRYPTION_FAILED",
+        "Credential encryption failed",
+        err,
+      );
     }
   });
 
@@ -68,16 +80,21 @@ function registerHandlers(ipcMain, electronModule) {
       return value;
     }
     if (!safeStorage?.isEncryptionAvailable?.()) {
-      // Cannot decrypt without safeStorage; return raw value
-      return value;
+      throw credentialError(
+        "ERR_CREDENTIAL_DECRYPTION_UNAVAILABLE",
+        "Credential decryption is unavailable",
+      );
     }
     try {
       const base64 = value.slice(ENC_PREFIX.length);
       const buf = Buffer.from(base64, "base64");
       return safeStorage.decryptString(buf);
     } catch (err) {
-      console.warn("[Credentials] decrypt failed:", err?.message || err);
-      return value;
+      throw credentialError(
+        "ERR_CREDENTIAL_DECRYPTION_FAILED",
+        "Credential decryption failed",
+        err,
+      );
     }
   });
 }

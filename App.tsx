@@ -25,7 +25,7 @@ import { matchesKeyBinding } from './domain/models';
 import { resolveGroupDefaults, applyGroupDefaults } from './domain/groupConfig';
 import { upsertKnownHost } from './domain/knownHosts';
 import { materializeHostProxyProfile } from './domain/proxyProfiles';
-import { buildSshDeepLinkConnectionHost, buildSshDeepLinkEphemeralHost, buildSshDeepLinkEphemeralHostFromSaved, buildSshDeepLinkHostDraft, findSshDeepLinkHost, parseSshDeepLink } from './domain/sshDeepLink';
+import { buildSshDeepLinkConnectionHost, buildSshDeepLinkHostDraft, findSshDeepLinkHost, parseSshDeepLink } from './domain/sshDeepLink';
 import { buildTelnetDeepLinkConnectionHost, buildTelnetDeepLinkEphemeralHostFromSaved, buildTelnetDeepLinkOpenHost, findTelnetDeepLinkHost, materializeTelnetDeepLinkMatchHost, parseTelnetDeepLink } from './domain/telnetDeepLink';
 import { buildJmsDeepLinkEphemeralHost, isSupportedJmsProtocol, parseJmsDeepLink } from './domain/jmsDeepLink';
 import { applyEphemeralHostsUpdate, splitHostsUpdateByEphemeral } from './domain/ephemeralHosts';
@@ -1061,23 +1061,9 @@ function App({ settings }: { settings: SettingsState }) {
     });
     const matchedEffectiveHost = findSshDeepLinkHost(effectiveHosts, target);
 
-    if (target.password) {
-      // One-time-password link: connect ephemerally with exactly the URL
-      // credentials. A uniquely matched saved host still contributes its
-      // non-credential settings (proxy, jump chain, charset, ...). Build
-      // from the group-resolved effective host so the builder can clear
-      // `group` and block group credential inheritance from later
-      // effective-host resolution.
-      const draftOptions = { id: crypto.randomUUID(), now: Date.now() };
-      const ephemeralHost = matchedEffectiveHost
-        ? buildSshDeepLinkEphemeralHostFromSaved(matchedEffectiveHost, target, draftOptions)
-        : buildSshDeepLinkEphemeralHost(target, draftOptions);
-      setEphemeralHosts((prev) => [...prev, ephemeralHost]);
-      handleConnectToHost(ephemeralHost);
-      return;
-    }
-
     if (matchedEffectiveHost) {
+      const targetLabel = `${target.username ? `${target.username}@` : ''}${target.hostname}${target.port ? `:${target.port}` : ''}`;
+      if (!globalThis.confirm(t('deepLink.ssh.confirm', { target: targetLabel }))) return;
       const originalHost = hosts.find((host) => host.id === matchedEffectiveHost.id) ?? matchedEffectiveHost;
       handleConnectToHost(buildSshDeepLinkConnectionHost(originalHost));
       return;

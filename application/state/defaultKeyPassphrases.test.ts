@@ -162,6 +162,14 @@ test("shouldUpdateReferenceKeyPassphrase replaces missing or undecryptable passp
 
 test("rememberKeyPassphrase updates reference key state before completing", async (t) => {
   installLocalStorage(t);
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      magiesTerminal: {
+        credentialsEncrypt: async (value: string) => `enc:v1:djEw${Buffer.from(value).toString('base64')}`,
+      },
+    },
+  });
   const keys = [referenceKey()];
   let currentKeys = keys;
   let releaseUpdate: (() => void) | undefined;

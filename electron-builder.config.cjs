@@ -47,6 +47,14 @@ module.exports = {
     // and run ensure-node-pty-linux.sh before packaging, so the rebuild is
     // redundant but harmless there.
     npmRebuild: true,
+    electronFuses: {
+        runAsNode: false,
+        enableCookieEncryption: true,
+        enableNodeOptionsEnvironmentVariable: false,
+        enableNodeCliInspectArguments: false,
+        enableEmbeddedAsarIntegrityValidation: true,
+        onlyLoadAppFromAsar: true
+    },
     directories: {
         buildResources: 'build',
         output: 'release'

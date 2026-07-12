@@ -1312,7 +1312,7 @@ export const createXTermRuntime = (ctx: CreateXTermRuntimeContext): XTermRuntime
   // Controlled by terminalSettings.osc52Clipboard: 'off' | 'write-only' | 'read-write'
   const osc52Disposable = term.parser.registerOscHandler(52, (data) => {
     const settings = ctx.terminalSettingsRef.current;
-    const mode = settings?.osc52Clipboard ?? 'write-only';
+    const mode = settings?.osc52Clipboard ?? 'off';
     if (mode === 'off') return true;
 
     try {

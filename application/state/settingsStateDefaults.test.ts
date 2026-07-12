@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  DEFAULT_SSH_DEEP_LINK_ENABLED,
   getContrastRatio,
   buildAppThemeCssVars,
   getHslTokenRelativeLuminance,
@@ -12,6 +13,10 @@ import {
 import { TERMINAL_FONT_AUTO } from "../../infrastructure/config/fonts.ts";
 import { STORAGE_KEY_TERM_FONT_FAMILY } from "../../infrastructure/config/storageKeys.ts";
 import type { UiThemeTokens } from "../../infrastructure/config/uiThemes.ts";
+
+test('SSH deep-link handling is opt-in', () => {
+  assert.equal(DEFAULT_SSH_DEEP_LINK_ENABLED, false);
+});
 
 function installMemoryLocalStorage(): Map<string, string> {
   const store = new Map<string, string>();

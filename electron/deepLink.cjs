@@ -157,8 +157,8 @@ function readSshDeepLinkEnabledPreference(options = {}) {
   return readDeepLinkEnabledPreference({
     ...options,
     preferencesFile: SSH_DEEP_LINK_PREFERENCES_FILE,
-    defaultWhenMissing: true,
-    parseEnabled: (parsed) => parsed?.enabled !== false,
+    defaultWhenMissing: false,
+    parseEnabled: (parsed) => parsed?.enabled === true,
     logLabel: "ssh://",
   });
 }

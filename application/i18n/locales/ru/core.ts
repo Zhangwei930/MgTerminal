@@ -761,6 +761,7 @@ export const ruCoreMessages: Messages = {
   'vault.hosts.header.entries': 'Записей: {count}',
   'vault.hosts.header.live': 'Активных: {count}',
   'deepLink.ssh.invalid': 'Недопустимая ссылка ssh://',
+  'deepLink.ssh.confirm': 'Подключиться к {target} из внешней ссылки ssh://?',
   'deepLink.telnet.invalid': 'Недопустимая ссылка telnet://',
   'deepLink.jms.invalid': 'Недопустимая ссылка JumpServer',
   'deepLink.jms.unsupported': 'Неподдерживаемый протокол JumpServer: {{protocol}}',

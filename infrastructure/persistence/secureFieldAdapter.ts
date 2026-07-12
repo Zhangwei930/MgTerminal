@@ -5,8 +5,8 @@
  * they are written to (or after they are read from) localStorage.
  *
  * The heavy lifting is done by Electron's safeStorage via the credential
- * bridge IPC.  When the bridge is unavailable (web fallback, tests) every
- * function degrades to a no-op — values pass through unmodified.
+ * bridge IPC. Credential writes fail closed when that bridge is unavailable,
+ * preventing sensitive values from silently falling back to plaintext.
  */
 
 import type { GroupConfig, Host, Identity, ProxyProfile, SSHKey } from "../../domain/models";
@@ -19,10 +19,17 @@ import { magiesTerminalBridge } from "../services/magiesTerminalBridge";
 
 const bridge = () => magiesTerminalBridge.get();
 
+export class CredentialEncryptionUnavailableError extends Error {
+  constructor() {
+    super('Credential encryption bridge is unavailable');
+    this.name = 'CredentialEncryptionUnavailableError';
+  }
+}
+
 export async function encryptField(value: string | undefined): Promise<string | undefined> {
   if (!value) return value;
   const b = bridge();
-  if (!b?.credentialsEncrypt) return value;
+  if (!b?.credentialsEncrypt) throw new CredentialEncryptionUnavailableError();
   return b.credentialsEncrypt(value);
 }
 

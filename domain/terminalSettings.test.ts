@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 
 import { normalizeTerminalSettings } from "./models";
 
+test('normalizeTerminalSettings disables OSC-52 clipboard access by default', () => {
+  assert.equal(normalizeTerminalSettings().osc52Clipboard, 'off');
+});
+
 test("normalizeTerminalSettings disables prompt line breaks by default", () => {
   const settings = normalizeTerminalSettings();
 

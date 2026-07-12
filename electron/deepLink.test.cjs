@@ -158,11 +158,11 @@ test("ssh deep link enabled preference persists outside renderer localStorage", 
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "magiesTerminal-deeplink-"));
   const app = { getPath: () => userDataDir };
 
-  assert.equal(readSshDeepLinkEnabledPreference({ app }), true);
-  assert.equal(writeSshDeepLinkEnabledPreference({ app, enabled: false }), true);
   assert.equal(readSshDeepLinkEnabledPreference({ app }), false);
   assert.equal(writeSshDeepLinkEnabledPreference({ app, enabled: true }), true);
   assert.equal(readSshDeepLinkEnabledPreference({ app }), true);
+  assert.equal(writeSshDeepLinkEnabledPreference({ app, enabled: false }), true);
+  assert.equal(readSshDeepLinkEnabledPreference({ app }), false);
 });
 
 test("updateSshDeepLinkEnabledPreference keeps the previous state when the system change fails", () => {

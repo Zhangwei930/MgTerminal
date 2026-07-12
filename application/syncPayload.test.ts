@@ -298,12 +298,12 @@ test("applySyncPayload restores AI configuration settings", async () => {
     id: "anthropic-main",
     providerId: "anthropic",
     name: "Anthropic",
-    apiKey: "enc:v1:test",
+    apiKey: "enc:v1:djEwPROVIDER",
     enabled: true,
   }];
   const webSearch = {
     providerId: "exa",
-    apiKey: "enc:v1:web",
+    apiKey: "enc:v1:djEwWEB",
     enabled: true,
   };
 
@@ -590,7 +590,7 @@ test("applySyncPayload preserves local AI provider apiKeys when synced payload o
   ]);
 });
 
-test("applySyncPayload prefers explicit synced apiKey over local apiKey", async () => {
+test("applySyncPayload refuses to persist a synced apiKey when local encryption is unavailable", async () => {
   localStorage.setItem(storageKeys.STORAGE_KEY_AI_PROVIDERS, JSON.stringify([
     { id: "openai-main", providerId: "openai", name: "OpenAI", apiKey: "enc:v1:djEwLOCAL", enabled: true },
   ]));
@@ -611,10 +611,13 @@ test("applySyncPayload prefers explicit synced apiKey over local apiKey", async 
     syncedAt: 1,
   } as SyncPayload;
 
-  await applySyncPayload(payload, { importVaultData: () => {} });
+  await assert.rejects(
+    () => applySyncPayload(payload, { importVaultData: () => {} }),
+    (error) => error instanceof Error && error.name === 'CredentialEncryptionUnavailableError',
+  );
 
   const stored = JSON.parse(localStorage.getItem(storageKeys.STORAGE_KEY_AI_PROVIDERS)!);
-  assert.equal(stored[0].apiKey, "plaintext-from-other-device");
+  assert.equal(stored[0].apiKey, "enc:v1:djEwLOCAL");
 });
 
 test("applySyncPayload preserves local web-search apiKey when synced config omits it", async () => {

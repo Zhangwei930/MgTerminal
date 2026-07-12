@@ -308,8 +308,8 @@ const withLocalEncryptedApiKey = async <T extends Record<string, unknown>>(value
   const apiKey = value.apiKey;
   if (typeof apiKey !== 'string' || isEncryptedCredentialPlaceholder(apiKey)) return value;
 
-  const encrypted = await encryptField(apiKey).catch(() => undefined);
-  return { ...value, apiKey: encrypted ?? apiKey };
+  const encrypted = await encryptField(apiKey);
+  return { ...value, apiKey: encrypted };
 };
 
 /**

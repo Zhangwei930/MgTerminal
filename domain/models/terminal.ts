@@ -125,7 +125,7 @@ export interface TerminalSettings {
   forcePromptNewLine: boolean;
 
   // Clipboard
-  osc52Clipboard: 'off' | 'write-only' | 'read-write' | 'prompt'; // OSC-52 clipboard access: off, write-only (default), read-write, or prompt on read
+  osc52Clipboard: 'off' | 'write-only' | 'read-write' | 'prompt'; // OSC-52 clipboard access: off (default), write-only, read-write, or prompt on read
 
   // Tab titles
   dynamicTabTitleMode: DynamicTabTitleMode; // off, agent-only, or all shell-reported titles
@@ -378,7 +378,7 @@ const DEFAULT_TERMINAL_SETTINGS: TerminalSettings = {
   clearWipesScrollback: true, // POSIX-standard: shell `clear` clears scrollback too
   preserveSelectionOnInput: false, // Opt-in: keep selection alive when typing
   forcePromptNewLine: false, // Opt-in: keep the next shell prompt visually separated from unterminated final output lines
-  osc52Clipboard: 'write-only', // OSC-52: allow remote programs to write clipboard by default
+  osc52Clipboard: 'off', // OSC-52 clipboard integration is opt-in
   dynamicTabTitleMode: 'agent',
   rendererType: 'auto', // Auto-detect best renderer based on hardware
   hibernateHiddenTabs: false,

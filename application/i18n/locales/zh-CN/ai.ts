@@ -36,6 +36,7 @@ export const zhCNAiMessages: Messages = {
   'ai.providers.apiKey': 'API Key',
   'ai.providers.apiKey.placeholder': '输入 API Key',
   'ai.providers.apiKey.decrypting': '解密中...',
+  'ai.providers.apiKey.encryptError': '无法加密 API Key——安全存储不可用。macOS 上请允许 MagiesTerminal 访问钥匙串（系统弹窗可能被拒绝过），然后重试。',
   'ai.providers.baseUrl': 'Base URL',
   'ai.providers.skipTLSVerify': '跳过 TLS 证书验证（用于自签名证书）',
   'ai.providers.defaultModel': '默认模型',

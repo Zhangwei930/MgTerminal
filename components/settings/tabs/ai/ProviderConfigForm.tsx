@@ -76,6 +76,7 @@ export const ProviderConfigForm: React.FC<{
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconError, setIconError] = useState<string | null>(null);
   const [contextWindowError, setContextWindowError] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   const [apiKeySourceVersion, setApiKeySourceVersion] = useState(0);
 
   const preset = PROVIDER_PRESETS[provider.providerId];
@@ -176,6 +177,7 @@ export const ProviderConfigForm: React.FC<{
   }, []);
 
   const handleApiKeyChange = useCallback((value: string) => {
+    setApiKeyError(null);
     setApiKeySourceVersion((version) => version + 1);
     setForm((prev) => ({ ...prev, apiKey: value }));
   }, []);
@@ -217,12 +219,20 @@ export const ProviderConfigForm: React.FC<{
       iconDataUrl: form.iconDataUrl || undefined,
     };
 
-    // Encrypt API key before saving
+    // Encrypt API key before saving. Encryption fails closed when the
+    // credential bridge / OS keychain is unavailable — surface that instead
+    // of letting the rejected promise silently cancel the save.
     if (form.apiKey) {
-      updates.apiKey = await encryptField(form.apiKey);
+      try {
+        updates.apiKey = await encryptField(form.apiKey);
+      } catch {
+        setApiKeyError(t("ai.providers.apiKey.encryptError"));
+        return;
+      }
     } else {
       updates.apiKey = undefined;
     }
+    setApiKeyError(null);
 
     onSave(updates);
   }, [form, onSave, provider.providerId, t]);
@@ -374,6 +384,9 @@ export const ProviderConfigForm: React.FC<{
             </button>
           </div>
         </div>
+        {apiKeyError && (
+          <p className="text-[11px] text-destructive">{apiKeyError}</p>
+        )}
       </div>
 
       {/* Base URL */}

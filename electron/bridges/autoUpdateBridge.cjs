@@ -54,16 +54,20 @@ function writeAutoUpdatePreference(enabled) {
  * (no APPIMAGE env) can exercise the install path without pretending to be
  * an AppImage process.
  */
-function defaultIsAutoUpdateSupported() {
-  if (process.platform === "darwin" || process.platform === "win32") {
-    return true;
-  }
+function isPlatformAutoUpdateSupported(platform, appImagePath) {
+  if (platform === "win32") return true;
+  // macOS: Squirrel.Mac requires a code-signed app and current releases are
+  // unsigned, so the install step is a custom bundle swap (macSelfUpdate.cjs).
+  // Check + download still go through electron-updater, which never hands the
+  // file to Squirrel while autoInstallOnAppQuit is false.
+  if (platform === "darwin") return true;
   // Linux: only AppImage supports in-place update.
   // The APPIMAGE env variable is set by the AppImage runtime.
-  if (process.platform === "linux" && process.env.APPIMAGE) {
-    return true;
-  }
-  return false;
+  return platform === "linux" && Boolean(appImagePath);
+}
+
+function defaultIsAutoUpdateSupported() {
+  return isPlatformAutoUpdateSupported(process.platform, process.env.APPIMAGE);
 }
 
 let _isAutoUpdateSupported = defaultIsAutoUpdateSupported;
@@ -82,13 +86,26 @@ let _listenersRegistered = false;
 /** Track whether a download is in progress to distinguish download errors from check errors */
 let _isDownloading = false;
 
+/** Track the explicit install phase so updater errors are never mistaken for
+ *  harmless check-phase errors. */
+let _isInstalling = false;
+let _lastInstallError = null;
+
+/** Platform override for tests; defaults to process.platform (set in init). */
+let _platform = process.platform;
+
+/** Absolute path of the update file electron-updater downloaded (macOS zip).
+ *  Captured from the update-downloaded event; consumed by the macOS
+ *  self-update install path. */
+let _downloadedFile = null;
+
 /** Track whether a checkForUpdates call is in flight (set before call, cleared on result event) */
 let _isChecking = false;
 
 /**
  * Snapshot of the last known update status so newly opened windows can hydrate
  * without waiting for the next IPC event.
- * @type {{ status: 'idle' | 'downloading' | 'ready' | 'error', percent: number, error: string | null, version: string | null, isChecking: boolean }}
+ * @type {{ status: 'idle' | 'available' | 'downloading' | 'ready' | 'installing' | 'error', percent: number, error: string | null, version: string | null, isChecking: boolean }}
  */
 let _lastStatus = { status: 'idle', percent: 0, error: null, version: null, isChecking: false };
 function getAutoUpdater() {
@@ -151,14 +168,19 @@ function setupGlobalListeners() {
     });
   });
 
-  updater.on("update-downloaded", () => {
+  updater.on("update-downloaded", (event) => {
     _isDownloading = false;
+    _downloadedFile = event?.downloadedFile || _downloadedFile;
     _lastStatus = { ..._lastStatus, status: 'ready', percent: 100 };
     broadcastToAllWindows("magiesTerminal:update:downloaded");
   });
 
   updater.on("error", (err) => {
     _isChecking = false;
+    if (_isInstalling) {
+      failInstall(err?.message || "Update install failed");
+      return;
+    }
     // Only broadcast download-phase errors; check-phase errors (e.g. network failures
     // during checkForUpdates) are not download failures and must not set autoDownloadStatus.
     if (!_isDownloading) {
@@ -244,6 +266,15 @@ function setQuittingForUpdate(enabled) {
   } catch {
     // ignore — window manager may not be available
   }
+}
+
+function failInstall(message) {
+  const error = message || "Update install failed";
+  _isInstalling = false;
+  _lastInstallError = error;
+  _lastStatus = { ..._lastStatus, status: 'error', error };
+  setQuittingForUpdate(false);
+  broadcastToAllWindows("magiesTerminal:update:error", { error });
 }
 
 /**
@@ -335,10 +366,7 @@ function scheduleQuittingForUpdateWatchdog() {
     _quittingForUpdateWatchdog = null;
     // Still alive after the grace period — the install did not quit the app.
     console.warn("[AutoUpdate] App still running after quitAndInstall; clearing quitting-for-update state");
-    setQuittingForUpdate(false);
-    broadcastToAllWindows("magiesTerminal:update:error", {
-      error: "Update install did not restart the app. Please download the latest release manually.",
-    });
+    failInstall("Update install did not restart the app. Please download the latest release manually.");
   }, QUITTING_FOR_UPDATE_WATCHDOG_MS);
   // Don't let the watchdog keep the event loop (and thus the process) alive —
   // if the app is otherwise ready to quit, the timer must not block it.
@@ -349,10 +377,25 @@ function scheduleQuittingForUpdateWatchdog() {
 
 function init(deps) {
   _deps = deps;
+  _platform = deps?.platform || process.platform;
   _isAutoUpdateSupported = typeof deps?.isAutoUpdateSupported === "function"
     ? deps.isAutoUpdateSupported
     : defaultIsAutoUpdateSupported;
   setupGlobalListeners();
+
+  // macOS: electron-updater's MacUpdater calls the native (Squirrel.Mac)
+  // autoUpdater.setFeedURL after a download completes even though we never use
+  // Squirrel to install. On an unsigned app any native error event would be an
+  // unhandled EventEmitter 'error' and crash the main process — swallow it.
+  if (_platform === "darwin") {
+    try {
+      _deps?.electronModule?.autoUpdater?.on?.("error", (err) => {
+        console.warn("[AutoUpdate] Native Squirrel autoUpdater error (ignored — installs use macSelfUpdate):", err?.message || err);
+      });
+    } catch {
+      // ignore — native autoUpdater unavailable in this context
+    }
+  }
 }
 
 /**
@@ -492,6 +535,9 @@ function registerHandlers(ipcMain) {
 
   // ---- Install (quit & install) ------------------------------------------
   ipcMain.handle("magiesTerminal:update:install", async () => {
+    if (_isInstalling) {
+      return { success: true, installing: true };
+    }
     if (!isAutoUpdateSupported()) {
       return {
         success: false,
@@ -533,6 +579,48 @@ function registerHandlers(ipcMain) {
       }
     }
 
+    // macOS: unsigned builds cannot use Squirrel.Mac (quitAndInstall), so the
+    // downloaded zip is installed by swapping the .app bundle in place, then
+    // relaunching into the new version. The swap happens BEFORE the quit flags
+    // are set: it can take a few seconds (ditto extract) and can fail, and a
+    // failed swap must leave close-to-tray / quit guards untouched.
+    if (_platform === "darwin") {
+      const { app } = _deps?.electronModule || {};
+      let macSelfUpdate;
+      try {
+        macSelfUpdate = require("./macSelfUpdate.cjs");
+      } catch (err) {
+        return { success: false, error: "macOS self-update module unavailable." };
+      }
+      try {
+        _isInstalling = true;
+        _lastInstallError = null;
+        _lastStatus = { ..._lastStatus, status: 'installing', error: null };
+        await macSelfUpdate.installMacUpdateFromZip({
+          zipPath: _downloadedFile,
+          bundlePath: macSelfUpdate.resolveMacBundlePath(app?.getPath?.("exe") || process.execPath),
+        });
+      } catch (err) {
+        const message = err?.message || "Install failed";
+        console.error("[AutoUpdate] macOS self-update failed:", message);
+        failInstall(message);
+        return { success: false, error: message };
+      }
+      // Bundle swapped on disk — commit to a real quit and relaunch into the
+      // new version. Same quit choreography as the quitAndInstall path below.
+      setQuittingForUpdate(true);
+      try {
+        const globalShortcutBridge = require("./globalShortcutBridge.cjs");
+        globalShortcutBridge.cleanup();
+      } catch {
+        // ignore — bridge may not be available
+      }
+      app?.relaunch?.();
+      app?.quit?.();
+      scheduleQuittingForUpdateWatchdog();
+      return { success: true };
+    }
+
     // Commit the app to a real quit BEFORE quitAndInstall fires app.quit().
     // Without this the in-place install silently fails (#1215): the main-window
     // close handler hides to tray when close-to-tray is on, so the process
@@ -554,6 +642,9 @@ function registerHandlers(ipcMain) {
     }
 
     try {
+      _isInstalling = true;
+      _lastInstallError = null;
+      _lastStatus = { ..._lastStatus, status: 'installing', error: null };
       updater.quitAndInstall(false, true);
     } catch (err) {
       // quitAndInstall threw synchronously — the app will NOT quit. Roll back
@@ -561,10 +652,16 @@ function registerHandlers(ipcMain) {
       // instead of permanently bypassing close-to-tray + the dirty-editor
       // guard (#1215 review).
       console.error("[AutoUpdate] quitAndInstall failed:", err?.message || err);
-      setQuittingForUpdate(false);
       const message = err?.message || "Install failed";
-      broadcastToAllWindows("magiesTerminal:update:error", { error: message });
+      failInstall(message);
       return { success: false, error: message };
+    }
+
+    // electron-updater reports several immediate install failures by emitting
+    // `error` instead of throwing. The listener above handles the rollback;
+    // don't return a false success to the renderer in that case.
+    if (!_isInstalling && _lastInstallError) {
+      return { success: false, error: _lastInstallError };
     }
 
     // quitAndInstall can also fail to quit asynchronously (e.g. Squirrel.Mac's
@@ -607,4 +704,10 @@ function registerHandlers(ipcMain) {
   console.log("[AutoUpdate] Handlers registered");
 }
 
-module.exports = { init, registerHandlers, isAutoUpdateSupported, startAutoCheck };
+module.exports = {
+  init,
+  registerHandlers,
+  isAutoUpdateSupported,
+  isPlatformAutoUpdateSupported,
+  startAutoCheck,
+};

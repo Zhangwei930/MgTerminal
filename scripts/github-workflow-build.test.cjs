@@ -60,6 +60,20 @@ test("build workflow installs bsdtar for Arch pacman packaging", () => {
   );
 });
 
+test("build workflow verifies the Windows asar integrity resource before upload", () => {
+  assert.ok(
+    buildWorkflow.includes("node scripts/verify-win-asar-integrity.cjs release/win-unpacked"),
+    "windows build must verify the exe-embedded ASAR header hash — a stale hash makes the " +
+      "asar-integrity fuse kill the app at launch",
+  );
+  const verifyIndex = buildWorkflow.indexOf("verify-win-asar-integrity.cjs");
+  const uploadIndex = buildWorkflow.indexOf("Upload artifacts");
+  assert.ok(
+    verifyIndex !== -1 && uploadIndex !== -1 && verifyIndex < uploadIndex,
+    "integrity verification must run before artifacts are uploaded",
+  );
+});
+
 test("build workflow verifies RPM artifacts for both Linux architectures", () => {
   assert.ok(
     buildWorkflow.includes("bash scripts/verify-linux-rpm-artifact.sh x86_64"),

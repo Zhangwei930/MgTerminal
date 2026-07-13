@@ -147,6 +147,7 @@ export const enCoreMessages: Messages = {
   'settings.update.downloading': 'Downloading... {percent}%',
   'settings.update.readyToInstall': 'Update downloaded and ready to install.',
   'settings.update.restartNow': 'Restart to Update',
+  'settings.update.installing': 'Restarting to install update...',
   'settings.update.error': 'Failed to check for updates.',
   'settings.update.downloadError': 'Download failed.',
   'settings.update.manualDownload': 'Download from GitHub',

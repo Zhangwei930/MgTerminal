@@ -6,10 +6,9 @@ Requires: Pillow (pip install Pillow)
 """
 from __future__ import annotations
 
-from collections import deque
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "public" / "icon-source.png"
@@ -32,47 +31,74 @@ LINUX_SIZES = (16, 32, 48, 64, 128, 256, 512)
 ICO_SIZES = (16, 20, 24, 32, 40, 48, 64)
 
 
-def remove_connected_black_background(source: Image.Image) -> Image.Image:
+# The source art is a dark-navy squircle plate centered on a pure-black
+# canvas. The plate interior is very dark (max channel ~21-30) but the outer
+# background is true black (0-1), so this threshold separates the two.
+PLATE_THRESHOLD = 8
+
+
+def extract_squircle_plate(source: Image.Image) -> Image.Image:
+    """Crop the squircle plate out of the black canvas, alpha-masked to its
+    rounded shape.
+
+    The previous flood-fill approach removed everything darker than 40, which
+    ate the plate itself and shipped just the glyph with a ragged glow halo —
+    the "ugly icon" bug. The plate (including its internal glow) is the
+    artwork; only the black margin and the soft outer glow are dropped.
+    """
     rgb = source.convert("RGB")
     width, height = rgb.size
     pixels = rgb.load()
-    exterior = bytearray(width * height)
-    queue: deque[tuple[int, int]] = deque()
 
-    def enqueue(x: int, y: int) -> None:
-        offset = y * width + x
-        if exterior[offset] or max(pixels[x, y]) > 40:
-            return
-        exterior[offset] = 1
-        queue.append((x, y))
+    def first_lit_x(y: int, from_left: bool) -> int:
+        rng = range(width) if from_left else range(width - 1, -1, -1)
+        for x in rng:
+            if max(pixels[x, y]) > PLATE_THRESHOLD:
+                return x
+        raise SystemExit(f"no plate pixels found on row {y}")
 
-    for x in range(width):
-        enqueue(x, 0)
-        enqueue(x, height - 1)
-    for y in range(height):
-        enqueue(0, y)
-        enqueue(width - 1, y)
+    def first_lit_y(x: int, from_top: bool) -> int:
+        rng = range(height) if from_top else range(height - 1, -1, -1)
+        for y in rng:
+            if max(pixels[x, y]) > PLATE_THRESHOLD:
+                return y
+        raise SystemExit(f"no plate pixels found on column {x}")
 
-    while queue:
-        x, y = queue.popleft()
-        if x > 0:
-            enqueue(x - 1, y)
-        if x + 1 < width:
-            enqueue(x + 1, y)
-        if y > 0:
-            enqueue(x, y - 1)
-        if y + 1 < height:
-            enqueue(x, y + 1)
+    def consistent_edge(candidates: list[int]) -> int:
+        if max(candidates) - min(candidates) > 4:
+            raise SystemExit(f"plate edge probes disagree: {candidates}")
+        return round(sum(candidates) / len(candidates))
 
-    rgba = rgb.convert("RGBA")
-    alpha = Image.new("L", rgb.size, 255)
-    alpha.putdata([0 if value else 255 for value in exterior])
-    rgba.putalpha(alpha)
-    bounds = alpha.getbbox()
-    if bounds is None:
-        raise SystemExit("source icon has no visible pixels")
+    # Probe lines chosen in regions the glyph's outer glow cannot reach, so
+    # every probe hits the plate edge itself.
+    left = consistent_edge([first_lit_x(int(height * 0.2), True), first_lit_x(int(height * 0.8), True)])
+    right = consistent_edge([first_lit_x(int(height * 0.2), False), first_lit_x(int(height * 0.8), False)])
+    top = consistent_edge([first_lit_y(int(width * 0.2), True), first_lit_y(int(width * 0.8), True)])
+    bottom = consistent_edge([first_lit_y(int(width * 0.2), False), first_lit_y(int(width * 0.8), False)])
 
-    return rgba.crop(bounds)
+    # Corner radius: walk down the (glow-free) top-left corner until the plate
+    # reaches its flat left edge.
+    radius = 0
+    for dy in range(0, (bottom - top) // 2):
+        if first_lit_x(top + dy, True) <= left + 1:
+            radius = dy
+            break
+    if radius == 0:
+        raise SystemExit("could not measure the plate corner radius")
+
+    plate = rgb.crop((left, top, right + 1, bottom + 1)).convert("RGBA")
+
+    # Supersampled rounded-rect mask clips the corners and any outer-glow
+    # fringe cleanly instead of leaving black-backed halo pixels.
+    scale = 4
+    mask_big = Image.new("L", (plate.width * scale, plate.height * scale), 0)
+    ImageDraw.Draw(mask_big).rounded_rectangle(
+        [0, 0, plate.width * scale - 1, plate.height * scale - 1],
+        radius=radius * scale,
+        fill=255,
+    )
+    plate.putalpha(mask_big.resize(plate.size, Image.Resampling.LANCZOS))
+    return plate
 
 
 def render_canvas(icon: Image.Image, size: int, inset: int = 0) -> Image.Image:
@@ -121,7 +147,7 @@ def main() -> None:
     if not SOURCE.exists():
         raise SystemExit(f"source icon not found: {SOURCE}")
 
-    icon = remove_connected_black_background(Image.open(SOURCE))
+    icon = extract_squircle_plate(Image.open(SOURCE))
     windows_icon = render_canvas(icon, 1024)
     macos_icon = render_canvas(icon, 1024, 61)
     macos_runtime_icon = render_canvas(icon, 1024, 100)

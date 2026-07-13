@@ -303,6 +303,15 @@ jobs:
           ELECTRON_BUILDER_PUBLISH: "never"
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npm run ${{ matrix.pack_script }}
+
+      # The asar-integrity fuse makes Electron exit silently at launch when the
+      # header hash embedded in the exe does not match resources/app.asar
+      # (v0.2.7 shipped that way). Fail the build instead of shipping it.
+      - name: Verify Windows asar integrity resource
+        if: matrix.name == 'windows'
+        shell: bash
+        run: node scripts/verify-win-asar-integrity.cjs release/win-unpacked
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

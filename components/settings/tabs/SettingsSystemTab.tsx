@@ -444,6 +444,11 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                   {t('settings.update.readyToInstall')}
                 </p>
               )}
+              {updateState.autoDownloadStatus === 'installing' && (
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  {t('settings.update.installing')}
+                </p>
+              )}
               {updateState.autoDownloadStatus === 'error' && (
                 <p className="text-sm text-destructive">
                   {updateState.downloadError || t('settings.update.error')}
@@ -498,6 +503,12 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                   <Button variant="default" size="sm" onClick={() => void installUpdate()}>
                     <RotateCcw size={14} className="mr-1.5" />
                     {t('settings.update.restartNow')}
+                  </Button>
+                )}
+                {updateState.autoDownloadStatus === 'installing' && (
+                  <Button variant="default" size="sm" disabled>
+                    <RotateCcw size={14} className="mr-1.5 animate-spin" />
+                    {t('settings.update.installing')}
                   </Button>
                 )}
 

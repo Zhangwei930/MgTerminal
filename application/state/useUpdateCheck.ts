@@ -18,7 +18,7 @@ const IS_UPDATE_DEMO_MODE = localStorageAdapter.readString(STORAGE_KEY_DEBUG_UPD
 // Debug logging for update checks (no-op in production)
 const debugLog = (..._args: unknown[]) => {};
 
-export type AutoDownloadStatus = 'idle' | 'downloading' | 'ready' | 'error';
+export type AutoDownloadStatus = 'idle' | 'downloading' | 'ready' | 'installing' | 'error';
 
 export type ManualCheckStatus = 'idle' | 'checking' | 'available' | 'up-to-date' | 'error';
 
@@ -545,32 +545,50 @@ export function useUpdateCheck(options?: {
     if (!enabled) return;
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.installUpdate) {
+      const message = 'Update install is unavailable in this build. Open the release page to download manually.';
       onInstallFailedRef.current?.(
-        'Update install is unavailable in this build. Open the release page to download manually.',
+        message,
       );
+      setUpdateState((prev) => ({
+        ...prev,
+        autoDownloadStatus: 'error',
+        downloadError: message,
+      }));
       openReleasePage();
       return;
     }
 
     try {
+      autoDownloadStatusRef.current = 'installing';
+      setUpdateState((prev) => ({
+        ...prev,
+        autoDownloadStatus: 'installing',
+        downloadError: null,
+      }));
       const result = await bridge.installUpdate();
-      if (!result || result.success || result.needsSave) {
+      if (result?.success) {
         return;
       }
-      if (result.unsupported) {
+      if (result?.needsSave) {
+        autoDownloadStatusRef.current = 'ready';
+        setUpdateState((prev) => ({ ...prev, autoDownloadStatus: 'ready' }));
+        return;
+      }
+      const error = result?.error || 'Update installer did not start.';
+      if (result?.unsupported) {
         openReleasePage();
       }
-      if (result.error) {
-        onInstallFailedRef.current?.(result.error);
-        setUpdateState((prev) => ({
-          ...prev,
-          autoDownloadStatus: 'error',
-          downloadError: result.error || 'Install failed',
-        }));
-      }
+      onInstallFailedRef.current?.(error);
+      autoDownloadStatusRef.current = 'error';
+      setUpdateState((prev) => ({
+        ...prev,
+        autoDownloadStatus: 'error',
+        downloadError: error,
+      }));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Install failed';
       onInstallFailedRef.current?.(message);
+      autoDownloadStatusRef.current = 'error';
       setUpdateState((prev) => ({
         ...prev,
         autoDownloadStatus: 'error',

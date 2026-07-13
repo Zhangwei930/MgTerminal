@@ -23,10 +23,17 @@ module.exports = {
         }
     ],
     electronLanguages: ['en', 'en-US', 'zh_CN', 'zh-CN', 'zh_TW', 'zh-TW', 'ru'],
-    // Give the macOS build a unique Mach-O LC_UUID before signing, so macOS
-    // Local Network privacy treats MagiesTerminal distinctly from every other
-    // Electron app (which all share Electron's prebuilt LC_UUID) — see #1040
-    // and scripts/afterPackMacUuid.cjs. No-op on Windows/Linux.
+    // afterPack (scripts/afterPackMacUuid.cjs) does three things:
+    //  1. All platforms: repairs per-file ASAR integrity hashes that
+    //     electron-builder embeds incorrectly (transformed package.json).
+    //  2. Windows: re-embeds the ASAR header hash into the exe's INTEGRITY/
+    //     ELECTRONASAR resource after that repair — electron-builder writes it
+    //     BEFORE afterPack, so without this the asar-integrity fuse kills the
+    //     app at launch (v0.2.7 "Windows won't start" bug).
+    //  3. macOS: refreshes ElectronAsarIntegrity in Info.plist, then gives the
+    //     build a unique Mach-O LC_UUID before signing, so macOS Local Network
+    //     privacy treats MagiesTerminal distinctly from every other Electron
+    //     app (which all share Electron's prebuilt LC_UUID) — see #1040.
     beforePack: './scripts/beforePackCursorSdk.cjs',
     afterPack: './scripts/afterPackMacUuid.cjs',
     // Platform-split icons (#813):

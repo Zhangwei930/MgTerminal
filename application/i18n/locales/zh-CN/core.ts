@@ -145,6 +145,7 @@ export const zhCNCoreMessages: Messages = {
   'settings.update.downloading': '正在下载... {percent}%',
   'settings.update.readyToInstall': '更新已下载，准备安装。',
   'settings.update.restartNow': '重启并更新',
+  'settings.update.installing': '正在重启并安装更新...',
   'settings.update.error': '检查更新失败。',
   'settings.update.downloadError': '下载失败。',
   'settings.update.manualDownload': '前往 GitHub 下载',

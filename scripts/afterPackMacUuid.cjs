@@ -376,6 +376,42 @@ function readAsarHeaderString(asarPath) {
 }
 
 /**
+ * Windows Electron validates the ASAR *header JSON* against the INTEGRITY /
+ * ELECTRONASAR resource embedded in the exe (electron-builder writes it in
+ * beforeCopyExtraFiles, BEFORE this afterPack hook runs). Any header rewrite
+ * here must refresh that resource, or EnableEmbeddedAsarIntegrityValidation
+ * silently kills the app at launch (v0.2.7 "won't start" bug).
+ * Returns the new header hash, or null when the exe embeds no integrity
+ * resource (asar integrity disabled).
+ */
+function updateWinAsarIntegrityResource(exePath, asarPath) {
+  if (!fs.existsSync(exePath) || !fs.existsSync(asarPath)) return null;
+
+  const { NtExecutable, NtExecutableResource } = require("resedit");
+  const executable = NtExecutable.from(fs.readFileSync(exePath));
+  const resource = NtExecutableResource.from(executable);
+  const index = resource.entries.findIndex(
+    (entry) => entry.type === "INTEGRITY" && entry.id === "ELECTRONASAR",
+  );
+  if (index === -1) return null;
+
+  const headerHash = sha256Hex(readAsarHeaderString(asarPath));
+  const previous = resource.entries[index];
+  resource.entries[index] = {
+    type: "INTEGRITY",
+    id: "ELECTRONASAR",
+    bin: Buffer.from(
+      JSON.stringify([{ file: "resources\\app.asar", alg: "SHA256", value: headerHash }]),
+    ),
+    lang: previous.lang,
+    codepage: previous.codepage,
+  };
+  resource.outputResource(executable);
+  fs.writeFileSync(exePath, Buffer.from(executable.generate()));
+  return headerHash;
+}
+
+/**
  * macOS Electron validates the ASAR *header JSON* against ElectronAsarIntegrity
  * in Info.plist. Update that hash after any afterPack header rewrite.
  */
@@ -445,6 +481,18 @@ async function afterPack(context) {
     console.log(`[afterPack] Repaired ${fixed} ASAR file integrity hash(es)`);
   }
 
+  if (context.electronPlatformName === "win32") {
+    const exePath = path.join(
+      context.appOutDir,
+      `${context.packager.appInfo.productFilename}.exe`,
+    );
+    const headerHash = updateWinAsarIntegrityResource(exePath, appAsar);
+    if (headerHash) {
+      console.log(`[afterPack] Updated Windows exe ELECTRONASAR integrity hash=${headerHash}`);
+    }
+    return;
+  }
+
   if (context.electronPlatformName !== "darwin") return;
 
   const appId = context.packager.appInfo.id || "top.magies.terminal";
@@ -505,3 +553,4 @@ module.exports.pruneCursorSdkPlatformPackages = pruneCursorSdkPlatformPackages;
 module.exports.repairAsarFileIntegrity = repairAsarFileIntegrity;
 module.exports.readAsarHeaderString = readAsarHeaderString;
 module.exports.updateMacAsarIntegrityPlist = updateMacAsarIntegrityPlist;
+module.exports.updateWinAsarIntegrityResource = updateWinAsarIntegrityResource;

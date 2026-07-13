@@ -387,3 +387,187 @@ test("repairAsarFileIntegrity rewrites mismatched per-file hashes", (t) => {
   // Ensure rewrite still fits the original header budget.
   writeAsarHeaderPreservingDataOffset(asarPath, header, headerSize);
 });
+
+// Minimal PE32+ x64 executable resedit can parse: DOS header + PE signature +
+// COFF header + optional header + one .text section.
+function buildMinimalPeExecutable() {
+  const dos = Buffer.alloc(64);
+  dos.write("MZ", 0, "ascii");
+  dos.writeUInt32LE(64, 0x3c); // e_lfanew
+
+  const sig = Buffer.from("PE\0\0", "ascii");
+  const coff = Buffer.alloc(20);
+  coff.writeUInt16LE(0x8664, 0); // machine amd64
+  coff.writeUInt16LE(1, 2); // 1 section
+  coff.writeUInt16LE(240, 16); // size of optional header
+  coff.writeUInt16LE(0x0022, 18); // EXECUTABLE_IMAGE | LARGE_ADDRESS_AWARE
+
+  const opt = Buffer.alloc(240);
+  opt.writeUInt16LE(0x20b, 0); // PE32+
+  opt.writeUInt32LE(0x1000, 16); // AddressOfEntryPoint
+  opt.writeBigUInt64LE(0x140000000n, 24); // ImageBase
+  opt.writeUInt32LE(0x1000, 32); // SectionAlignment
+  opt.writeUInt32LE(0x200, 36); // FileAlignment
+  opt.writeUInt16LE(6, 40); // MajorOperatingSystemVersion
+  opt.writeUInt16LE(6, 48); // MajorSubsystemVersion
+  opt.writeUInt32LE(0x2000, 56); // SizeOfImage
+  opt.writeUInt32LE(0x400, 60); // SizeOfHeaders
+  opt.writeUInt16LE(3, 68); // Subsystem: console
+  opt.writeBigUInt64LE(0x100000n, 72); // SizeOfStackReserve
+  opt.writeBigUInt64LE(0x1000n, 80); // SizeOfStackCommit
+  opt.writeBigUInt64LE(0x100000n, 88); // SizeOfHeapReserve
+  opt.writeBigUInt64LE(0x1000n, 96); // SizeOfHeapCommit
+  opt.writeUInt32LE(16, 108); // NumberOfRvaAndSizes
+
+  const sect = Buffer.alloc(40);
+  sect.write(".text", 0, "ascii");
+  sect.writeUInt32LE(0x200, 8); // VirtualSize
+  sect.writeUInt32LE(0x1000, 12); // VirtualAddress
+  sect.writeUInt32LE(0x200, 16); // SizeOfRawData
+  sect.writeUInt32LE(0x400, 20); // PointerToRawData
+  sect.writeUInt32LE(0x60000020, 36); // CODE | EXECUTE | READ
+
+  const headers = Buffer.concat([dos, sig, coff, opt, sect]);
+  const image = Buffer.alloc(0x400 + 0x200);
+  headers.copy(image, 0);
+  image[0x400] = 0xc3; // ret
+  return image;
+}
+
+function writeFakeWinExe(exePath, embeddedHash) {
+  const { NtExecutable, NtExecutableResource } = require("resedit");
+  const executable = NtExecutable.from(buildMinimalPeExecutable());
+  const resource = NtExecutableResource.from(executable);
+  if (embeddedHash != null) {
+    resource.entries.push({
+      type: "INTEGRITY",
+      id: "ELECTRONASAR",
+      bin: Buffer.from(
+        JSON.stringify([{ file: "resources\\app.asar", alg: "SHA256", value: embeddedHash }]),
+      ),
+      lang: 1033,
+      codepage: 1252,
+    });
+  }
+  resource.outputResource(executable);
+  require("node:fs").writeFileSync(exePath, Buffer.from(executable.generate()));
+}
+
+function readEmbeddedWinIntegrity(exePath) {
+  const { NtExecutable, NtExecutableResource } = require("resedit");
+  const executable = NtExecutable.from(require("node:fs").readFileSync(exePath));
+  const resource = NtExecutableResource.from(executable);
+  const entry = resource.entries.find((e) => e.type === "INTEGRITY" && e.id === "ELECTRONASAR");
+  return entry ? JSON.parse(Buffer.from(entry.bin).toString("utf8")) : null;
+}
+
+test("updateWinAsarIntegrityResource re-embeds the current ASAR header hash", (t) => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const crypto = require("node:crypto");
+  const {
+    updateWinAsarIntegrityResource,
+    readAsarHeaderString,
+  } = require("./afterPackMacUuid.cjs");
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "magiesTerminal-win-integrity-"));
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+
+  const asarPath = path.join(tempDir, "app.asar");
+  writeFakeAsar(asarPath, { files: {} });
+  const exePath = path.join(tempDir, "MagiesTerminal.exe");
+  writeFakeWinExe(exePath, "0".repeat(64)); // stale hash
+
+  const headerHash = updateWinAsarIntegrityResource(exePath, asarPath);
+
+  const expected = crypto
+    .createHash("sha256")
+    .update(readAsarHeaderString(asarPath))
+    .digest("hex");
+  assert.equal(headerHash, expected);
+  assert.deepEqual(readEmbeddedWinIntegrity(exePath), [
+    { file: "resources\\app.asar", alg: "SHA256", value: expected },
+  ]);
+});
+
+test("updateWinAsarIntegrityResource is a no-op without an embedded integrity resource", (t) => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { updateWinAsarIntegrityResource } = require("./afterPackMacUuid.cjs");
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "magiesTerminal-win-integrity-"));
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+
+  const asarPath = path.join(tempDir, "app.asar");
+  writeFakeAsar(asarPath, { files: {} });
+  const exePath = path.join(tempDir, "MagiesTerminal.exe");
+  writeFakeWinExe(exePath, null);
+  const before = fs.readFileSync(exePath);
+
+  assert.equal(updateWinAsarIntegrityResource(exePath, asarPath), null);
+  assert.deepEqual(fs.readFileSync(exePath), before);
+});
+
+// Regression test for the v0.2.7 Windows startup failure: afterPack repairs
+// per-file ASAR hashes (rewriting the header) AFTER electron-builder embedded
+// the header hash into the exe, so the embedded hash went stale and Electron's
+// EnableEmbeddedAsarIntegrityValidation fuse killed the app at launch.
+test("afterPack refreshes the Windows exe integrity resource after ASAR mutations", async (t) => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const crypto = require("node:crypto");
+  const afterPack = require("./afterPackMacUuid.cjs");
+  const { readAsarHeaderString } = require("./afterPackMacUuid.cjs");
+
+  const appOutDir = fs.mkdtempSync(path.join(os.tmpdir(), "magiesTerminal-win-afterpack-"));
+  t.after(() => fs.rmSync(appOutDir, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(appOutDir, "resources"));
+
+  const asarPath = path.join(appOutDir, "resources", "app.asar");
+  const payload = Buffer.from("win-afterpack-payload");
+  writeFakeAsar(
+    asarPath,
+    {
+      files: {
+        "packed.txt": {
+          size: payload.length,
+          offset: "0",
+          integrity: {
+            algorithm: "SHA256",
+            hash: "0".repeat(64), // wrong on purpose: forces a header rewrite
+            blockSize: 4194304,
+            blocks: ["0".repeat(64)],
+          },
+        },
+      },
+    },
+    payload,
+  );
+
+  // Embed the hash of the PRE-repair header, exactly like electron-builder does.
+  const staleHash = crypto
+    .createHash("sha256")
+    .update(readAsarHeaderString(asarPath))
+    .digest("hex");
+  const exePath = path.join(appOutDir, "MagiesTerminal.exe");
+  writeFakeWinExe(exePath, staleHash);
+
+  await afterPack({
+    electronPlatformName: "win32",
+    appOutDir,
+    arch: 1, // x64
+    packager: { appInfo: { productFilename: "MagiesTerminal" } },
+  });
+
+  const repairedHash = crypto
+    .createHash("sha256")
+    .update(readAsarHeaderString(asarPath))
+    .digest("hex");
+  assert.notEqual(repairedHash, staleHash);
+  assert.deepEqual(readEmbeddedWinIntegrity(exePath), [
+    { file: "resources\\app.asar", alg: "SHA256", value: repairedHash },
+  ]);
+});

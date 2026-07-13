@@ -186,9 +186,10 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
                   {appInfo.version ? appInfo.version : " "}
                 </span>
                 {/* Update badge - reflects auto-download state */}
-                {updateState.latestRelease && (updateState.hasUpdate || updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'ready') && (
+                {updateState.latestRelease && (updateState.hasUpdate || updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'ready' || updateState.autoDownloadStatus === 'installing') && (
                   <button
-                    onClick={() => updateState.autoDownloadStatus === 'ready' ? void installUpdate() : updateState.autoDownloadStatus === 'downloading' ? undefined : startDownload()}
+                    onClick={() => updateState.autoDownloadStatus === 'ready' ? void installUpdate() : updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'installing' ? undefined : startDownload()}
+                    disabled={updateState.autoDownloadStatus === 'installing'}
                     className={cn(
                       "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
                       updateState.autoDownloadStatus === 'ready'
@@ -201,6 +202,8 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
                     v{updateState.latestRelease.version}{' '}
                     {updateState.autoDownloadStatus === 'ready'
                       ? t('update.restartNow')
+                      : updateState.autoDownloadStatus === 'installing'
+                        ? t('settings.update.installing')
                       : updateState.autoDownloadStatus === 'downloading'
                         ? `${updateState.downloadPercent}%`
                         : t('update.downloadNow')}
@@ -215,7 +218,7 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
               variant="secondary"
               className="gap-2"
               onClick={() => void handleCheckForUpdates()}
-              disabled={updateState.isChecking || updateState.manualCheckStatus === 'checking' || updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'ready'}
+              disabled={updateState.isChecking || updateState.manualCheckStatus === 'checking' || updateState.autoDownloadStatus === 'downloading' || updateState.autoDownloadStatus === 'ready' || updateState.autoDownloadStatus === 'installing'}
             >
               {updateState.isChecking ? (
                 <Loader2 size={16} className="animate-spin" />

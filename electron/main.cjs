@@ -1068,6 +1068,7 @@ if (!gotLock) {
       }, 3000);
     }).catch((err) => {
       console.error("[Main] Failed to create main window:", err);
+      crashLogBridge.captureError("main-window-create", err);
       showStartupError(err);
       try {
         app.quit();

@@ -29,3 +29,14 @@ test("before-quit allows quitAndInstall to proceed without preventDefault", () =
   assert.match(updateFastPath, /quitConfirmed = true/);
   assert.doesNotMatch(updateFastPath, /event\.preventDefault/);
 });
+
+test("main window startup failures are persisted before the app quits", () => {
+  const source = readFileSync(path.join(__dirname, "main.cjs"), "utf8");
+  const catchIndex = source.indexOf('console.error("[Main] Failed to create main window:"');
+  const quitIndex = source.indexOf("app.quit()", catchIndex);
+  const failureHandler = source.slice(catchIndex, quitIndex);
+
+  assert.notEqual(catchIndex, -1);
+  assert.notEqual(quitIndex, -1);
+  assert.match(failureHandler, /crashLogBridge\.captureError\("main-window-create", err\)/);
+});

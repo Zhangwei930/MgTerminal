@@ -214,19 +214,10 @@ module.exports = {
     },
     win: {
         icon: 'public/icon-win.png',
-        target: [
-            {
-                target: 'nsis',
-                arch: ['x64', 'arm64']
-            },
-            {
-                target: 'portable',
-                arch: ['x64', 'arm64']
-            },
-            {
-                target: 'zip'
-            }
-        ],
+        // CI currently prepares Windows native dependencies for x64 only.
+        // Let the --x64 CLI flag select the architecture so electron-builder
+        // does not also emit ARM64 and combined installers with x64 payloads.
+        target: ['nsis', 'portable', 'zip'],
         extraResources: [...moshExtraResources('win32'), ...etExtraResources('win32')]
     },
     portable: {

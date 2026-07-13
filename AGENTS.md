@@ -15,7 +15,12 @@ This project is wired around three layers: domain (pure logic), application stat
   - `config/` holds defaults, storage keys, terminal themes.
   - `persistence/localStorageAdapter.ts` abstracts localStorage read/write.
   - `services/` contains networked services (Gemini AI, GitHub Gist sync).
+    `updateService.ts` + `updateMirror.ts` implement the dual-source update
+    check (GitHub first, regional download mirror as fallback and vice versa).
 - **UI** (`components/`, `App.tsx`): Presentation; depends on hooks and domain helpers only.
+- **Download mirror** (`mirror-worker/`): standalone Cloudflare Worker that
+  proxies GitHub Releases for regions where github.com is unreachable; deployed
+  separately via wrangler, not part of the app bundle.
 
 ## How Things Talk
 - UI calls application hooks -> hooks call domain helpers -> persistence/config via infrastructure adapters.

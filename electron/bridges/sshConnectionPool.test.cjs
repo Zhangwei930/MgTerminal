@@ -6,6 +6,7 @@ const {
   acquireConnectionRef,
   releaseConnectionRef,
   findReusableSession,
+  findReusableSessionByEndpoint,
 } = require("./sshConnectionPool.cjs");
 
 function makeConn() {
@@ -185,4 +186,53 @@ test("findReusableSession refuses reuse when the source has no recorded endpoint
   assert.equal(findReusableSession(sessions, "src", { hostname: "10.0.0.1" }), null);
   // Without a requested target (legacy callers), endpoint check is skipped.
   assert.ok(findReusableSession(sessions, "src"));
+});
+
+function makeLiveShellSession(endpoint) {
+  return {
+    conn: { _sock: { destroyed: false } },
+    stream: {},
+    connRef: { count: 1 },
+    _reuseEndpoint: endpoint,
+  };
+}
+
+test("findReusableSessionByEndpoint scans for a live session matching the endpoint", () => {
+  const sessions = new Map();
+  sessions.set("other", makeLiveShellSession({ hostname: "other.example", port: 22, username: "root" }));
+  const match = makeLiveShellSession({ hostname: "db.example", port: 2222, username: "deploy" });
+  sessions.set("match", match);
+
+  assert.equal(
+    findReusableSessionByEndpoint(sessions, { hostname: "db.example", port: 2222, username: "deploy" }),
+    match,
+  );
+});
+
+test("findReusableSessionByEndpoint requires an exact endpoint match", () => {
+  const sessions = new Map();
+  sessions.set("src", makeLiveShellSession({ hostname: "db.example", port: 22, username: "root" }));
+
+  assert.equal(findReusableSessionByEndpoint(sessions, { hostname: "db.example", port: 2222, username: "root" }), null);
+  assert.equal(findReusableSessionByEndpoint(sessions, { hostname: "db.example", port: 22, username: "deploy" }), null);
+  assert.equal(findReusableSessionByEndpoint(sessions, { hostname: "web.example", port: 22, username: "root" }), null);
+});
+
+test("findReusableSessionByEndpoint skips dead or non-shell sessions and handles missing input", () => {
+  const sessions = new Map();
+  sessions.set("dead", {
+    conn: { _sock: { destroyed: true } },
+    stream: {},
+    connRef: { count: 1 },
+    _reuseEndpoint: { hostname: "db.example", port: 22, username: "root" },
+  });
+  sessions.set("sftp-only", {
+    conn: { _sock: { destroyed: false } },
+    connRef: { count: 1 },
+    _reuseEndpoint: { hostname: "db.example", port: 22, username: "root" },
+  });
+
+  assert.equal(findReusableSessionByEndpoint(sessions, { hostname: "db.example", port: 22, username: "root" }), null);
+  assert.equal(findReusableSessionByEndpoint(null, { hostname: "db.example" }), null);
+  assert.equal(findReusableSessionByEndpoint(sessions, null), null);
 });

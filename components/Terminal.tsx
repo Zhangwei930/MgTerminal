@@ -46,10 +46,11 @@ import { supportsZmodemTerminalDragDrop } from "../lib/zmodemDragDrop";
 import { resolveHostAuth } from "../domain/sshAuth";
 import { useTerminalBackend } from "../application/state/useTerminalBackend";
 import {
-  TERMINAL_AUTO_RECONNECT_DELAY_MS,
   canAttemptTerminalAutoReconnect,
+  hasExhaustedAutoReconnectAttempts,
   shouldAutoReconnectAfterExit,
   shouldContinueAutoReconnectAfterFailure,
+  terminalAutoReconnectDelayMs,
 } from "../application/state/terminalAutoReconnect";
 import { useStoredBoolean } from "../application/state/useStoredBoolean";
 import { readOptionalStoredStringValue, useStoredString } from "../application/state/useStoredString";
@@ -1069,6 +1070,13 @@ const TerminalComponent: React.FC<TerminalProps> = ({
       return false;
     }
 
+    if (hasExhaustedAutoReconnectAttempts(autoReconnectAttemptRef.current)) {
+      const attempts = autoReconnectAttemptRef.current;
+      clearAutoReconnect();
+      setProgressLogs((prev) => [...prev, t("terminal.progress.autoReconnectGaveUp", { attempts })]);
+      return false;
+    }
+
     autoReconnectLoopActiveRef.current = true;
     if (autoReconnectTimerRef.current) {
       return true;
@@ -1076,7 +1084,8 @@ const TerminalComponent: React.FC<TerminalProps> = ({
 
     autoReconnectAttemptRef.current += 1;
     const attempt = autoReconnectAttemptRef.current;
-    const seconds = Math.round(TERMINAL_AUTO_RECONNECT_DELAY_MS / 1000);
+    const delayMs = terminalAutoReconnectDelayMs(attempt);
+    const seconds = Math.round(delayMs / 1000);
     const scheduledMessage = t("terminal.progress.autoReconnectScheduled", { seconds, attempt });
 
     setError(null);
@@ -1088,10 +1097,10 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     autoReconnectTimerRef.current = setTimeout(() => {
       autoReconnectTimerRef.current = null;
       startReconnectRef.current?.("auto");
-    }, TERMINAL_AUTO_RECONNECT_DELAY_MS);
+    }, delayMs);
 
     return true;
-  }, [host, t, terminalSettings, updateStatus]);
+  }, [clearAutoReconnect, host, t, terminalSettings, updateStatus]);
 
   const prepareRestoredReconnect = useCallback(() => {
     if (restoreState !== "restored-disconnected") {

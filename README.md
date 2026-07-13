@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>🔥 AI-Powered SSH Client, SFTP Browser & Terminal Manager 🚀</strong><br/>
-  <a href="https://github.com/JasonZhangDad/MagiesTerminal"><strong>github.com/JasonZhangDad/MagiesTerminal</strong></a>
+  <a href="https://github.com/JasonZhangDad/MgTerminal"><strong>github.com/JasonZhangDad/MgTerminal</strong></a>
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JasonZhangDad/MagiesTerminal/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/JasonZhangDad/MagiesTerminal?style=for-the-badge&logo=github&label=Release"></a>
+  <a href="https://github.com/JasonZhangDad/MgTerminal/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/JasonZhangDad/MgTerminal?style=for-the-badge&logo=github&label=Release"></a>
   &nbsp;
   <a href="#"><img alt="Platform" src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=for-the-badge&logo=electron"></a>
   &nbsp;
@@ -23,8 +23,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JasonZhangDad/MagiesTerminal/releases/latest">
-    <img src="https://img.shields.io/github/v/release/JasonZhangDad/MagiesTerminal?style=for-the-badge&logo=github&label=Download%20Latest&color=success" alt="Download Latest Release">
+  <a href="https://github.com/JasonZhangDad/MgTerminal/releases/latest">
+    <img src="https://img.shields.io/github/v/release/JasonZhangDad/MgTerminal?style=for-the-badge&logo=github&label=Download%20Latest&color=success" alt="Download Latest Release">
   </a>
 </p>
 
@@ -56,20 +56,6 @@
 - 🔥 **Intelligent context awareness** — understands your server environment and provides tailored responses
 - 🚀 **One-click complex operations** — set up clusters, deploy services, and more with simple instructions
 
-### 🎬 AI in Action
-
-#### 🔥 Single Host — Intelligent Server Diagnostics
-
-Ask MagiesTerminal Agent to check a server's health, and it runs the right commands, analyzes the output, and gives you a clear summary — all in seconds.
-
-<img width="1510" height="870" alt="ai-single" src="https://github.com/user-attachments/assets/d3f34e53-8476-4fab-8634-394b931d1ff1" />
-
-#### 🚀 Multi-Host — Docker Swarm Cluster Setup
-
-Watch MagiesTerminal Agent orchestrate a Docker Swarm cluster across two servers in one conversation. It handles the init, token exchange, and node joining — you just tell it what you want.
-
-<img width="1515" height="870" alt="ai-muti" src="https://github.com/user-attachments/assets/ca166fc5-65d9-4d7b-951a-962c2ef230d8" />
-
 ---
 
 # Contents <!-- omit in toc -->
@@ -78,10 +64,6 @@ Watch MagiesTerminal Agent orchestrate a Docker Swarm cluster across two servers
 - [What is MagiesTerminal](#what-is-magiesTerminal)
 - [Why MagiesTerminal](#why-magiesTerminal)
 - [Features](#features)
-- [Screenshots](#screenshots)
-  - [Main Window](#main-window)
-  - [Vault Views](#vault-views)
-  - [Split Terminals](#split-terminals)
 - [Supported Distros](#supported-distros)
 - [Getting Started](#getting-started)
 - [Build & Package](#build--package)
@@ -138,38 +120,6 @@ If you regularly work with a fleet of servers, MagiesTerminal is built for speed
 
 ---
 
-<a name="screenshots"></a>
-# Screenshots
-
-<a name="main-window"></a>
-## Main Window
-
-The main window is designed for long-running SSH workflows: quick access to sessions, navigation, and core tools in one place.
-
-<img width="1531" height="875" alt="black-grid" src="https://github.com/user-attachments/assets/004b80f6-5bbb-4f14-b8cd-33a0a5913b8c" />
-
-<img width="1550" height="876" alt="light" src="https://github.com/user-attachments/assets/2b59a999-a25e-4217-944c-9aef0a09f272" />
-
-
-<a name="vault-views"></a>
-## Vault Views
-
-Organize and navigate your hosts using the view that best fits the moment: grid for overview, list for scanning, tree for structure.
-
-<img width="1554" height="882" alt="list" src="https://github.com/user-attachments/assets/03249f15-b5f8-4770-a3c3-d5001636ea00" />
-
-<img width="1561" height="878" alt="tree" src="https://github.com/user-attachments/assets/739f7b66-3898-43d0-8dd3-b9b97fd8e8de" />
-
-
-<a name="split-terminals"></a>
-## Split Terminals
-
-Split panes help you monitor multiple servers/services at the same time (deploy + logs + metrics) without juggling windows.
-
-<img width="1560" height="871" alt="split" src="https://github.com/user-attachments/assets/c93a8523-6256-4bb3-8b6e-d599831f2f9f" />
-
----
-
 <a name="supported-distros"></a>
 # Supported Distros
 
@@ -196,7 +146,7 @@ MagiesTerminal automatically detects and displays OS icons for connected hosts:
 
 ### Download
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/JasonZhangDad/MagiesTerminal/releases/latest).
+Download the latest release for your platform from [GitHub Releases](https://github.com/JasonZhangDad/MgTerminal/releases/latest).
 
 | OS | Support |
 | :--- | :--- |
@@ -204,7 +154,7 @@ Download the latest release for your platform from [GitHub Releases](https://git
 | **Windows** | x64 / arm64 |
 | **Linux** | x64 / arm64 |
 
-Or browse all releases at [GitHub Releases](https://github.com/JasonZhangDad/MagiesTerminal/releases).
+Or browse all releases at [GitHub Releases](https://github.com/JasonZhangDad/MgTerminal/releases).
 
 > **macOS Users:** Current releases are expected to be code-signed and notarized. If Gatekeeper still warns, make sure you downloaded the latest official build from GitHub Releases.
 
@@ -213,7 +163,7 @@ Or browse all releases at [GitHub Releases](https://github.com/JasonZhangDad/Mag
 MagiesTerminal provides a flake that wraps the official Linux AppImage release for Nix and NixOS users:
 
 ```bash
-nix run github:JasonZhangDad/MagiesTerminal
+nix run github:JasonZhangDad/MgTerminal
 ```
 
 For declarative installs, add the MagiesTerminal flake as an input and use `inputs.magiesTerminal.packages.${pkgs.system}.default` in your NixOS or Home Manager package list.
@@ -226,8 +176,8 @@ For declarative installs, add the MagiesTerminal flake as an input and use `inpu
 
 ```bash
 # Clone the repository
-git clone https://github.com/JasonZhangDad/MagiesTerminal.git
-cd MagiesTerminal
+git clone https://github.com/JasonZhangDad/MgTerminal.git
+cd MgTerminal
 
 # Install dependencies
 npm install
@@ -290,10 +240,8 @@ See [agents.md](agents.md) for architecture overview and coding conventions.
 <a name="contributors"></a>
 # Contributors
 
-Thanks to all the people who contribute!
-
-<a href="https://github.com/JasonZhangDad/MagiesTerminal/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=JasonZhangDad/MagiesTerminal" />
+<a href="https://github.com/JasonZhangDad">
+  <img src="https://github.com/JasonZhangDad.png" width="64" alt="JasonZhangDad" />
 </a>
 
 ---
@@ -308,16 +256,16 @@ This project is licensed under the **GPL-3.0 License** - see the [LICENSE](LICEN
 <a name="star-history"></a>
 # Star History
 
-<a href="https://star-history.com/#JasonZhangDad/MagiesTerminal&Date">
+<a href="https://star-history.com/#JasonZhangDad/MgTerminal&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JasonZhangDad/MagiesTerminal&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JasonZhangDad/MagiesTerminal&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=JasonZhangDad/MagiesTerminal&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=JasonZhangDad/MgTerminal&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=JasonZhangDad/MgTerminal&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=JasonZhangDad/MgTerminal&type=Date" />
  </picture>
 </a>
 
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://ko-fi.com/binaricat">binaricat</a>
+  Made with ❤️ by <a href="https://github.com/JasonZhangDad">JasonZhangDad</a>
 </p>

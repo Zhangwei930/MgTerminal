@@ -9,6 +9,11 @@ const { Client: SSHClient } = require("ssh2");
 const { MagiesTerminalAgent } = require("./magiesTerminalAgent.cjs");
 const keyboardInteractiveHandler = require("./keyboardInteractiveHandler.cjs");
 const { connectThroughChain, buildAlgorithms } = require("./sshBridge.cjs");
+const {
+  acquireConnectionRef,
+  releaseConnectionRef,
+  findReusableSessionByEndpoint,
+} = require("./sshConnectionPool.cjs");
 const hostKeyVerifier = require("./hostKeyVerifier.cjs");
 const { createProxySocket } = require("./proxyUtils.cjs");
 const { 
@@ -23,6 +28,11 @@ const {
 
 // Active port forwarding tunnels
 const portForwardingTunnels = new Map();
+
+// Shared terminal-session map (sshBridge/terminalBridge), injected via
+// registerHandlers so local/dynamic tunnels can piggyback on an existing
+// authenticated SSH connection instead of re-authenticating (2FA hosts).
+let sharedSessions = null;
 
 function cleanupChainConnections(connections) {
   if (!Array.isArray(connections)) return;
@@ -49,7 +59,13 @@ function cancelTunnel(tunnelId, tunnel, sendStatus, { deleteEntry = false } = {}
     try { tunnel.pendingConn.end(); } catch { /* ignore */ }
   }
   cleanupChainConnections(tunnel.chainConnections);
-  if (tunnel.conn) {
+  if (tunnel.connRef) {
+    // Tunnel borrowed a shared terminal connection: drop our reference (the
+    // transport only ends when the last holder releases) and stop listening
+    // for its close events. Never end() the shared conn directly.
+    tunnel.removeSharedConnListener?.();
+    releaseConnectionRef(tunnel);
+  } else if (tunnel.conn) {
     try { tunnel.conn.end(); } catch { /* ignore */ }
   }
   sendStatus?.('inactive');
@@ -59,6 +75,195 @@ function cancelTunnel(tunnelId, tunnel, sendStatus, { deleteEntry = false } = {}
 }
 
 const { safeSend } = require("./ipcUtils.cjs");
+
+/**
+ * Local forwarding server: accept local TCP clients and pipe each through a
+ * forwardOut channel on the (possibly shared) SSH connection.
+ */
+function createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort }) {
+  return net.createServer((socket) => {
+    conn.forwardOut(
+      bindAddress,
+      localPort,
+      remoteHost,
+      remotePort,
+      (err, stream) => {
+        if (err) {
+          console.error(`[PortForward] Forward error:`, err.message);
+          socket.end();
+          return;
+        }
+        socket.pipe(stream).pipe(socket);
+
+        socket.on('error', (e) => console.warn('[PortForward] Socket error:', e.message));
+        stream.on('error', (e) => console.warn('[PortForward] Stream error:', e.message));
+      }
+    );
+  });
+}
+
+/**
+ * Dynamic forwarding server: minimal SOCKS5 endpoint whose CONNECT requests
+ * are carried over forwardOut channels on the (possibly shared) SSH connection.
+ */
+function createSocksProxyServer({ conn, bindAddress }) {
+  return net.createServer((socket) => {
+    // Simple SOCKS5 handshake
+    socket.once('data', (data) => {
+      if (data[0] !== 0x05) {
+        socket.end();
+        return;
+      }
+
+      // Reply: version, no auth required
+      socket.write(Buffer.from([0x05, 0x00]));
+
+      // Wait for connection request
+      socket.once('data', (request) => {
+        if (request[0] !== 0x05 || request[1] !== 0x01) {
+          socket.write(Buffer.from([0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          socket.end();
+          return;
+        }
+
+        let targetHost, targetPort;
+        const addressType = request[3];
+
+        if (addressType === 0x01) {
+          // IPv4
+          targetHost = `${request[4]}.${request[5]}.${request[6]}.${request[7]}`;
+          targetPort = request.readUInt16BE(8);
+        } else if (addressType === 0x03) {
+          // Domain name
+          const domainLength = request[4];
+          targetHost = request.slice(5, 5 + domainLength).toString();
+          targetPort = request.readUInt16BE(5 + domainLength);
+        } else if (addressType === 0x04) {
+          // IPv6 - simplified handling
+          socket.write(Buffer.from([0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          socket.end();
+          return;
+        } else {
+          socket.write(Buffer.from([0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          socket.end();
+          return;
+        }
+
+        // Forward through SSH tunnel
+        conn.forwardOut(
+          bindAddress,
+          0,
+          targetHost,
+          targetPort,
+          (err, stream) => {
+            if (err) {
+              socket.write(Buffer.from([0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+              socket.end();
+              return;
+            }
+
+            // Success reply
+            const reply = Buffer.alloc(10);
+            reply[0] = 0x05;
+            reply[1] = 0x00;
+            reply[2] = 0x00;
+            reply[3] = 0x01;
+            reply.writeUInt16BE(0, 8);
+            socket.write(reply);
+
+            socket.pipe(stream).pipe(socket);
+
+            socket.on('error', () => stream.end());
+            stream.on('error', () => socket.end());
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
+ * Start a local/dynamic tunnel on an already-authenticated SSH connection
+ * borrowed from a live terminal session (no second auth / 2FA prompt).
+ *
+ * The tunnel takes a reference on the shared transport, so it survives the
+ * source terminal tab closing; the transport is only torn down when the last
+ * holder releases it. Remote forwards are excluded: their `tcp connection`
+ * listener and forwardIn state on a shared Client would clash with siblings.
+ */
+function startTunnelOnSharedConnection({
+  source, type, ruleId, tunnelId, sender, sendStatus,
+  bindAddress, localPort, remoteHost, remotePort,
+}) {
+  const conn = source.connRef.conn;
+  const tunnelState = {
+    type,
+    conn,
+    pendingConn: null,
+    server: null,
+    chainConnections: [],
+    passphraseAbortController: null,
+    ruleId,
+    status: 'connecting',
+    webContentsId: sender.id,
+    cancelled: false,
+  };
+  acquireConnectionRef(tunnelState, source.connRef);
+  portForwardingTunnels.set(tunnelId, tunnelState);
+  sendStatus('connecting');
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const onSharedConnClose = () => {
+      console.log(`[PortForward] Shared SSH connection closed for tunnel ${tunnelId}`);
+      const tunnel = portForwardingTunnels.get(tunnelId) || tunnelState;
+      if (tunnel.server) {
+        try { tunnel.server.close(); } catch { /* ignore */ }
+      }
+      releaseConnectionRef(tunnel);
+      sendStatus('inactive');
+      portForwardingTunnels.delete(tunnelId);
+      if (!settled) {
+        settled = true;
+        reject(new Error(`Tunnel ${tunnelId} closed before it was established`));
+      }
+    };
+    conn.on('close', onSharedConnClose);
+    tunnelState.removeSharedConnListener = () => {
+      try { conn.removeListener('close', onSharedConnClose); } catch { /* ignore */ }
+    };
+
+    const server = type === 'local'
+      ? createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort })
+      : createSocksProxyServer({ conn, bindAddress });
+
+    server.on('error', (err) => {
+      console.error(`[PortForward] Server error (shared connection):`, err.message);
+      try { server.close(); } catch { /* ignore */ }
+      tunnelState.removeSharedConnListener?.();
+      releaseConnectionRef(tunnelState);
+      portForwardingTunnels.delete(tunnelId);
+      sendStatus('error', err.message);
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+
+    server.listen(localPort, bindAddress, () => {
+      const label = type === 'local'
+        ? `${bindAddress}:${localPort} -> ${remoteHost}:${remotePort}`
+        : `SOCKS5 on ${bindAddress}:${localPort}`;
+      console.log(`[PortForward] ${label} active on shared SSH connection (tunnel ${tunnelId})`);
+      tunnelState.server = server;
+      tunnelState.status = 'active';
+      sendStatus('active');
+      settled = true;
+      resolve({ tunnelId, success: true });
+    });
+  });
+}
 
 /**
  * Start a port forwarding tunnel
@@ -92,8 +297,37 @@ async function startPortForward(event, payload) {
     keepaliveCountMax: resolvedKeepaliveCountMax,
   } = payload;
 
-  const conn = new SSHClient();
   const sender = event.sender;
+
+  const sendStatus = (status, error = null) => {
+    if (!sender.isDestroyed()) {
+      sender.send("magiesTerminal:portforward:status", { tunnelId, status, error });
+    }
+  };
+
+  // Local/dynamic tunnels prefer an existing authenticated terminal connection
+  // to the same endpoint over dialing (and re-authenticating) a fresh one.
+  // Remote forwards always dial fresh — see startTunnelOnSharedConnection.
+  if (type === 'local' || type === 'dynamic') {
+    const source = findReusableSessionByEndpoint(sharedSessions, {
+      hostname,
+      port,
+      username: username || 'root',
+    });
+    if (source) {
+      console.log(`[PortForward] Reusing authenticated SSH connection for tunnel ${tunnelId}`);
+      try {
+        return await startTunnelOnSharedConnection({
+          source, type, ruleId, tunnelId, sender, sendStatus,
+          bindAddress, localPort, remoteHost, remotePort,
+        });
+      } catch (err) {
+        console.warn(`[PortForward] Shared-connection tunnel failed, dialing fresh:`, err?.message || err);
+      }
+    }
+  }
+
+  const conn = new SSHClient();
   const hasJumpHosts = jumpHosts.length > 0;
   const hasProxy = !!proxy;
   let chainConnections = [];
@@ -110,12 +344,6 @@ async function startPortForward(event, payload) {
     status: 'connecting',
     webContentsId: sender.id,
     cancelled: false,
-  };
-
-  const sendStatus = (status, error = null) => {
-    if (!sender.isDestroyed()) {
-      sender.send("magiesTerminal:portforward:status", { tunnelId, status, error });
-    }
   };
 
   // Keepalive policy:
@@ -333,25 +561,7 @@ async function startPortForward(event, payload) {
 
       if (type === 'local') {
         // LOCAL FORWARDING: Listen on local port, forward to remote
-        const server = net.createServer((socket) => {
-          conn.forwardOut(
-            bindAddress,
-            localPort,
-            remoteHost,
-            remotePort,
-            (err, stream) => {
-              if (err) {
-                console.error(`[PortForward] Forward error:`, err.message);
-                socket.end();
-                return;
-              }
-              socket.pipe(stream).pipe(socket);
-
-              socket.on('error', (e) => console.warn('[PortForward] Socket error:', e.message));
-              stream.on('error', (e) => console.warn('[PortForward] Stream error:', e.message));
-            }
-          );
-        });
+        const server = createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort });
 
         server.on('error', (err) => {
           console.error(`[PortForward] Server error:`, err.message);
@@ -421,79 +631,7 @@ async function startPortForward(event, payload) {
 
       } else if (type === 'dynamic') {
         // DYNAMIC FORWARDING (SOCKS5 Proxy)
-        const server = net.createServer((socket) => {
-          // Simple SOCKS5 handshake
-          socket.once('data', (data) => {
-            if (data[0] !== 0x05) {
-              socket.end();
-              return;
-            }
-
-            // Reply: version, no auth required
-            socket.write(Buffer.from([0x05, 0x00]));
-
-            // Wait for connection request
-            socket.once('data', (request) => {
-              if (request[0] !== 0x05 || request[1] !== 0x01) {
-                socket.write(Buffer.from([0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
-                socket.end();
-                return;
-              }
-
-              let targetHost, targetPort;
-              const addressType = request[3];
-
-              if (addressType === 0x01) {
-                // IPv4
-                targetHost = `${request[4]}.${request[5]}.${request[6]}.${request[7]}`;
-                targetPort = request.readUInt16BE(8);
-              } else if (addressType === 0x03) {
-                // Domain name
-                const domainLength = request[4];
-                targetHost = request.slice(5, 5 + domainLength).toString();
-                targetPort = request.readUInt16BE(5 + domainLength);
-              } else if (addressType === 0x04) {
-                // IPv6 - simplified handling
-                socket.write(Buffer.from([0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
-                socket.end();
-                return;
-              } else {
-                socket.write(Buffer.from([0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
-                socket.end();
-                return;
-              }
-
-              // Forward through SSH tunnel
-              conn.forwardOut(
-                bindAddress,
-                0,
-                targetHost,
-                targetPort,
-                (err, stream) => {
-                  if (err) {
-                    socket.write(Buffer.from([0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
-                    socket.end();
-                    return;
-                  }
-
-                  // Success reply
-                  const reply = Buffer.alloc(10);
-                  reply[0] = 0x05;
-                  reply[1] = 0x00;
-                  reply[2] = 0x00;
-                  reply[3] = 0x01;
-                  reply.writeUInt16BE(0, 8);
-                  socket.write(reply);
-
-                  socket.pipe(stream).pipe(socket);
-
-                  socket.on('error', () => stream.end());
-                  stream.on('error', () => socket.end());
-                }
-              );
-            });
-          });
-        });
+        const server = createSocksProxyServer({ conn, bindAddress });
 
         server.on('error', (err) => {
           console.error(`[PortForward] SOCKS server error:`, err.message);
@@ -656,8 +794,13 @@ function stopPortForwardByRuleId(_event, { ruleId }) {
 
 /**
  * Register IPC handlers for port forwarding operations
+ *
+ * @param {object} ipcMain
+ * @param {{ sessions?: Map }} [deps] - shared terminal-session map enabling
+ *   local/dynamic tunnels to reuse authenticated SSH connections
  */
-function registerHandlers(ipcMain) {
+function registerHandlers(ipcMain, deps) {
+  sharedSessions = deps?.sessions ?? null;
   ipcMain.handle("magiesTerminal:portforward:start", startPortForward);
   ipcMain.handle("magiesTerminal:portforward:stop", stopPortForward);
   ipcMain.handle("magiesTerminal:portforward:status", getPortForwardStatus);

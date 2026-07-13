@@ -2,9 +2,10 @@
  * Import Key Panel - Import existing SSH key
  */
 
-import { Eye, EyeOff, Upload } from 'lucide-react';
+import { Eye, EyeOff, ShieldAlert, Upload } from 'lucide-react';
 import React,{ useCallback,useRef } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
+import { isFido2SecurityKey } from '../../domain/fido2KeyDetect';
 import { SSHKey } from '../../types';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -29,6 +30,8 @@ export const ImportKeyPanel: React.FC<ImportKeyPanelProps> = ({
 }) => {
     const { t } = useI18n();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const isSecurityKey =
+        isFido2SecurityKey(draftKey.privateKey) || isFido2SecurityKey(draftKey.publicKey);
 
     const handleFileImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -189,10 +192,17 @@ export const ImportKeyPanel: React.FC<ImportKeyPanelProps> = ({
                 </Button>
             </div>
 
+            {isSecurityKey && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+                    <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+                    <span>{t('keychain.import.fido2Unsupported')}</span>
+                </div>
+            )}
+
             <Button
                 className="w-full h-11"
                 onClick={onImport}
-                disabled={!draftKey.label?.trim() || !draftKey.privateKey?.trim()}
+                disabled={!draftKey.label?.trim() || !draftKey.privateKey?.trim() || isSecurityKey}
             >
                 {t('keychain.import.saveKey')}
             </Button>

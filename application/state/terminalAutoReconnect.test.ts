@@ -3,10 +3,14 @@ import assert from "node:assert/strict";
 
 import {
   TERMINAL_AUTO_RECONNECT_DELAY_MS,
+  TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS,
+  TERMINAL_AUTO_RECONNECT_MAX_DELAY_MS,
   canAttemptTerminalAutoReconnect,
+  hasExhaustedAutoReconnectAttempts,
   isTerminalAutoReconnectEnabled,
   shouldAutoReconnectAfterExit,
   shouldContinueAutoReconnectAfterFailure,
+  terminalAutoReconnectDelayMs,
 } from "./terminalAutoReconnect";
 
 const sshHost = {
@@ -16,6 +20,22 @@ const sshHost = {
 
 test("terminal auto reconnect uses a five second retry delay", () => {
   assert.equal(TERMINAL_AUTO_RECONNECT_DELAY_MS, 5000);
+});
+
+test("auto reconnect delay doubles per attempt and caps at the max delay", () => {
+  assert.equal(terminalAutoReconnectDelayMs(1), 5000);
+  assert.equal(terminalAutoReconnectDelayMs(2), 10000);
+  assert.equal(terminalAutoReconnectDelayMs(3), 20000);
+  assert.equal(terminalAutoReconnectDelayMs(4), 40000);
+  assert.equal(terminalAutoReconnectDelayMs(5), TERMINAL_AUTO_RECONNECT_MAX_DELAY_MS);
+  assert.equal(terminalAutoReconnectDelayMs(20), TERMINAL_AUTO_RECONNECT_MAX_DELAY_MS);
+});
+
+test("auto reconnect stops after the attempt limit is reached", () => {
+  assert.equal(hasExhaustedAutoReconnectAttempts(0), false);
+  assert.equal(hasExhaustedAutoReconnectAttempts(TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS - 1), false);
+  assert.equal(hasExhaustedAutoReconnectAttempts(TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS), true);
+  assert.equal(hasExhaustedAutoReconnectAttempts(TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS + 1), true);
 });
 
 test("terminal auto reconnect is disabled unless the setting is explicitly true", () => {

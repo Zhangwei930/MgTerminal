@@ -153,9 +153,31 @@ function findReusableSession(sessions, sourceSessionId, requestedTarget) {
   return source;
 }
 
+/**
+ * Scan the sessions Map for any live interactive SSH shell session whose
+ * authenticated connection targets exactly the requested endpoint. Used by
+ * port forwarding to piggyback tunnels onto an existing connection (skipping
+ * a second password/2FA prompt) without the renderer having to name a session.
+ *
+ * Applies the same liveness and exact-endpoint rules as findReusableSession.
+ *
+ * @param {Map} sessions - the shared sessions Map
+ * @param {{ hostname: string, port?: number, username?: string }} requestedTarget
+ * @returns {object|null} a reusable session, or null
+ */
+function findReusableSessionByEndpoint(sessions, requestedTarget) {
+  if (!sessions || !requestedTarget || !requestedTarget.hostname) return null;
+  for (const [sessionId] of sessions) {
+    const candidate = findReusableSession(sessions, sessionId, requestedTarget);
+    if (candidate) return candidate;
+  }
+  return null;
+}
+
 module.exports = {
   createConnectionRef,
   acquireConnectionRef,
   releaseConnectionRef,
   findReusableSession,
+  findReusableSessionByEndpoint,
 };

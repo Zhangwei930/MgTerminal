@@ -194,7 +194,7 @@ function createBridgeRegistrar(context) {
     sftpBridge.registerHandlers(ipcMain, { terminalWorkerManager });
     localFsBridge.registerHandlers(ipcMain);
     transferBridge.registerHandlers(ipcMain, { terminalWorkerManager });
-    portForwardingBridge.registerHandlers(ipcMain);
+    portForwardingBridge.registerHandlers(ipcMain, { sessions });
     terminalBridge.registerHandlers(ipcMain, { terminalWorkerManager });
 
     const scriptBridge = require("../bridges/scriptBridge.cjs");

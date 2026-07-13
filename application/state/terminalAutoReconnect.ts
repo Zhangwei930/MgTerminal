@@ -2,6 +2,19 @@ import type { TerminalSettings } from "../../domain/models";
 import type { TerminalSessionExitEvent } from "./resolveTerminalSessionExitIntent";
 
 export const TERMINAL_AUTO_RECONNECT_DELAY_MS = 5000;
+export const TERMINAL_AUTO_RECONNECT_MAX_DELAY_MS = 60_000;
+export const TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS = 10;
+
+/** Exponential backoff per attempt (1-based): 5s, 10s, 20s, 40s, then capped at 60s. */
+export function terminalAutoReconnectDelayMs(attempt: number): number {
+  const exponent = Math.max(0, attempt - 1);
+  return Math.min(TERMINAL_AUTO_RECONNECT_DELAY_MS * 2 ** exponent, TERMINAL_AUTO_RECONNECT_MAX_DELAY_MS);
+}
+
+/** True once `attemptsSoFar` consecutive failed attempts hit the limit. Resets on successful connect. */
+export function hasExhaustedAutoReconnectAttempts(attemptsSoFar: number): boolean {
+  return attemptsSoFar >= TERMINAL_AUTO_RECONNECT_MAX_ATTEMPTS;
+}
 
 type AutoReconnectHost = {
   protocol?: "ssh" | "telnet" | "local" | "serial" | "mosh" | "et";

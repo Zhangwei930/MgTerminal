@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpCircle, Bug, Check, Loader2, MessageCircle, Newspaper, RefreshCcw } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowUpCircle, Check, Loader2, Mail, Newspaper, RefreshCcw } from "lucide-react";
 import AppLogo from "./AppLogo";
+import ChangelogDialog from "./ChangelogDialog";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { useApplicationBackend } from "../application/state/useApplicationBackend";
@@ -15,52 +16,7 @@ type AppInfo = {
   platform?: string;
 };
 
-const REPO_URL = "https://github.com/JasonZhangDad/MgTerminal";
-const BUG_REPORT_TEMPLATE = "bug_report.yml";
-
-const mapIssuePlatform = (platform?: string) => {
-  switch (platform) {
-    case "darwin":
-      return "macOS";
-    case "win32":
-      return "Windows";
-    case "linux":
-      return "Linux";
-    default:
-      return undefined;
-  }
-};
-
-/** Opens GitHub's Bug Report issue form with fields prefilled from the running app. */
-export const buildIssueUrl = (appInfo: AppInfo) => {
-  const params = new URLSearchParams({
-    template: BUG_REPORT_TEMPLATE,
-    title: "[Bug] ",
-  });
-
-  if (appInfo.version) {
-    params.set("version", appInfo.version);
-  }
-
-  const platform = mapIssuePlatform(appInfo.platform);
-  if (platform) {
-    params.set("platform", platform);
-  }
-
-  const installSource =
-    appInfo.version === "0.0.0"
-      ? "Built from source (npm run dev / pack)"
-      : "GitHub Release (.dmg / .exe / .AppImage / .deb)";
-  params.set("install_source", installSource);
-
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "unknown";
-  params.set(
-    "logs",
-    `Reported from MagiesTerminal Settings (${appInfo.name} ${appInfo.version || "unknown"}).\n\nUser-Agent: ${ua}`,
-  );
-
-  return `${REPO_URL}/issues/new?${params.toString()}`;
-};
+const SUPPORT_EMAIL = "hibake888@outlook.com";
 
 const ActionRow: React.FC<{
   icon: React.ReactNode;
@@ -95,9 +51,10 @@ interface SettingsApplicationTabProps {
 
 export default function SettingsApplicationTab({ updateState, checkNow, openReleasePage, installUpdate, startDownload, isUpdateDemoMode }: SettingsApplicationTabProps) {
   const { t } = useI18n();
-  const { openExternal, getApplicationInfo } = useApplicationBackend();
+  const { getApplicationInfo } = useApplicationBackend();
   const [appInfo, setAppInfo] = useState<AppInfo>({ name: "MagiesTerminal", version: "" });
   const [lastCheckResult, setLastCheckResult] = useState<'none' | 'available' | 'upToDate'>('none');
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,15 +74,15 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
     };
   }, [getApplicationInfo]);
 
-  const handleOpenExternal = async (url: string) => {
+  const handleContact = async () => {
+    // The openExternal bridge only allows http/https, so a mailto: link
+    // cannot open the mail client; copying the address is the reliable path.
     try {
-      await openExternal(url);
+      await navigator.clipboard.writeText(SUPPORT_EMAIL);
+      toast.success(SUPPORT_EMAIL, t("settings.application.contact.copied"));
     } catch (err) {
-      console.warn("[SettingsApplicationTab] openExternal failed:", err);
-      toast.error(
-        t("settings.application.openExternal.failedBody"),
-        t("settings.application.openExternal.failedTitle"),
-      );
+      console.warn("[SettingsApplicationTab] copy support email failed:", err);
+      toast.error(SUPPORT_EMAIL, t("settings.application.contact.copyFailed"));
     }
   };
 
@@ -161,10 +118,6 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
     // Reset the result after 3 seconds
     setTimeout(() => setLastCheckResult('none'), 3000);
   };
-
-  const issueUrl = useMemo(() => buildIssueUrl(appInfo), [appInfo]);
-  const releasesUrl = `${REPO_URL}/releases`;
-  const discussionsUrl = `${REPO_URL}/discussions`;
 
   return (
     <SettingsTabContent value="application">
@@ -238,27 +191,22 @@ export default function SettingsApplicationTab({ updateState, checkNow, openRele
         <div className="flex-1">
           <div className="space-y-2">
             <ActionRow
-              icon={<Bug size={18} />}
-              title={t("settings.application.reportProblem")}
-              subtitle={t("settings.application.reportProblem.subtitle")}
-              onClick={() => void handleOpenExternal(issueUrl)}
-            />
-            <ActionRow
-              icon={<MessageCircle size={18} />}
-              title={t("settings.application.community")}
-              subtitle={t("settings.application.community.subtitle")}
-              onClick={() => void handleOpenExternal(discussionsUrl)}
+              icon={<Mail size={18} />}
+              title={t("settings.application.contact")}
+              subtitle={t("settings.application.contact.subtitle")}
+              onClick={() => void handleContact()}
             />
             <ActionRow
               icon={<Newspaper size={18} />}
               title={t("settings.application.whatsNew")}
               subtitle={t("settings.application.whatsNew.subtitle")}
-              onClick={() => void handleOpenExternal(releasesUrl)}
+              onClick={() => setChangelogOpen(true)}
             />
           </div>
         </div>
       </div>
 
+      <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
     </SettingsTabContent>
   );
 }

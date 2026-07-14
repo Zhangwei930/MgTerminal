@@ -106,6 +106,8 @@ declare global {
     credentialsAvailable?(): Promise<boolean>;
     credentialsEncrypt?(plaintext: string): Promise<string>;
     credentialsDecrypt?(value: string): Promise<string>;
+    /** Reset stale macOS Keychain Safe Storage items; no-op elsewhere. */
+    credentialsRepair?(): Promise<{ attempted: boolean; deleted: string[]; available: boolean }>;
   }
 }
 

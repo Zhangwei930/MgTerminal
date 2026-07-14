@@ -105,6 +105,11 @@ export const ruCoreMessages: Messages = {
   'settings.system.credentials.unknown': 'Неизвестно (не поддерживается в этой среде)',
   'settings.system.credentials.unavailableHint': 'Учётные данные, зашифрованные в другом профиле пользователя или на другой машине, здесь расшифровать нельзя. Повторно введите и сохраните их на этом устройстве.',
   'settings.system.credentials.portabilityHint': 'Облачная синхронизация переносима, потому что использует шифрование вашим мастер-ключом. Локальное шифрование safeStorage привязано к устройству и пользователю.',
+  'settings.system.credentials.repair': 'Исправить Keychain',
+  'settings.system.credentials.repair.hint': 'После обновления приложения macOS может оставить устаревшую запись «Safe Storage» в Keychain. «Исправить Keychain» удалит её, чтобы MagiesTerminal снова мог запросить доступ. Возможно, потребуется заново ввести пароли или API-ключи.',
+  'settings.system.credentials.repair.success': 'Keychain восстановлен. Безопасное хранилище снова доступно.',
+  'settings.system.credentials.repair.partial': 'Запись Keychain сброшена, но безопасное хранилище всё ещё недоступно. Полностью закройте MagiesTerminal (⌘Q), откройте снова, разрешите доступ к Keychain при запросе и повторите.',
+  'settings.system.credentials.repair.failed': 'Не удалось автоматически исправить Keychain. Откройте «Связка ключей», удалите записи Safe Storage для MagiesTerminal и перезапустите приложение.',
 
   // Settings > System > Network Proxy
   'settings.system.networkProxy.title': 'Сетевой прокси',

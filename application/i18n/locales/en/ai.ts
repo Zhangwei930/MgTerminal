@@ -36,7 +36,7 @@ export const enAiMessages: Messages = {
   'ai.providers.apiKey': 'API Key',
   'ai.providers.apiKey.placeholder': 'Enter API key',
   'ai.providers.apiKey.decrypting': 'Decrypting...',
-  'ai.providers.apiKey.encryptError': 'Could not encrypt the API key — secure storage is unavailable. On macOS, allow MagiesTerminal to access the Keychain (a system prompt may have been denied), then try again.',
+  'ai.providers.apiKey.encryptError': 'Could not encrypt the API key — secure storage is unavailable. On macOS: Settings → System → Fix Keychain, allow Keychain access if prompted, then save again. Or quit fully (⌘Q) and reopen after allowing access.',
   'ai.providers.baseUrl': 'Base URL',
   'ai.providers.skipTLSVerify': 'Skip TLS certificate verification (for self-signed certs)',
   'ai.providers.defaultModel': 'Default Model',

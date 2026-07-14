@@ -105,6 +105,11 @@ export const enCoreMessages: Messages = {
   'settings.system.credentials.unknown': 'Unknown (not supported in this environment)',
   'settings.system.credentials.unavailableHint': 'Credentials encrypted on another user profile or machine cannot be decrypted here. Re-enter and save credentials on this device.',
   'settings.system.credentials.portabilityHint': 'Cloud Sync is portable because it uses your master key encryption. Local safeStorage encryption is device/user scoped.',
+  'settings.system.credentials.repair': 'Fix Keychain',
+  'settings.system.credentials.repair.hint': 'After an app update, macOS may keep a stale Keychain “Safe Storage” item. Fix Keychain clears it so MagiesTerminal can re-authorize and encrypt again. You may need to re-enter some saved passwords or API keys.',
+  'settings.system.credentials.repair.success': 'Keychain repaired. Secure storage is available again.',
+  'settings.system.credentials.repair.partial': 'Keychain was reset, but secure storage is still unavailable. Quit MagiesTerminal fully (⌘Q), reopen, allow Keychain access if prompted, then retry.',
+  'settings.system.credentials.repair.failed': 'Could not repair Keychain access. Open Keychain Access, delete items named “Safe Storage” for MagiesTerminal, then restart the app.',
 
   // Settings > System > Network Proxy
   'settings.system.networkProxy.title': 'Network Proxy',

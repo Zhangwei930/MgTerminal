@@ -103,6 +103,11 @@ export const zhTWCoreMessages: Messages = {
   'settings.system.credentials.unknown': '未知（目前環境不支援）',
   'settings.system.credentials.unavailableHint': '在其他使用者或機器上加密的憑證無法在此處解密。請在目前裝置重新輸入並儲存憑證。',
   'settings.system.credentials.portabilityHint': '雲同步可跨裝置，因為使用主金鑰加密；本機 safeStorage 加密僅綁定目前系統使用者/裝置。',
+  'settings.system.credentials.repair': '修復鑰匙圈',
+  'settings.system.credentials.repair.hint': '應用程式更新後，macOS 可能殘留與目前程式簽名不符的「Safe Storage」鑰匙圈項目。點「修復鑰匙圈」可清除並重新授權。之後可能需要重新輸入部分密碼或 API Key。',
+  'settings.system.credentials.repair.success': '鑰匙圈已修復，安全儲存可用。',
+  'settings.system.credentials.repair.partial': '已重設鑰匙圈項目，但安全儲存仍不可用。請完全結束應用程式（⌘Q）後重新開啟，若跳出鑰匙圈授權請按「允許」，再重試。',
+  'settings.system.credentials.repair.failed': '無法自動修復鑰匙圈。請開啟「鑰匙圈存取」，刪除名稱含 MagiesTerminal / Safe Storage 的項目，然後重新啟動應用程式。',
 
   // Settings > System > Network Proxy
   'settings.system.networkProxy.title': '網路代理',

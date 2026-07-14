@@ -103,6 +103,11 @@ export const zhCNCoreMessages: Messages = {
   'settings.system.credentials.unknown': '未知（当前环境不支持）',
   'settings.system.credentials.unavailableHint': '在其他用户或机器上加密的凭据无法在此处解密。请在当前设备重新输入并保存凭据。',
   'settings.system.credentials.portabilityHint': '云同步可跨设备，因为使用主密钥加密；本地 safeStorage 加密仅绑定当前系统用户/设备。',
+  'settings.system.credentials.repair': '修复钥匙串',
+  'settings.system.credentials.repair.hint': '应用更新后，macOS 可能残留与当前程序签名不匹配的「Safe Storage」钥匙串条目。点「修复钥匙串」可清除并重新授权。之后可能需要重新输入部分密码或 API Key。',
+  'settings.system.credentials.repair.success': '钥匙串已修复，安全存储可用。',
+  'settings.system.credentials.repair.partial': '已重置钥匙串条目，但安全存储仍不可用。请完全退出应用（⌘Q）后重新打开，若弹出钥匙串授权请点「允许」，再重试。',
+  'settings.system.credentials.repair.failed': '无法自动修复钥匙串。请打开「钥匙串访问」，删除名称含 MagiesTerminal / Safe Storage 的条目，然后重启应用。',
 
   // Settings > System > Network Proxy
   'settings.system.networkProxy.title': '网络代理',

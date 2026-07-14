@@ -1030,6 +1030,8 @@ function createPreloadApi(ctx) {
   credentialsAvailable: () => ipcRenderer.invoke("magiesTerminal:credentials:available"),
   credentialsEncrypt: (plaintext) => ipcRenderer.invoke("magiesTerminal:credentials:encrypt", plaintext),
   credentialsDecrypt: (value) => ipcRenderer.invoke("magiesTerminal:credentials:decrypt", value),
+  /** macOS: reset stale Safe Storage keychain items after app re-sign / denied ACL. */
+  credentialsRepair: () => ipcRenderer.invoke("magiesTerminal:credentials:repair"),
 
   // Auto-update
   checkForUpdate: () => ipcRenderer.invoke("magiesTerminal:update:check"),

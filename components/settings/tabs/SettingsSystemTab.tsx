@@ -161,6 +161,8 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
   const [credentialsAvailable, setCredentialsAvailable] = useState<boolean | null>(null);
   const [isCheckingCredentials, setIsCheckingCredentials] = useState(false);
+  const [isRepairingCredentials, setIsRepairingCredentials] = useState(false);
+  const [credentialRepairMessage, setCredentialRepairMessage] = useState<string | null>(null);
   const [crashLogs, setCrashLogs] = useState<CrashLogFile[]>([]);
   const [isLoadingCrashLogs, setIsLoadingCrashLogs] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -210,6 +212,31 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
       setIsCheckingCredentials(false);
     }
   }, []);
+
+  const repairCredentialProtection = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.credentialsRepair) {
+      setCredentialRepairMessage(t("settings.system.credentials.repair.failed"));
+      return;
+    }
+    setIsRepairingCredentials(true);
+    setCredentialRepairMessage(null);
+    try {
+      const result = await bridge.credentialsRepair();
+      setCredentialsAvailable(result.available);
+      if (result.available) {
+        setCredentialRepairMessage(t("settings.system.credentials.repair.success"));
+      } else if (result.attempted) {
+        setCredentialRepairMessage(t("settings.system.credentials.repair.partial"));
+      } else {
+        setCredentialRepairMessage(t("settings.system.credentials.repair.failed"));
+      }
+    } catch {
+      setCredentialRepairMessage(t("settings.system.credentials.repair.failed"));
+    } finally {
+      setIsRepairingCredentials(false);
+    }
+  }, [t]);
 
   useEffect(() => {
     void loadCredentialProtectionStatus();
@@ -644,21 +671,54 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                           : t("settings.system.credentials.unknown")}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadCredentialProtectionStatus}
-                  disabled={isCheckingCredentials}
-                  className="gap-1.5"
-                >
-                  <RefreshCw size={14} className={isCheckingCredentials ? "animate-spin" : ""} />
-                  {t("settings.system.refresh")}
-                </Button>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  {isMac && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void repairCredentialProtection()}
+                      disabled={isRepairingCredentials || isCheckingCredentials}
+                      className="gap-1.5"
+                    >
+                      <RotateCcw size={14} className={isRepairingCredentials ? "animate-spin" : ""} />
+                      {t("settings.system.credentials.repair")}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadCredentialProtectionStatus()}
+                    disabled={isCheckingCredentials || isRepairingCredentials}
+                    className="gap-1.5"
+                  >
+                    <RefreshCw size={14} className={isCheckingCredentials ? "animate-spin" : ""} />
+                    {t("settings.system.refresh")}
+                  </Button>
+                </div>
               </div>
 
               {credentialsAvailable === false && (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                   {t("settings.system.credentials.unavailableHint")}
+                </p>
+              )}
+
+              {isMac && (
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.system.credentials.repair.hint")}
+                </p>
+              )}
+
+              {credentialRepairMessage && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    credentialsAvailable === true
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-amber-700 dark:text-amber-400",
+                  )}
+                >
+                  {credentialRepairMessage}
                 </p>
               )}
 

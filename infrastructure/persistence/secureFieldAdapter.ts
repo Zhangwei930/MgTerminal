@@ -33,11 +33,25 @@ export async function encryptField(value: string | undefined): Promise<string | 
   return b.credentialsEncrypt(value);
 }
 
+/**
+ * Decrypt a single stored field. Fails soft: if the bridge is missing or
+ * decryption throws (broken keychain, corrupt/nested ciphertext), the original
+ * stored value is returned rather than rejecting — so a single bad credential
+ * never aborts a whole vault load, and the value stays recoverable after a
+ * keychain repair. The result may therefore still be an encrypted placeholder;
+ * callers must guard with `isEncryptedCredentialPlaceholder` /
+ * `sanitizeCredentialValue` before displaying it or using it as a secret.
+ */
 export async function decryptField(value: string | undefined): Promise<string | undefined> {
   if (!value) return value;
   const b = bridge();
   if (!b?.credentialsDecrypt) return value;
-  return b.credentialsDecrypt(value);
+  try {
+    return await b.credentialsDecrypt(value);
+  } catch (err) {
+    console.warn('[secureFieldAdapter] decryptField failed; keeping stored value:', (err as Error)?.message ?? err);
+    return value;
+  }
 }
 
 // ---------------------------------------------------------------------------

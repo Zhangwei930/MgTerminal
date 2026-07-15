@@ -37,6 +37,7 @@ export const enAiMessages: Messages = {
   'ai.providers.apiKey.placeholder': 'Enter API key',
   'ai.providers.apiKey.decrypting': 'Decrypting...',
   'ai.providers.apiKey.encryptError': 'Could not encrypt the API key. Quit fully (⌘Q), reopen, and try again. If it still fails: Settings → System → Fix Keychain.',
+  'ai.providers.apiKey.decryptError': 'The saved API key could not be decrypted (Keychain may have changed). Re-enter the API key and save.',
   'ai.providers.baseUrl': 'Base URL',
   'ai.providers.skipTLSVerify': 'Skip TLS certificate verification (for self-signed certs)',
   'ai.providers.defaultModel': 'Default Model',

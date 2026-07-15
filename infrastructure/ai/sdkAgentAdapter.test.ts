@@ -280,6 +280,44 @@ test('runSdkAgentTurn forwards Cursor API key as agent environment', async () =>
   assert.equal(streamArgs[2], 'cursor');
 });
 
+test('runSdkAgentTurn never forwards an undecryptable ciphertext blob as the Cursor key', async () => {
+  let streamArgs: unknown[] = [];
+  let done: (() => void) | null = null;
+  const bridge: Record<string, (...args: unknown[]) => unknown> = {
+    aiSdkAgentStream: async (...args: unknown[]) => {
+      streamArgs = args;
+      queueMicrotask(() => done?.());
+      return { ok: true };
+    },
+    aiSdkAgentCancel: async () => ({ ok: true }),
+    onAiSdkAgentEvent: () => () => {},
+    onAiSdkAgentDone: (_requestId: unknown, cb: unknown) => {
+      done = cb as () => void;
+      return () => {};
+    },
+    onAiSdkAgentError: () => () => {},
+  };
+
+  await runSdkAgentTurn(
+    bridge,
+    'request-cursor-cipher',
+    'chat-cursor-cipher',
+    {
+      id: 'cursor',
+      name: 'Cursor',
+      command: 'cursor',
+      enabled: true,
+      sdkBackend: 'cursor',
+      // A still-encrypted blob (decrypt unavailable) must not become the key.
+      apiKey: 'enc:v1:djEwZ2FyYmFnZQ==',
+    },
+    'hello',
+    createCallbacks([]),
+  );
+
+  assert.equal(streamArgs.at(-2), undefined);
+});
+
 
 test('runSdkAgentTurn formats structured async error events', async () => {
   const errors: string[] = [];

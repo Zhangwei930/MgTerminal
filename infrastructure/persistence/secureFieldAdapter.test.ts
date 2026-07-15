@@ -49,6 +49,28 @@ test('renderer credential persistence fails closed when its encryption bridge is
   }
 });
 
+test('decryptField fails soft and returns the stored value when the bridge throws', async () => {
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      magiesTerminal: {
+        credentialsDecrypt: async () => {
+          throw new Error('keychain unavailable');
+        },
+      },
+    },
+  });
+
+  try {
+    // Must not reject — a single bad credential should never abort a vault load;
+    // the stored (still-encrypted) value is kept for later recovery.
+    assert.equal(await decryptField('enc:v1:djEwZ2FyYmFnZQ=='), 'enc:v1:djEwZ2FyYmFnZQ==');
+  } finally {
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: previousWindow });
+  }
+});
+
 test('renderer credential adapter delegates encryption and decryption to the bridge', async () => {
   const restoreWindow = installCredentialBridge();
 

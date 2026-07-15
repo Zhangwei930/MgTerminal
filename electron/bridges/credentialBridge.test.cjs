@@ -115,6 +115,80 @@ test('credential bridge encrypts and decrypts values with safeStorage', () => {
   assert.equal(handlers.get('magiesTerminal:credentials:available')(), true);
 });
 
+test('encrypt never double-wraps enc:v1 ciphertext it cannot verify', () => {
+  // Broken keychain: enc:v1 blobs cannot be verified by decrypting. They must
+  // still be recognized as ciphertext, not re-encrypted into enc:v2(enc:v1).
+  const dir = tempUserData();
+  const handlers = registerCredentialHandlers(
+    { isEncryptionAvailable: () => false },
+    { platform: 'linux', userDataPath: dir },
+  );
+
+  const v1Blob = `${ENC_PREFIX_V1}${Buffer.from('v10-old-keychain-cipher').toString('base64')}`;
+  assert.equal(
+    handlers.get('magiesTerminal:credentials:encrypt')(null, v1Blob),
+    v1Blob,
+  );
+});
+
+test('decrypt unwraps nested enc:v2(enc:v1) ciphertext', () => {
+  const dir = tempUserData();
+  const safeStorage = {
+    isEncryptionAvailable: () => true,
+    encryptString: (value) => Buffer.from(`cipher:${value}`),
+    decryptString: (value) => value.toString().replace(/^cipher:/, ''),
+  };
+  const handlers = registerCredentialHandlers(safeStorage, { userDataPath: dir });
+
+  const { createLocalVault } = require('./credentialBridge.cjs');
+  const vault = createLocalVault({ userDataPath: dir });
+  const inner = `${ENC_PREFIX_V1}${Buffer.from('cipher:sk-real-key').toString('base64')}`;
+  const nested = vault.encrypt(inner);
+
+  assert.equal(
+    handlers.get('magiesTerminal:credentials:decrypt')(null, nested),
+    'sk-real-key',
+  );
+});
+
+test('decrypt fully unwraps nesting up to the budget without off-by-one drop', () => {
+  const dir = tempUserData();
+  const safeStorage = {
+    isEncryptionAvailable: () => true,
+    encryptString: (value) => Buffer.from(`cipher:${value}`),
+    decryptString: (value) => value.toString().replace(/^cipher:/, ''),
+  };
+  const handlers = registerCredentialHandlers(safeStorage, { userDataPath: dir });
+
+  const { createLocalVault } = require('./credentialBridge.cjs');
+  const vault = createLocalVault({ userDataPath: dir });
+  // enc:v2(enc:v2(enc:v2(enc:v1(secret)))) — 4 layers = MAX_NESTED_DECRYPTS.
+  let nested = `${ENC_PREFIX_V1}${Buffer.from('cipher:deep-secret').toString('base64')}`;
+  for (let i = 0; i < 3; i++) nested = vault.encrypt(nested);
+
+  assert.equal(
+    handlers.get('magiesTerminal:credentials:decrypt')(null, nested),
+    'deep-secret',
+  );
+});
+
+test('encrypt recognizes a Windows DPAPI enc:v1 blob and does not re-wrap it', () => {
+  // A DPAPI blob base64-encodes to "AQAAAN…" (bytes 01 00 00 00 D0 8C …).
+  const dpapiBytes = Buffer.from([0x01, 0x00, 0x00, 0x00, 0xd0, 0x8c, 0x9d, 0xdf, 0x01, 0x02, 0x03, 0x04]);
+  const payload = dpapiBytes.toString('base64');
+  assert.match(payload, /^AQAAAN/, 'sanity: DPAPI header must base64 to AQAAAN');
+  const v1Blob = `${ENC_PREFIX_V1}${payload}`;
+
+  const handlers = registerCredentialHandlers(
+    { isEncryptionAvailable: () => false },
+    { platform: 'win32', userDataPath: tempUserData() },
+  );
+  assert.equal(
+    handlers.get('magiesTerminal:credentials:encrypt')(null, v1Blob),
+    v1Blob,
+  );
+});
+
 test('credential decryption reports corrupt ciphertext without returning it', () => {
   const handlers = registerCredentialHandlers({
     isEncryptionAvailable: () => true,

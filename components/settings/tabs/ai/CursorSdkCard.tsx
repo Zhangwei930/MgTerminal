@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Check, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useI18n } from "../../../../application/i18n/I18nProvider";
 import { decryptField } from "../../../../infrastructure/persistence/secureFieldAdapter";
+import { isEncryptedCredentialPlaceholder } from "../../../../domain/credentials";
 import { Button } from "../../../ui/button";
 import { cn } from "../../../../lib/utils";
 import type { AgentPathInfo } from "./types";
@@ -36,7 +37,9 @@ export const CursorSdkCard: React.FC<{
     setIsDecrypting(true);
     decryptField(encryptedApiKey)
       .then((value) => {
-        if (!cancelled) setApiKeyDraft(value ?? "");
+        // Never surface ciphertext in the input — a save would re-encrypt it
+        // into nested ciphertext that reaches Cursor as a bad key (401).
+        if (!cancelled) setApiKeyDraft(isEncryptedCredentialPlaceholder(value) ? "" : value ?? "");
       })
       .catch(() => {
         if (!cancelled) setApiKeyDraft("");

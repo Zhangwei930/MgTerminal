@@ -25,7 +25,9 @@ const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
 const SAFE_STORAGE_BASE64_HEADER_PREFIXES = [
   "djEw", // "v10"
   "djEx", // "v11"
-  "AQAAAA", // 0x01 0x00 0x00 0x00 (DPAPI blob header)
+  // Windows DPAPI blob: bytes 01 00 00 00 D0 8C… (version DWORD + provider GUID)
+  // base64-encode to "AQAAAN…". They never encode to "AQAAAA".
+  "AQAAAN",
 ] as const;
 
 /**

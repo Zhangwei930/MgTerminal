@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Eye, EyeOff } from "lucide-react";
 import type { WebSearchConfig, WebSearchProviderId } from "../../../../infrastructure/ai/types";
 import { WEB_SEARCH_PROVIDER_PRESETS } from "../../../../infrastructure/ai/types";
+import { isEncryptedCredentialPlaceholder } from "../../../../domain/credentials";
 import { encryptField, decryptField } from "../../../../infrastructure/persistence/secureFieldAdapter";
 import { useI18n } from "../../../../application/i18n/I18nProvider";
 import { Select, SettingCard, SettingRow, SettingsSection, Toggle } from "../../settings-ui";
@@ -38,6 +39,11 @@ export const WebSearchSettings: React.FC<{
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  // True when the stored key could not be decrypted for display. The input then
+  // shows empty, but blur must NOT treat that as "clear the key" — the stored
+  // ciphertext stays recoverable after a keychain repair.
+  const [apiKeyLoadFailed, setApiKeyLoadFailed] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 
   const config = useMemo(() => webSearchConfig ?? {
     providerId: "tavily" as WebSearchProviderId,
@@ -59,10 +65,23 @@ export const WebSearchSettings: React.FC<{
       setIsDecrypting(true);
       decryptField(config.apiKey)
         .then((decrypted) => {
-          if (decryptSeqRef.current === seq) setApiKeyInput(decrypted ?? "");
+          if (decryptSeqRef.current !== seq) return;
+          // Never surface ciphertext in the input — a later blur would
+          // re-encrypt it into nested ciphertext sent as the API key.
+          if (isEncryptedCredentialPlaceholder(decrypted)) {
+            setApiKeyInput("");
+            setApiKeyLoadFailed(true);
+            return;
+          }
+          setApiKeyInput(decrypted ?? "");
+          setApiKeyLoadFailed(false);
         })
-        .catch(() => {
-          if (decryptSeqRef.current === seq) setApiKeyInput(config.apiKey ?? "");
+        .catch((err) => {
+          console.warn("[WebSearchSettings] API key decrypt failed:", err);
+          if (decryptSeqRef.current === seq) {
+            setApiKeyInput("");
+            setApiKeyLoadFailed(true);
+          }
         })
         .finally(() => {
           if (decryptSeqRef.current === seq) setIsDecrypting(false);
@@ -70,6 +89,7 @@ export const WebSearchSettings: React.FC<{
     } else {
       decryptSeqRef.current++;
       setApiKeyInput("");
+      setApiKeyLoadFailed(false);
       setIsDecrypting(false);
     }
   }, [config.apiKey, config.providerId]);
@@ -92,6 +112,8 @@ export const WebSearchSettings: React.FC<{
         apiHost: newPreset.defaultApiHost || undefined,
       });
       setApiKeyInput("");
+      setApiKeyLoadFailed(false);
+      setApiKeyError(null);
     },
     [setWebSearchConfig],
   );
@@ -100,18 +122,27 @@ export const WebSearchSettings: React.FC<{
   const blurSeqRef = useRef(0);
   const handleApiKeyBlur = useCallback(async () => {
     if (!apiKeyInput.trim()) {
+      // Empty because the stored key could not be decrypted for display —
+      // leave it alone so a keychain repair can still recover it.
+      if (apiKeyLoadFailed) return;
       blurSeqRef.current++;
       updateConfig({ apiKey: undefined });
       return;
     }
     const seq = ++blurSeqRef.current;
     const providerAtBlur = configRef.current.providerId;
-    const encrypted = await encryptField(apiKeyInput.trim());
-    // Only apply if this is still the latest blur and provider hasn't changed
-    if (blurSeqRef.current === seq && configRef.current.providerId === providerAtBlur) {
-      updateConfig({ apiKey: encrypted });
+    try {
+      const encrypted = await encryptField(apiKeyInput.trim());
+      // Only apply if this is still the latest blur and provider hasn't changed
+      if (blurSeqRef.current === seq && configRef.current.providerId === providerAtBlur) {
+        updateConfig({ apiKey: encrypted });
+        setApiKeyError(null);
+      }
+    } catch (err) {
+      console.warn("[WebSearchSettings] API key encrypt failed:", err);
+      setApiKeyError(t("ai.providers.apiKey.encryptError"));
     }
-  }, [apiKeyInput, updateConfig]);
+  }, [apiKeyInput, apiKeyLoadFailed, updateConfig, t]);
 
   return (
     <SettingsSection title={t("ai.webSearch.title")}>
@@ -145,23 +176,35 @@ export const WebSearchSettings: React.FC<{
             label={t("ai.webSearch.apiKey")}
             description={t("ai.webSearch.apiKey.description")}
           >
-            <div className="flex items-center gap-1.5">
-              <input
-                type={showApiKey ? "text" : "password"}
-                value={isDecrypting ? "" : apiKeyInput}
-                placeholder={isDecrypting ? t("ai.providers.apiKey.decrypting") : t("ai.webSearch.apiKey.placeholder")}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                onBlur={() => void handleApiKeyBlur()}
-                className="w-64 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                disabled={isDecrypting}
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="p-1.5 rounded hover:bg-muted text-muted-foreground"
-              >
-                {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-1.5">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={isDecrypting ? "" : apiKeyInput}
+                  placeholder={isDecrypting ? t("ai.providers.apiKey.decrypting") : t("ai.webSearch.apiKey.placeholder")}
+                  onChange={(e) => {
+                    setApiKeyInput(e.target.value);
+                    setApiKeyLoadFailed(false);
+                    setApiKeyError(null);
+                  }}
+                  onBlur={() => void handleApiKeyBlur()}
+                  className="w-64 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  disabled={isDecrypting}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="p-1.5 rounded hover:bg-muted text-muted-foreground"
+                >
+                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              {apiKeyError && (
+                <p className="text-[11px] text-destructive">{apiKeyError}</p>
+              )}
+              {!apiKeyError && apiKeyLoadFailed && (
+                <p className="text-[11px] text-destructive">{t("ai.providers.apiKey.decryptError")}</p>
+              )}
             </div>
           </SettingRow>
         )}

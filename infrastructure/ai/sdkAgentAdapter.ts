@@ -10,6 +10,7 @@ import { getExternalAgentSdkBackend, getManualAgentCommand } from './managedAgen
 import { encodeSdkSessionIdentity } from './harness/sdkSessionIdentity';
 import { globalTraceStore, mapSdkStreamEventToAgentEvents } from './harness';
 import { decryptField } from '../persistence/secureFieldAdapter';
+import { isEncryptedCredentialPlaceholder } from '../../domain/credentials';
 
 export interface DefaultTargetSessionHint {
   sessionId: string;
@@ -79,8 +80,11 @@ async function buildAgentEnvWithStoredApiKey(
   const env = { ...(config.env ?? {}) };
   if (sdkBackend === 'cursor' && config.apiKey) {
     const decrypted = await decryptField(config.apiKey).catch(() => config.apiKey);
-    const apiKey = String(decrypted || '').trim();
-    if (apiKey) {
+    const apiKey = String(decrypted ?? '').trim();
+    // Fail closed: never export a still-encrypted blob as the API key — that
+    // reaches the agent as a bad Bearer token (401). A plaintext key still
+    // passes (the guard only rejects enc:v1/enc:v2 placeholders).
+    if (apiKey && !isEncryptedCredentialPlaceholder(apiKey)) {
       env.CURSOR_API_KEY = apiKey;
     }
   }

@@ -46,3 +46,44 @@ test("the API key error is rendered and localized in both locales", () => {
     );
   }
 });
+
+test("a failed-to-decrypt stored key is preserved on save, never re-encrypted or dropped", () => {
+  const saveStart = source.indexOf("const handleSave");
+  const saveEnd = source.indexOf("}, [", saveStart);
+  const handleSave = source.slice(saveStart, saveEnd);
+
+  // Ciphertext that leaked into the form must not be re-encrypted into a nested blob.
+  assert.match(
+    handleSave,
+    /isEncryptedCredentialPlaceholder\(form\.apiKey\)/,
+    "save must detect a ciphertext blob in the form and avoid re-encrypting it",
+  );
+  // When the stored key could not be decrypted for display, preserve it instead
+  // of overwriting with undefined.
+  assert.match(
+    handleSave,
+    /apiKeyLoadFailed[\s\S]*updates\.apiKey\s*=\s*provider\.apiKey/,
+    "save must keep the stored key when it failed to load",
+  );
+});
+
+test("the decrypt-load error is rendered and localized in both locales", () => {
+  assert.match(source, /apiKeyLoadFailed/, "form must track decrypt-load failure");
+  assert.match(
+    source,
+    /ai\.providers\.apiKey\.decryptError/,
+    "form must render the decryptError message",
+  );
+
+  for (const locale of ["en", "zh-CN"]) {
+    const messages = readFileSync(
+      path.join(import.meta.dirname, "../../../../application/i18n/locales", locale, "ai.ts"),
+      "utf8",
+    );
+    assert.match(
+      messages,
+      /'ai\.providers\.apiKey\.decryptError':/,
+      `${locale} locale must define ai.providers.apiKey.decryptError`,
+    );
+  }
+});

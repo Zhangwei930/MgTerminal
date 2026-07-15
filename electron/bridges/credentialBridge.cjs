@@ -38,6 +38,60 @@ const MAC_SAFE_STORAGE_SERVICE_CANDIDATES = [
   "Electron Safe Storage",
 ];
 
+// Structural ciphertext check (mirrors domain/credentials.ts): used when a
+// blob cannot be verified by decrypting, so it is never re-encrypted into
+// nested ciphertext. safeStorage payloads start with "v10"/"v11" (base64
+// "djEw"/"djEx") or a DPAPI header; local-vault payloads are
+// iv(12)+tag(16)+ciphertext(≥1) → base64 length ≥ 40.
+const BLOB_BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
+// "djEw"/"djEx" = base64("v10"/"v11") for mac/linux safeStorage; "AQAAAN" is
+// the base64 head of a Windows DPAPI blob (bytes 01 00 00 00 D0 8C… → "AQAAAN…").
+// NB: the DWORD+GUID never encode to "AQAAAA", so that literal never matches.
+const SAFE_STORAGE_BASE64_HEADER_PREFIXES = ["djEw", "djEx", "AQAAAN"];
+const LOCAL_VAULT_MIN_BASE64_LEN = 40;
+
+function looksLikeEncryptedBlob(value) {
+  if (typeof value !== "string") return false;
+  if (value.startsWith(ENC_PREFIX_V1)) {
+    const payload = value.slice(ENC_PREFIX_V1.length);
+    if (!payload || !BLOB_BASE64_RE.test(payload)) return false;
+    return SAFE_STORAGE_BASE64_HEADER_PREFIXES.some((prefix) => payload.startsWith(prefix));
+  }
+  if (value.startsWith(ENC_PREFIX_V2)) {
+    const payload = value.slice(ENC_PREFIX_V2.length);
+    if (!payload || payload.length < LOCAL_VAULT_MIN_BASE64_LEN) return false;
+    return BLOB_BASE64_RE.test(payload);
+  }
+  return false;
+}
+
+// A save-while-keychain-broken cycle can nest ciphertexts (enc:v2 wrapping an
+// enc:v1 blob). Unwrap a bounded number of layers; anything deeper is treated
+// as corrupt.
+const MAX_NESTED_DECRYPTS = 4;
+
+/**
+ * Peel up to MAX_NESTED_DECRYPTS layers of enc:v1/enc:v2 ciphertext.
+ * `decryptOnce(value)` decrypts exactly one layer (may throw or return "" on
+ * failure). Iteration stops as soon as the value is no longer prefixed — so a
+ * value that fully decrypts on the last allowed layer is still returned rather
+ * than discarded.
+ *
+ * @returns {{ value: unknown, exhausted: boolean }} `exhausted` is true iff the
+ *   budget ran out with a still-encrypted value.
+ */
+function unwrapNestedCiphertext(value, decryptOnce) {
+  const isPrefixed = (v) =>
+    typeof v === "string" &&
+    (v.startsWith(ENC_PREFIX_V1) || v.startsWith(ENC_PREFIX_V2));
+  let current = value;
+  for (let i = 0; i < MAX_NESTED_DECRYPTS; i++) {
+    if (!isPrefixed(current)) return { value: current, exhausted: false };
+    current = decryptOnce(current);
+  }
+  return { value: current, exhausted: isPrefixed(current) };
+}
+
 function credentialError(code, message, cause) {
   const error = new Error(message, cause ? { cause } : undefined);
   error.code = code;
@@ -305,18 +359,24 @@ function registerHandlers(ipcMain, electronModule, options = {}) {
         localVault.decrypt(plaintext);
         return true;
       } catch {
-        return false;
+        return looksLikeEncryptedBlob(plaintext);
       }
     }
-    if (plaintext.startsWith(ENC_PREFIX_V1) && safeStorage?.decryptString && isSafeStorageAvailable()) {
-      try {
-        const base64 = plaintext.slice(ENC_PREFIX_V1.length);
-        const buf = Buffer.from(base64, "base64");
-        safeStorage.decryptString(buf);
-        return true;
-      } catch {
-        return false;
+    if (plaintext.startsWith(ENC_PREFIX_V1)) {
+      if (safeStorage?.decryptString && isSafeStorageAvailable()) {
+        try {
+          const base64 = plaintext.slice(ENC_PREFIX_V1.length);
+          const buf = Buffer.from(base64, "base64");
+          safeStorage.decryptString(buf);
+          return true;
+        } catch {
+          return looksLikeEncryptedBlob(plaintext);
+        }
       }
+      // Broken/unavailable keychain: the blob cannot be verified by
+      // decrypting, but re-encrypting it would nest ciphertexts
+      // (enc:v2(enc:v1)) that later get sent to providers as the API key.
+      return looksLikeEncryptedBlob(plaintext);
     }
     return false;
   };
@@ -360,14 +420,18 @@ function registerHandlers(ipcMain, electronModule, options = {}) {
     if (typeof value !== "string" || value.length === 0) {
       return value ?? "";
     }
-    if (value.startsWith(ENC_PREFIX_V2)) {
-      return localVault.decrypt(value);
+    // Unwrap nested ciphertext (enc:v2 wrapping enc:v1) produced by older builds
+    // that re-encrypted an unverifiable blob during save.
+    const { value: result, exhausted } = unwrapNestedCiphertext(value, (v) =>
+      v.startsWith(ENC_PREFIX_V2) ? localVault.decrypt(v) : decryptV1(v),
+    );
+    if (exhausted) {
+      throw credentialError(
+        "ERR_CREDENTIAL_DECRYPTION_FAILED",
+        "Credential decryption failed",
+      );
     }
-    if (value.startsWith(ENC_PREFIX_V1)) {
-      return decryptV1(value);
-    }
-    // Plaintext migration path
-    return value;
+    return result;
   });
 }
 
@@ -375,6 +439,9 @@ module.exports = {
   registerHandlers,
   defaultResetMacSafeStorageKeychain,
   createLocalVault,
+  looksLikeEncryptedBlob,
+  unwrapNestedCiphertext,
+  MAX_NESTED_DECRYPTS,
   MAC_SAFE_STORAGE_SERVICE_CANDIDATES,
   ENC_PREFIX,
   ENC_PREFIX_V1,

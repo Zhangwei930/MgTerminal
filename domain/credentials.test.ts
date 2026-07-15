@@ -22,6 +22,13 @@ test("isEncryptedCredentialPlaceholder recognizes enc:v2 local vault blobs", () 
   assert.equal(isEncryptedCredentialPlaceholder(ENC_V2), true);
 });
 
+test("isEncryptedCredentialPlaceholder recognizes Windows DPAPI enc:v1 blobs", () => {
+  // DPAPI blob: bytes 01 00 00 00 D0 8C … base64-encode to "AQAAAN…".
+  const dpapi = "enc:v1:" + Buffer.from([0x01, 0x00, 0x00, 0x00, 0xd0, 0x8c, 0x9d, 0xdf, 0x01]).toString("base64");
+  assert.match(dpapi, /^enc:v1:AQAAAN/);
+  assert.equal(isEncryptedCredentialPlaceholder(dpapi), true);
+});
+
 test("isEncryptedCredentialPlaceholder rejects plaintext and short/invalid prefixes", () => {
   assert.equal(isEncryptedCredentialPlaceholder("sk-live-real-key"), false);
   assert.equal(isEncryptedCredentialPlaceholder("enc:v1:not-base64!!!"), false);

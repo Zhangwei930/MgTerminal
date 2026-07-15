@@ -3,6 +3,7 @@ import { Check, ChevronDown, ChevronRight, Eye, EyeOff, Pencil, Upload, RotateCc
 import type { ProviderConfig, ProviderAdvancedParams, ProviderStyle } from "../../../../infrastructure/ai/types";
 import { PROVIDER_PRESETS, resolveProviderStyle } from "../../../../infrastructure/ai/types";
 import { sanitizeContextWindow } from "../../../../infrastructure/ai/contextCompaction";
+import { isEncryptedCredentialPlaceholder } from "../../../../domain/credentials";
 import { encryptField, decryptField } from "../../../../infrastructure/persistence/secureFieldAdapter";
 import { useI18n } from "../../../../application/i18n/I18nProvider";
 import { Button } from "../../../ui/button";
@@ -105,20 +106,35 @@ export const ProviderConfigForm: React.FC<{
     iconDataUrl: form.iconDataUrl || undefined,
   };
 
-  // Decrypt and load existing API key on mount
+  // Decrypt and load existing API key on mount. Never surface ciphertext in
+  // the input: a later save would re-encrypt it into nested ciphertext that
+  // gets sent to providers as the API key (→ 401).
+  const [apiKeyLoadFailed, setApiKeyLoadFailed] = useState(false);
+  // Sequence guard so a stale decrypt (provider.apiKey changed mid-flight)
+  // cannot overwrite the form. The error text is rendered from apiKeyLoadFailed
+  // via t() so it stays out of this effect's deps — including t would re-run
+  // the effect on every locale switch and clobber an unsaved edit.
+  const apiKeyDecryptSeqRef = useRef(0);
   useEffect(() => {
-    if (provider.apiKey) {
-      setIsDecrypting(true);
-      decryptField(provider.apiKey)
-        .then((decrypted) => {
-          setForm((prev) => ({ ...prev, apiKey: decrypted ?? "" }));
-        })
-        .catch(() => {
-          // If decryption fails, show raw value
-          setForm((prev) => ({ ...prev, apiKey: provider.apiKey ?? "" }));
-        })
-        .finally(() => setIsDecrypting(false));
-    }
+    if (!provider.apiKey) return;
+    const seq = ++apiKeyDecryptSeqRef.current;
+    setIsDecrypting(true);
+    decryptField(provider.apiKey)
+      .then((decrypted) => {
+        if (apiKeyDecryptSeqRef.current !== seq) return;
+        if (isEncryptedCredentialPlaceholder(decrypted)) {
+          setApiKeyLoadFailed(true);
+          return;
+        }
+        setApiKeyLoadFailed(false);
+        setForm((prev) => ({ ...prev, apiKey: decrypted ?? "" }));
+      })
+      .catch(() => {
+        if (apiKeyDecryptSeqRef.current === seq) setApiKeyLoadFailed(true);
+      })
+      .finally(() => {
+        if (apiKeyDecryptSeqRef.current === seq) setIsDecrypting(false);
+      });
   }, [provider.apiKey]);
 
   useEffect(() => {
@@ -178,6 +194,7 @@ export const ProviderConfigForm: React.FC<{
 
   const handleApiKeyChange = useCallback((value: string) => {
     setApiKeyError(null);
+    setApiKeyLoadFailed(false);
     setApiKeySourceVersion((version) => version + 1);
     setForm((prev) => ({ ...prev, apiKey: value }));
   }, []);
@@ -223,19 +240,29 @@ export const ProviderConfigForm: React.FC<{
     // credential bridge / OS keychain is unavailable — surface that instead
     // of letting the rejected promise silently cancel the save.
     if (form.apiKey) {
-      try {
-        updates.apiKey = await encryptField(form.apiKey);
-      } catch {
-        setApiKeyError(t("ai.providers.apiKey.encryptError"));
-        return;
+      if (isEncryptedCredentialPlaceholder(form.apiKey)) {
+        // Already-encrypted blob leaked into the form — re-encrypting would
+        // nest ciphertexts. Keep the stored value untouched.
+        updates.apiKey = provider.apiKey;
+      } else {
+        try {
+          updates.apiKey = await encryptField(form.apiKey);
+        } catch {
+          setApiKeyError(t("ai.providers.apiKey.encryptError"));
+          return;
+        }
       }
+    } else if (apiKeyLoadFailed) {
+      // Field is empty only because the stored key failed to decrypt for
+      // display. Preserve the stored value; the user can re-enter to replace.
+      updates.apiKey = provider.apiKey;
     } else {
       updates.apiKey = undefined;
     }
     setApiKeyError(null);
 
     onSave(updates);
-  }, [form, onSave, provider.providerId, t]);
+  }, [form, apiKeyLoadFailed, onSave, provider.providerId, provider.apiKey, t]);
 
   return (
     <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
@@ -386,6 +413,9 @@ export const ProviderConfigForm: React.FC<{
         </div>
         {apiKeyError && (
           <p className="text-[11px] text-destructive">{apiKeyError}</p>
+        )}
+        {!apiKeyError && apiKeyLoadFailed && (
+          <p className="text-[11px] text-destructive">{t("ai.providers.apiKey.decryptError")}</p>
         )}
       </div>
 

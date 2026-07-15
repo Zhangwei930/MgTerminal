@@ -15,9 +15,15 @@ const {
   ENC_PREFIX_V1,
   ENC_PREFIX_V2,
   createLocalVault,
+  unwrapNestedCiphertext,
 } = require("../credentialBridge.cjs");
 
 /**
+ * Decrypt a stored API key, peeling any nested ciphertext layers left behind by
+ * older save-while-keychain-broken builds. Fails closed to "" when a layer
+ * cannot be decrypted or the nesting exceeds the unwrap budget — never returns
+ * ciphertext to the HTTP layer.
+ *
  * @param {string | undefined | null} encryptedKey
  * @param {{
  *   safeStorage?: { isEncryptionAvailable?: () => boolean, decryptString?: (buf: Buffer) => string } | null,
@@ -28,6 +34,15 @@ const {
  * @returns {string}
  */
 function decryptApiKeyValue(encryptedKey, deps = {}) {
+  const { value, exhausted } = unwrapNestedCiphertext(
+    encryptedKey,
+    (v) => decryptApiKeyValueOnce(v, deps),
+  );
+  if (exhausted) return "";
+  return typeof value === "string" ? value : "";
+}
+
+function decryptApiKeyValueOnce(encryptedKey, deps = {}) {
   if (!encryptedKey || typeof encryptedKey !== "string") return encryptedKey || "";
 
   const logWarn = deps.logWarn || ((msg, err) => {

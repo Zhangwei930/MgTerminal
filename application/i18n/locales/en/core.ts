@@ -527,6 +527,7 @@ export const enCoreMessages: Messages = {
   'settings.terminal.section.connection': 'Connection',
   'settings.terminal.connection.verifyHostKeys': 'Verify SSH host keys',
   'settings.terminal.connection.verifyHostKeys.desc': 'Ask before connecting to a new or changed SSH host key. Turn this off only for trusted private networks.',
+  'settings.terminal.connection.verifyHostKeys.warning': 'Host key verification is off. SSH connections will accept any host key without asking, so a man-in-the-middle cannot be detected. Only keep this off on trusted private networks.',
   'settings.terminal.connection.sshAutoReconnectEnabled': 'Automatically reconnect SSH sessions',
   'settings.terminal.connection.sshAutoReconnectEnabled.desc': 'When turned on, established SSH sessions that drop unexpectedly reconnect automatically with exponential backoff (5s up to 60s), stopping after 10 consecutive failures.',
   'settings.terminal.connection.keepaliveInterval': 'Keepalive Interval',

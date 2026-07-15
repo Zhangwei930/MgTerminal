@@ -119,6 +119,11 @@ function createMoshStatsConnectionApi(ctx) {
     function createTrustEnforcingHostVerifier({ hostname, port, knownHosts, verifyHostKeys = true, trust, label }) {
       return (rawKey, callback) => {
         if (verifyHostKeys === false) {
+          // Never bypass silently — a disabled check is a standing MITM window.
+          console.warn(
+            `[HostKey] SSH host key verification is DISABLED for ${hostname}:${port}` +
+            `${label ? ` (${label})` : ""} — accepting any presented host key without prompting.`,
+          );
           trust.trusted = true;
           callback(true);
           return;

@@ -829,6 +829,12 @@ function SettingsTerminalTab(props: {
             onChange={(v) => updateTerminalSetting("verifyHostKeys", v)}
           />
         </SettingRow>
+        {!terminalSettings.verifyHostKeys && (
+          <div className="flex items-start gap-2 py-2 text-xs text-destructive">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            <span>{t("settings.terminal.connection.verifyHostKeys.warning")}</span>
+          </div>
+        )}
         <SettingRow
           label={t("settings.terminal.connection.sshAutoReconnectEnabled")}
           description={t("settings.terminal.connection.sshAutoReconnectEnabled.desc")}

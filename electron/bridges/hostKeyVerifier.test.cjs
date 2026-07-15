@@ -280,6 +280,7 @@ test("createHostVerifier skips prompts when host key verification is disabled", 
     isDestroyed: () => false,
     send: (channel, payload) => sent.push({ channel, payload }),
   };
+  const warnings = [];
   const verifier = createHostVerifier({
     sender,
     sessionId: "session-1",
@@ -287,12 +288,17 @@ test("createHostVerifier skips prompts when host key verification is disabled", 
     port: 22,
     knownHosts: [],
     verifyHostKeys: false,
+    logWarn: (msg) => warnings.push(msg),
   });
 
   const accepted = await new Promise((resolve) => verifier(rawKey, resolve));
 
   assert.equal(accepted, true);
   assert.deepEqual(sent, []);
+  // A disabled-verification bypass must never be silent (MITM footgun).
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /disabled/i);
+  assert.match(warnings[0], /switch\.local/);
 });
 
 test("createHostVerifier accepts imported full known_hosts public keys without prompting", async () => {

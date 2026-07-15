@@ -208,8 +208,14 @@ const createHostVerifier = ({
   port = 22,
   knownHosts = [],
   verifyHostKeys = true,
+  logWarn = (msg) => console.warn(msg),
 }) => (rawKey, callback) => {
   if (verifyHostKeys === false) {
+    // Never bypass silently — a disabled check is a standing MITM window.
+    logWarn(
+      `[HostKey] SSH host key verification is DISABLED for ${hostname}:${port} — ` +
+      `accepting any presented host key without prompting.`,
+    );
     callback(true);
     return;
   }

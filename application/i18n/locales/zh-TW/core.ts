@@ -69,6 +69,7 @@ export const zhTWCoreMessages: Messages = {
   'settings.tab.system': '系統',
   'settings.terminal.connection.verifyHostKeys': '驗證 SSH 主機金鑰',
   'settings.terminal.connection.verifyHostKeys.desc': '連線到新的或已變化的 SSH 主機金鑰前先詢問。只建議在可信內網中關閉。',
+  'settings.terminal.connection.verifyHostKeys.warning': '已關閉主機金鑰校驗。SSH 連線會不加詢問地接受任意主機金鑰，無法察覺中間人攻擊。僅建議在可信內網中保持關閉。',
   'settings.terminal.section.sidePanel': '側邊欄',
   'settings.terminal.sidePanel.autoOpen': '開啟終端時展開側邊欄',
   'settings.terminal.sidePanel.autoOpen.desc': '終端連線成功後自動開啟一個側邊欄。',

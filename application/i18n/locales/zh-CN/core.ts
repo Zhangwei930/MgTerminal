@@ -69,6 +69,7 @@ export const zhCNCoreMessages: Messages = {
   'settings.tab.system': '系统',
   'settings.terminal.connection.verifyHostKeys': '校验 SSH 主机密钥',
   'settings.terminal.connection.verifyHostKeys.desc': '连接到新的或已变化的 SSH 主机密钥前先询问。只建议在可信内网中关闭。',
+  'settings.terminal.connection.verifyHostKeys.warning': '已关闭主机密钥校验。SSH 连接会不加询问地接受任意主机密钥，无法察觉中间人攻击。仅建议在可信内网中保持关闭。',
   'settings.terminal.section.sidePanel': '侧边栏',
   'settings.terminal.sidePanel.autoOpen': '打开终端时展开侧边栏',
   'settings.terminal.sidePanel.autoOpen.desc': '终端连接成功后自动打开一个侧边栏。',

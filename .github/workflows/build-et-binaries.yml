@@ -59,7 +59,7 @@ jobs:
     name: build-linux-x64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build et (linux-x64)
         run: |
           docker run --rm \
@@ -71,7 +71,7 @@ jobs:
             quay.io/pypa/manylinux2014_x86_64 \
             bash scripts/build-et/build-linux.sh
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: et-linux-x64
           path: out/
@@ -80,7 +80,7 @@ jobs:
     name: build-linux-arm64
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build et (linux-arm64)
         run: |
           docker run --rm \
@@ -92,7 +92,7 @@ jobs:
             quay.io/pypa/manylinux2014_aarch64 \
             bash scripts/build-et/build-linux.sh
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: et-linux-arm64
           path: out/
@@ -104,7 +104,7 @@ jobs:
     name: build-macos-universal
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build et (darwin-universal)
         env:
           ET_REF: ${{ env.ET_REF }}
@@ -112,7 +112,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: "11.0"
         run: bash scripts/build-et/build-macos.sh
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: et-darwin-universal
           path: out/
@@ -124,7 +124,7 @@ jobs:
     name: build-windows-x64
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install ninja
         run: choco install -y ninja
       - name: Set up MSVC developer command prompt
@@ -138,7 +138,7 @@ jobs:
         shell: pwsh
         run: pwsh -File scripts/build-et/build-windows.ps1
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: et-win32-x64
           path: out/
@@ -162,9 +162,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
       - name: Stage release files

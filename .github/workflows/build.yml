@@ -185,7 +185,7 @@ jobs:
       mosh_bin_release: ${{ steps.resolve.outputs.mosh_bin_release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve bundled mosh-client release
         id: resolve
@@ -216,7 +216,7 @@ jobs:
       et_bin_release: ${{ steps.resolve.outputs.et_bin_release }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Resolve bundled et-client release
         id: resolve
@@ -258,9 +258,9 @@ jobs:
       VITE_SYNC_ONEDRIVE_CLIENT_ID: ${{ secrets.VITE_SYNC_ONEDRIVE_CLIENT_ID }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -313,7 +313,7 @@ jobs:
         run: node scripts/verify-win-asar-integrity.cjs release/win-unpacked
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: magiesTerminal-${{ matrix.name }}
           path: |
@@ -545,7 +545,7 @@ jobs:
           echo "npm_config_python=/usr/bin/python3.11" >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install deps
         run: |
@@ -612,7 +612,7 @@ jobs:
         run: bash scripts/verify-linux-rpm-artifact.sh x86_64
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: magiesTerminal-linux-x64
           path: |
@@ -691,7 +691,7 @@ jobs:
           apt-get install -y nodejs
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install deps
         run: npm ci
@@ -739,7 +739,7 @@ jobs:
         run: bash scripts/verify-linux-rpm-artifact.sh aarch64
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: magiesTerminal-linux-arm64
           path: |
@@ -773,7 +773,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate release tag
         shell: bash
@@ -784,7 +784,7 @@ jobs:
           fi
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
           merge-multiple: true
@@ -894,13 +894,13 @@ jobs:
       actions: read
     steps:
       - name: Checkout default branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.repository.default_branch }}
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
           merge-multiple: true
@@ -935,10 +935,10 @@ jobs:
       && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_release))
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: magiesTerminal-macos
           path: artifacts/

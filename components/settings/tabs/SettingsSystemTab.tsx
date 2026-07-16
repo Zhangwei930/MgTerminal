@@ -1,10 +1,14 @@
 /**
  * Settings System Tab - System information, temp file management, session logs, and global hotkey
  */
-import { ChevronDown, ChevronRight, Download, ExternalLink, FolderOpen, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, ExternalLink, FolderOpen, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../../application/i18n/I18nProvider";
 import { getCredentialProtectionAvailability } from "../../../infrastructure/services/credentialProtection";
+import {
+  runStoredVaultCredentialSelfTest,
+  type CredentialSelfTestResult,
+} from "../../../application/credentialSelfTest";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import type { UpdateState } from '../../../application/state/useUpdateCheck';
 import { SessionLogFormat, keyEventToString } from "../../../domain/models";
@@ -164,6 +168,9 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   const [isCheckingCredentials, setIsCheckingCredentials] = useState(false);
   const [isRepairingCredentials, setIsRepairingCredentials] = useState(false);
   const [credentialRepairMessage, setCredentialRepairMessage] = useState<string | null>(null);
+  const [isRunningCredentialSelfTest, setIsRunningCredentialSelfTest] = useState(false);
+  const [credentialSelfTestResult, setCredentialSelfTestResult] =
+    useState<CredentialSelfTestResult | null>(null);
   const [crashLogs, setCrashLogs] = useState<CrashLogFile[]>([]);
   const [isLoadingCrashLogs, setIsLoadingCrashLogs] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -267,6 +274,18 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
       setIsRepairingCredentials(false);
     }
   }, [applyCredentialStatus, t]);
+
+  const runCredentialSelfTest = useCallback(async () => {
+    setIsRunningCredentialSelfTest(true);
+    setCredentialSelfTestResult(null);
+    try {
+      setCredentialSelfTestResult(await runStoredVaultCredentialSelfTest());
+    } catch {
+      setCredentialSelfTestResult({ probe: "failed", checkedFields: 0, issues: [] });
+    } finally {
+      setIsRunningCredentialSelfTest(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadCredentialProtectionStatus();
@@ -721,6 +740,18 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => void runCredentialSelfTest()}
+                    disabled={isRunningCredentialSelfTest || isCheckingCredentials || isRepairingCredentials}
+                    className="gap-1.5"
+                  >
+                    <ShieldCheck size={14} className={isRunningCredentialSelfTest ? "animate-pulse" : ""} />
+                    {isRunningCredentialSelfTest
+                      ? t("settings.system.credentials.selftest.running")
+                      : t("settings.system.credentials.selftest")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => void loadCredentialProtectionStatus()}
                     disabled={isCheckingCredentials || isRepairingCredentials}
                     className="gap-1.5"
@@ -754,6 +785,46 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                 >
                   {credentialRepairMessage}
                 </p>
+              )}
+
+              {credentialSelfTestResult && (
+                <div className="text-xs space-y-1">
+                  {credentialSelfTestResult.probe !== "ok" ? (
+                    <p className="text-amber-700 dark:text-amber-400">
+                      {t(
+                        credentialSelfTestResult.probe === "unavailable"
+                          ? "settings.system.credentials.selftest.probe.unavailable"
+                          : credentialSelfTestResult.probe === "mismatch"
+                            ? "settings.system.credentials.selftest.probe.mismatch"
+                            : "settings.system.credentials.selftest.probe.failed",
+                      )}
+                    </p>
+                  ) : credentialSelfTestResult.issues.length === 0 ? (
+                    <p className="text-emerald-700 dark:text-emerald-400">
+                      {credentialSelfTestResult.checkedFields === 0
+                        ? t("settings.system.credentials.selftest.noSecrets")
+                        : t("settings.system.credentials.selftest.noIssues", {
+                            count: credentialSelfTestResult.checkedFields,
+                          })}
+                    </p>
+                  ) : null}
+                  {credentialSelfTestResult.issues.length > 0 && (
+                    <>
+                      <p className="text-amber-700 dark:text-amber-400">
+                        {t("settings.system.credentials.selftest.issues", {
+                          count: credentialSelfTestResult.issues.length,
+                        })}
+                      </p>
+                      <ul className="list-disc pl-5 text-amber-700 dark:text-amber-400">
+                        {credentialSelfTestResult.issues.map((issue) => (
+                          <li key={`${issue.itemType}-${issue.itemId}-${issue.field}`} className="font-mono">
+                            {issue.label} · {issue.field}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
               )}
 
               <p className="text-xs text-muted-foreground">

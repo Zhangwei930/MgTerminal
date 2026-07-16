@@ -85,7 +85,7 @@ The persisted payload is a single allowlisted JSON object. Invalid or stale payl
 | Field | Purpose |
 | --- | --- |
 | `version` | Restore schema version. |
-| `savedAt` | Timestamp used for diagnostics and future expiry decisions. |
+| `savedAt` | Timestamp used for diagnostics and expiry. Payloads older than 14 days (`SESSION_RESTORE_MAX_AGE_MS`) are discarded on read. |
 | `sessions` | Lightweight restored terminal session records. |
 | `activeTabId` | Startup tab to select after restore, sanitized against restored tabs. |
 | `tabOrder` | Restored top-level tab order. |

@@ -465,4 +465,35 @@ export const ruAiMessages: Messages = {
   'zmodem.overwrite.skip': 'Skip',
   'zmodem.overwrite.cancel': 'Cancel',
   'settings.shortcuts.resetToDefault': 'Сбросить по умолчанию',
+
+  // Context compaction
+  'ai.chat.compactingContext': 'Сжатие предыдущего контекста…',
+  'ai.chat.compactingStep': 'Сокращение контекста для следующего шага…',
+  'ai.chat.compactionRetry': 'Запрос был слишком большим. Сжимаем контекст и повторяем…',
+  'ai.chat.compactionBanner': 'Контекст сжат: {before}K → {after}K токенов',
+
+  // API key errors
+  'ai.providers.apiKey.encryptError': 'Не удалось зашифровать API-ключ. Полностью выйдите (⌘Q), откройте снова и повторите. Если не помогло: Настройки → Система → Исправить Keychain.',
+  'ai.providers.apiKey.decryptError': 'Сохранённый API-ключ не удалось расшифровать (возможно, изменился Keychain). Введите API-ключ заново и сохраните.',
+
+  // OpenCode
+  'ai.opencode.title': 'OpenCode',
+  'ai.opencode.description': 'Использует OpenCode через официальный SDK. Настройте провайдеров и ключи в OpenCode, затем выберите его как внешний coding-агент.',
+  'ai.opencode.detecting': 'Определение...',
+  'ai.opencode.detected': 'Обнаружен',
+  'ai.opencode.notFound': 'Не найден',
+  'ai.opencode.path': 'Путь:',
+  'ai.opencode.notFoundHint': 'Не удалось найти opencode в PATH. Установите его или укажите путь к исполняемому файлу ниже.',
+  'ai.opencode.customPathPlaceholder': 'например, /usr/local/bin/opencode',
+  'ai.opencode.check': 'Проверить',
+  'ai.opencode.resetPath': 'Сброс',
+
+  // Host tree details
+  'terminal.layer.hostTree.details.host': 'Хост',
+  'terminal.layer.hostTree.details.user': 'Пользователь',
+  'terminal.layer.hostTree.details.port': 'Порт',
+  'terminal.layer.hostTree.details.protocol': 'Протокол',
+  'terminal.layer.hostTree.details.group': 'Группа',
+  'terminal.layer.hostTree.details.tags': 'Теги',
+  'terminal.layer.hostTree.details.lastConnected': 'Последнее подключение',
 };

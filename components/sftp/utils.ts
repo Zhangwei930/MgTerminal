@@ -352,3 +352,21 @@ export const filterHiddenFiles = <T extends { name: string; hidden?: boolean }>(
     if (showHiddenFiles) return files;
     return files.filter((f) => !isHiddenFile(f));
 };
+
+/**
+ * Files visible in a pane's list view: hidden-file filtering plus the pane's
+ * filter term (case-insensitive, ".." always kept). Single source of truth
+ * for rendering (useSftpPaneFiles) and select-all (keyboard shortcuts).
+ */
+export const filterVisibleSftpFiles = <T extends { name: string; hidden?: boolean }>(
+    files: T[],
+    showHiddenFiles: boolean,
+    filter: string,
+): T[] => {
+    const term = filter.trim().toLowerCase();
+    const next = filterHiddenFiles(files, showHiddenFiles);
+    if (!term) return next;
+    return next.filter(
+        (f) => f.name === ".." || f.name.toLowerCase().includes(term),
+    );
+};

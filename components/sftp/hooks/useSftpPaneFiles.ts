@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { SftpFileEntry } from "../../../types";
 import type { SftpPane } from "../../../application/state/sftp/types";
 import type { SortField, SortOrder } from "../utils";
-import { filterHiddenFiles, sortSftpEntries } from "../utils";
+import { filterVisibleSftpFiles, sortSftpEntries } from "../utils";
 
 interface UseSftpPaneFilesParams {
   files: SftpFileEntry[];
@@ -33,12 +33,7 @@ export const useSftpPaneFiles = ({
   // in fewer passes, instead of repeatedly filtering/finding ".." entries.
   const filteredFiles = useMemo(() => {
     if (!enableListView) return [] as SftpFileEntry[];
-    const term = filter.trim().toLowerCase();
-    let nextFiles = filterHiddenFiles(files, showHiddenFiles);
-    if (!term) return nextFiles;
-    return nextFiles.filter(
-      (f) => f.name === ".." || f.name.toLowerCase().includes(term),
-    );
+    return filterVisibleSftpFiles(files, showHiddenFiles, filter);
   }, [enableListView, files, filter, showHiddenFiles]);
 
   const { displayFiles, sortedDisplayFiles } = useMemo(() => {

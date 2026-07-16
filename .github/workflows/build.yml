@@ -249,6 +249,9 @@ jobs:
           - name: windows
             os: windows-latest
             pack_script: pack:win-x64
+          - name: windows-arm64
+            os: windows-latest
+            pack_script: pack:win-arm64
     env:
       MOSH_BIN_RELEASE: ${{ needs.resolve-mosh.outputs.mosh_bin_release }}
       ET_BIN_RELEASE: ${{ needs.resolve-et.outputs.et_bin_release }}
@@ -311,6 +314,19 @@ jobs:
         if: matrix.name == 'windows'
         shell: bash
         run: node scripts/verify-win-asar-integrity.cjs release/win-unpacked
+
+      - name: Verify Windows arm64 asar integrity resource
+        if: matrix.name == 'windows-arm64'
+        shell: bash
+        run: node scripts/verify-win-asar-integrity.cjs release/win-arm64-unpacked
+
+      # latest.yml is produced per electron-builder run; keeping the arm64
+      # copy would clobber the x64 auto-update feed in the merged artifacts
+      # dir. arm64 installs follow the x64 feed for now (runs under emulation).
+      - name: Drop arm64 auto-update metadata
+        if: matrix.name == 'windows-arm64'
+        shell: bash
+        run: rm -f release/*.yml
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5

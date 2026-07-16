@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   buildSessionRestorePayload,
   isRestoredDisconnectedSession,
+  isSessionRestorePayloadExpired,
   quoteRestoreCwdForShell,
+  SESSION_RESTORE_MAX_AGE_MS,
   resolveRestoredActiveTabId,
   resolveRestoreCwdIntent,
   sanitizeSessionRestorePayload,
@@ -609,4 +611,12 @@ test("resolveRestoreCwdIntent keeps home-relative cwd expandable", () => {
     cwd: "~",
     command: "cd -- ~",
   });
+});
+
+test("session restore payload expiry", () => {
+  const now = 1_700_000_000_000;
+  const fresh = { savedAt: now - SESSION_RESTORE_MAX_AGE_MS + 1 };
+  const stale = { savedAt: now - SESSION_RESTORE_MAX_AGE_MS - 1 };
+  assert.equal(isSessionRestorePayloadExpired(fresh, now), false);
+  assert.equal(isSessionRestorePayloadExpired(stale, now), true);
 });

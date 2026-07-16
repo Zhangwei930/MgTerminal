@@ -799,4 +799,9 @@ export const ruVaultMessages: Messages = {
   'hostForm.auth.noKeysHint': 'В связке ключей не найдено SSH-ключей. Сначала создайте один.',
   'hostForm.saveHost': 'Сохранить хост',
 
+  // EternalTerminal
+  'hostDetails.section.et': 'EternalTerminal',
+  'hostDetails.et.port': 'Порт сервера ET',
+  'hostDetails.et.port.desc': 'Порт, который слушает etserver (по умолчанию 2022)',
+
 };

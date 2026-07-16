@@ -127,3 +127,21 @@ test("localized vault messages include host icon labels", () => {
     assert.deepEqual(missing, [], `${locale.name} is missing host icon labels`);
   }
 });
+
+test("localized settings include credential self-test labels", () => {
+  const keys = [
+    "settings.system.credentials.selftest",
+    "settings.system.credentials.selftest.running",
+    "settings.system.credentials.selftest.probe.unavailable",
+    "settings.system.credentials.selftest.probe.failed",
+    "settings.system.credentials.selftest.probe.mismatch",
+    "settings.system.credentials.selftest.noIssues",
+    "settings.system.credentials.selftest.noSecrets",
+    "settings.system.credentials.selftest.issues",
+  ];
+
+  for (const locale of LOCALIZED_SETTINGS_LOCALES) {
+    const missing = keys.filter((key) => !locale.messages[key]);
+    assert.deepEqual(missing, [], `${locale.name} is missing credential self-test labels`);
+  }
+});

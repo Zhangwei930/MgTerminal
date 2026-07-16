@@ -112,6 +112,14 @@ export const enCoreMessages: Messages = {
   'settings.system.credentials.repair.success': 'Secure storage is available again.',
   'settings.system.credentials.repair.partial': 'Repair attempted. API keys can still be saved via the local vault; quit fully (⌘Q) and reopen to retry Keychain.',
   'settings.system.credentials.repair.failed': 'Repair did not finish, but saving API keys should still work via the local vault. Restart the app if needed.',
+  'settings.system.credentials.selftest': 'Self-test',
+  'settings.system.credentials.selftest.running': 'Running self-test…',
+  'settings.system.credentials.selftest.probe.unavailable': 'Credential bridge is unavailable in this environment.',
+  'settings.system.credentials.selftest.probe.failed': 'Encryption probe failed — the keychain / local vault cannot encrypt new secrets.',
+  'settings.system.credentials.selftest.probe.mismatch': 'Decryption round-trip returned wrong data — stored secrets may be unreadable.',
+  'settings.system.credentials.selftest.noIssues': 'Round-trip OK. All {count} stored secrets decrypt correctly.',
+  'settings.system.credentials.selftest.noSecrets': 'Round-trip OK. No stored secrets to check.',
+  'settings.system.credentials.selftest.issues': '{count} stored secret(s) cannot be decrypted on this device. Re-enter and save them here:',
 
   // Settings > System > Network Proxy
   'settings.system.networkProxy.title': 'Network Proxy',

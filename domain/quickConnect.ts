@@ -1,7 +1,63 @@
+import type { Host } from "./models";
+
 export interface QuickConnectTarget {
   hostname: string;
   username?: string;
   port?: number;
+}
+
+// Protocols offered by the quick connect wizard
+export type QuickConnectProtocol = "ssh" | "mosh" | "et" | "telnet";
+
+export interface QuickConnectHostParams {
+  protocol: QuickConnectProtocol;
+  hostname: string;
+  username: string;
+  port: number;
+  etPort?: number;
+  moshServerPath?: string;
+  authMethod: "password" | "key";
+  password?: string;
+  identityFileId?: string;
+}
+
+// Map a wizard selection onto Host fields. Mosh/ET ride on an SSH host with
+// the matching *Enabled flag; only telnet is a distinct Host.protocol.
+export function buildQuickConnectHost(
+  params: QuickConnectHostParams,
+): Omit<Host, "id" | "createdAt"> {
+  const {
+    protocol,
+    hostname,
+    username,
+    port,
+    etPort,
+    moshServerPath,
+    authMethod,
+    password,
+    identityFileId,
+  } = params;
+
+  return {
+    label: hostname,
+    hostname,
+    port,
+    username,
+    group: "",
+    tags: [],
+    os: "linux",
+    protocol: protocol === "telnet" ? "telnet" : "ssh",
+    authMethod,
+    password: authMethod === "password" ? password : undefined,
+    identityFileId: authMethod === "key" ? identityFileId : undefined,
+    moshEnabled: protocol === "mosh",
+    moshServerPath:
+      protocol === "mosh" && moshServerPath ? moshServerPath : undefined,
+    etEnabled: protocol === "et",
+    etPort: protocol === "et" ? etPort : undefined,
+    telnetEnabled: protocol === "telnet",
+    telnetPort: protocol === "telnet" ? port : undefined,
+  };
 }
 
 interface QuickConnectParseResult {

@@ -786,4 +786,18 @@ export const ruTerminalMessages: Messages = {
   'sftp.editor.saveAndClose': 'Сохранить и закрыть',
   'sftp.editor.quitBlockedByDirty': 'Есть несохранённые редакторы — перед выходом сохраните изменения или отбросьте их',
 
+  // EternalTerminal
+  'terminal.connection.protocol.et': 'EternalTerminal',
+  'terminal.et.proxyUnsupported': 'EternalTerminal пока не поддерживает настройки прокси MagiesTerminal. Используйте SSH или уберите прокси для этого хоста.',
+  'terminal.et.multiJumpUnsupported': 'EternalTerminal в MagiesTerminal пока поддерживает не более одного jump-хоста.',
+
+  // Automation snippets
+  'snippets.panel.newAutomationTitle': 'Новый скрипт автоматизации',
+  'snippets.panel.editAutomationTitle': 'Изменить скрипт автоматизации',
+  'snippets.targets.allHosts': 'Применять ко всем хостам',
+  'snippets.targets.allHostsShort': 'Все хосты',
+  'snippets.targets.allHostsActive': 'Применяется к каждому доступному хосту.',
+  'snippets.kind.codeSnippet': 'Фрагмент кода',
+  'snippets.kind.automationScript': 'Скрипт автоматизации',
+
 };

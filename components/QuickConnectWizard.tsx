@@ -9,10 +9,12 @@ import {
   Plus,
   Terminal as TerminalIcon,
   User,
+  Wifi,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
-import type { QuickConnectTarget } from "../domain/quickConnect";
+import type { QuickConnectTarget, QuickConnectProtocol } from "../domain/quickConnect";
+import { buildQuickConnectHost } from "../domain/quickConnect";
 import { formatHostPort } from "../domain/host";
 import { cn } from "../lib/utils";
 import { Host, SSHKey } from "../types";
@@ -22,7 +24,10 @@ import { Label } from "./ui/label";
 import { ScrollArea } from "./ui/scroll-area";
 
 // Protocol types supported for quick connect
-type Protocol = "ssh" | "mosh" | "telnet";
+type Protocol = QuickConnectProtocol;
+
+// ET server default port (etserver listens on 2022)
+const DEFAULT_ET_SERVER_PORT = 2022;
 
 // Wizard steps
 type WizardStep = "protocol" | "username" | "knownhost" | "auth";
@@ -55,6 +60,7 @@ const QuickConnectWizard: React.FC<QuickConnectWizardProps> = ({
   const [username, setUsername] = useState(target.username || "");
   const [port, setPort] = useState<number>(target.port || 22);
   const [moshServerPath, setMoshServerPath] = useState("");
+  const [etPort, setEtPort] = useState<number>(DEFAULT_ET_SERVER_PORT);
   const [showLogs, setShowLogs] = useState(false);
 
   // Known host verification state
@@ -77,6 +83,7 @@ const QuickConnectWizard: React.FC<QuickConnectWizardProps> = ({
       setProtocol("ssh");
       setUsername(target.username || "");
       setPort(target.port || 22);
+      setEtPort(DEFAULT_ET_SERVER_PORT);
       setPassword("");
       setSelectedKeyId(null);
       setShowPassword(false);
@@ -90,6 +97,8 @@ const QuickConnectWizard: React.FC<QuickConnectWizardProps> = ({
       case "ssh":
         return 22;
       case "mosh":
+        return 22;
+      case "et":
         return 22;
       case "telnet":
         return 23;
@@ -149,23 +158,18 @@ const QuickConnectWizard: React.FC<QuickConnectWizardProps> = ({
 
     const tempHost: Host = {
       id: `quick-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      label: `${target.hostname}`,
-      hostname: target.hostname,
-      port: effectivePort,
-      username: effectiveUsername,
-      group: "",
-      tags: [],
-      os: "linux",
-      protocol: protocol === "mosh" ? "ssh" : protocol,
-      authMethod: authMethod,
-      password: authMethod === "password" ? password : undefined,
-      identityFileId:
-        authMethod === "key" ? selectedKeyId || undefined : undefined,
-      moshEnabled: protocol === "mosh",
-      // Set telnet-specific fields when using telnet protocol
-      telnetEnabled: protocol === "telnet",
-      telnetPort: protocol === "telnet" ? effectivePort : undefined,
       createdAt: Date.now(),
+      ...buildQuickConnectHost({
+        protocol,
+        hostname: target.hostname,
+        username: effectiveUsername,
+        port: effectivePort,
+        etPort,
+        moshServerPath,
+        authMethod,
+        password,
+        identityFileId: selectedKeyId || undefined,
+      }),
     };
 
     // Save host if requested
@@ -294,6 +298,65 @@ const QuickConnectWizard: React.FC<QuickConnectWizardProps> = ({
               onClick={(e) => e.stopPropagation()}
               placeholder="mosh --server=/path/server host"
               className="w-40 h-7 text-xs"
+            />
+          </div>
+        </button>
+
+        {/* EternalTerminal */}
+        <button
+          className={cn(
+            "w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-left",
+            protocol === "et"
+              ? "border-primary bg-primary/5"
+              : "border-border/60 hover:border-border hover:bg-secondary/50",
+          )}
+          onClick={() => handleProtocolSelect("et")}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "h-10 w-10 rounded-lg flex items-center justify-center",
+                protocol === "et"
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              <Wifi size={18} />
+            </div>
+            <div>
+              <div className="font-medium">EternalTerminal</div>
+              <div className="text-xs text-muted-foreground font-mono">
+                et {target.hostname}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{t("protocolSelect.port")}</span>
+            <Input
+              type="number"
+              value={protocol === "et" ? port : 22}
+              onChange={(e) => {
+                setPort(parseInt(e.target.value) || 22);
+                setProtocol("et");
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-16 h-7 text-xs text-center"
+              min={1}
+              max={65535}
+            />
+            <span className="text-xs text-muted-foreground">ET</span>
+            <Input
+              type="number"
+              value={etPort}
+              onChange={(e) => {
+                setEtPort(parseInt(e.target.value) || DEFAULT_ET_SERVER_PORT);
+                setProtocol("et");
+              }}
+              onClick={(e) => e.stopPropagation()}
+              title={t("hostDetails.et.port")}
+              className="w-16 h-7 text-xs text-center"
+              min={1}
+              max={65535}
             />
           </div>
         </button>

@@ -17,7 +17,7 @@ import { sftpTreeSelectionStore } from "./useSftpTreeSelectionStore";
 import { sftpListOrderStore } from "./useSftpListOrderStore";
 import { keepOnlyPaneSelections } from "./selectionScope";
 import type { SftpStateApi } from "../../../application/state/useSftpState";
-import { filterHiddenFiles, isNavigableDirectory } from "../utils";
+import { filterVisibleSftpFiles, isNavigableDirectory } from "../utils";
 import type { SftpFileEntry } from "../../../types";
 import { extractDropEntries, type DropEntry } from "../../../lib/sftpFileUtils";
 import { toast } from "../../ui/toast";
@@ -767,18 +767,13 @@ export const useSftpKeyboardShortcuts = ({
             break;
           }
 
-          // Select all files in the current pane
-          // TODO: Reference already-computed filtered files from useSftpPaneFiles
-          // instead of re-implementing the hidden file + filter logic here.
-          // This requires either lifting the computed files into pane state or
-          // passing them via a shared store, which needs a larger refactor.
-          const term = pane.filter.trim().toLowerCase();
-          let visibleFiles = filterHiddenFiles(pane.files, pane.showHiddenFiles);
-          if (term) {
-            visibleFiles = visibleFiles.filter(
-              (f) => f.name === ".." || f.name.toLowerCase().includes(term),
-            );
-          }
+          // Select all files in the current pane — same visibility rules as
+          // the rendered list (useSftpPaneFiles).
+          const visibleFiles = filterVisibleSftpFiles(
+            pane.files,
+            pane.showHiddenFiles,
+            pane.filter,
+          );
           const allFileNames = visibleFiles
             .filter((f) => f.name !== "..")
             .map((f) => f.name);

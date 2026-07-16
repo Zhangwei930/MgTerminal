@@ -155,7 +155,7 @@ Download the latest release for your platform from [GitHub Releases](https://git
 
 Or browse all releases at [GitHub Releases](https://github.com/JasonZhangDad/MgTerminal/releases).
 
-> **macOS Users:** Current releases are expected to be code-signed and notarized. If Gatekeeper still warns, make sure you downloaded the latest official build from GitHub Releases.
+> **macOS Users:** Releases are not code-signed or notarized. On first launch, Gatekeeper will warn — right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/MagiesTerminal.app`. In-app auto-updates install via bundle replacement and do not re-trigger this warning.
 
 ### Nix / NixOS
 

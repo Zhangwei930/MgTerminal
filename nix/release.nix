@@ -4,11 +4,11 @@
   sources = {
     x86_64-linux = {
       appImageArch = "x86_64";
-      hash = "sha256-pREmIyprwWp8iWpJgX3guFwC/z/FFjVmlgSnG0EGx4k=";
+      hash = "sha256-850FuWoG0FRPXuodG+SStqJu8O6tE+k0m4mfcWrkbKs=";
     };
     aarch64-linux = {
       appImageArch = "arm64";
-      hash = "sha256-daK4RHS/G8k+ir/YAFO/NtSiMGFjLHPeQv2X2sGgZWI=";
+      hash = "sha256-2x651kebIEo6ngPYTT1QULJskXVyMPsZx7mBQtJ3Ei0=";
     };
   };
 }

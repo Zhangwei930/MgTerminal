@@ -4,6 +4,7 @@ import {
 import { localStorageAdapter } from "../../infrastructure/persistence/localStorageAdapter";
 import {
   SESSION_RESTORE_VERSION,
+  isSessionRestorePayloadExpired,
   sanitizeSessionRestorePayload,
   type SessionRestorePayload,
 } from "../../domain/sessionRestore";
@@ -47,6 +48,10 @@ export function createSessionRestoreStorage(adapter: RestoreStorageAdapter = loc
       const payload = adapter.read<unknown>(STORAGE_KEY_SESSION_RESTORE);
       if (!isRestorePayload(payload)) {
         if (payload !== null) adapter.remove(STORAGE_KEY_SESSION_RESTORE);
+        return null;
+      }
+      if (isSessionRestorePayloadExpired(payload)) {
+        adapter.remove(STORAGE_KEY_SESSION_RESTORE);
         return null;
       }
       try {

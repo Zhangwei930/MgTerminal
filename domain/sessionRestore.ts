@@ -2,6 +2,18 @@ import type { SerialConfig, TerminalSession, Workspace, WorkspaceNode } from "./
 
 export const SESSION_RESTORE_VERSION = 1 as const;
 
+/** Restore payloads older than this are discarded on read (stale layouts). */
+export const SESSION_RESTORE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+export const isSessionRestorePayloadExpired = (
+  payload: { savedAt?: unknown },
+  now: number = Date.now(),
+): boolean => {
+  const savedAt = payload.savedAt;
+  if (typeof savedAt !== "number" || !Number.isFinite(savedAt)) return false;
+  return now - savedAt > SESSION_RESTORE_MAX_AGE_MS;
+};
+
 export type RestoredTerminalSession = {
   id: string;
   hostId: string;

@@ -2,11 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createSessionRestoreStorage } from "./sessionRestoreStorage.ts";
-import type { SessionRestorePayload } from "../../domain/sessionRestore.ts";
+import {
+  SESSION_RESTORE_MAX_AGE_MS,
+  type SessionRestorePayload,
+} from "../../domain/sessionRestore.ts";
 
 const payload: SessionRestorePayload = {
   version: 1,
-  savedAt: 1,
+  savedAt: Date.now(),
   activeTabId: "vault",
   tabOrder: [],
   sessions: [],
@@ -96,4 +99,21 @@ test("session restore storage sanitizes payloads before writing", () => {
   } as unknown as SessionRestorePayload);
 
   assert.equal(storage.read()?.sessions[0].status, "disconnected");
+});
+
+test("session restore storage removes expired payloads", () => {
+  const staleSavedAt = Date.now() - SESSION_RESTORE_MAX_AGE_MS - 1;
+  const backing = new Map<string, unknown>([
+    ["magiesTerminal_session_restore_v1", { ...payload, savedAt: staleSavedAt }],
+  ]);
+  const storage = createSessionRestoreStorage({
+    read: <T,>(key: string): T | null => (backing.get(key) as T) ?? null,
+    write: () => true,
+    remove: (key: string) => {
+      backing.delete(key);
+    },
+  });
+
+  assert.equal(storage.read(), null);
+  assert.equal(backing.has("magiesTerminal_session_restore_v1"), false);
 });

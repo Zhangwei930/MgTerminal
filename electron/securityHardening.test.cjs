@@ -45,10 +45,13 @@ test('macOS hardened runtime does not disable library validation', () => {
 });
 
 test('incoming SSH links require explicit user confirmation before connecting', () => {
-  const appSource = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
-  const handler = appSource.slice(
-    appSource.indexOf('const _handleSshDeepLink'),
-    appSource.indexOf('const _handleTelnetDeepLink'),
+  const hookSource = fs.readFileSync(
+    path.join(root, 'application/state/useDeepLinkHandlers.ts'),
+    'utf8',
+  );
+  const handler = hookSource.slice(
+    hookSource.indexOf('const _handleSshDeepLink'),
+    hookSource.indexOf('const _handleTelnetDeepLink'),
   );
 
   assert.match(handler, /globalThis\.confirm/);

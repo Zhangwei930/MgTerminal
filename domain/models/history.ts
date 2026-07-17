@@ -98,4 +98,11 @@ export interface ManagedSource {
   lastSyncStatus?: 'ok' | 'unchanged' | 'error';
   /** Last pull error message when lastSyncStatus is error (truncated). */
   lastSyncError?: string;
+  /**
+   * Optional HTTP auth header for json_http sources only.
+   * Allowed names: Authorization, X-Api-Key, X-Auth-Token, X-Access-Token.
+   */
+  httpAuthHeaderName?: string;
+  /** Header value (e.g. "Bearer …"). Stored locally with vault data; never exported in inventory. */
+  httpAuthHeaderValue?: string;
 }

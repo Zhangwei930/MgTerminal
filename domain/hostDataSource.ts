@@ -1,7 +1,7 @@
 /**
  * Pluggable host inventory (Termius API Bridge–style).
  * Pull-only sources: local file or HTTP(S) URL.
- * Formats: MagiesTerminal JSON inventory, classic Ansible INI.
+ * Formats: MagiesTerminal JSON inventory, classic Ansible INI / YAML.
  * Credentials never imported — only host metadata + optional identity hints.
  */
 
@@ -13,6 +13,10 @@ import {
   looksLikeAnsibleInventoryIni,
   parseAnsibleInventoryIni,
 } from "./ansibleInventory";
+import {
+  looksLikeAnsibleInventoryYaml,
+  parseAnsibleInventoryYaml,
+} from "./ansibleInventoryYaml";
 
 export type HostInventoryProtocol = "ssh" | "telnet";
 
@@ -112,7 +116,51 @@ export function normalizeManagedSource(value: unknown): ManagedSource | null {
     autoSyncIntervalMs: normalizeAutoSyncIntervalMs(record.autoSyncIntervalMs),
     lastSyncStatus: normalizeLastSyncStatus(record.lastSyncStatus),
     lastSyncError: normalizeLastSyncError(record.lastSyncError),
+    httpAuthHeaderName: normalizeHttpAuthHeaderName(record.httpAuthHeaderName),
+    httpAuthHeaderValue: normalizeHttpAuthHeaderValue(record.httpAuthHeaderValue),
   };
+}
+
+/** Allowed custom header names for HTTP inventory pulls (case-insensitive). */
+const ALLOWED_HTTP_AUTH_HEADER_NAMES = new Set([
+  "authorization",
+  "x-api-key",
+  "x-auth-token",
+  "x-access-token",
+]);
+
+export function normalizeHttpAuthHeaderName(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const name = value.trim();
+  if (!name) return undefined;
+  if (!/^[A-Za-z0-9-]+$/.test(name)) return undefined;
+  if (!ALLOWED_HTTP_AUTH_HEADER_NAMES.has(name.toLowerCase())) return undefined;
+  // Preserve common casing for Authorization
+  if (name.toLowerCase() === "authorization") return "Authorization";
+  return name;
+}
+
+export function normalizeHttpAuthHeaderValue(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  // Cap length; never allow newlines (header injection).
+  if (/[\r\n]/.test(trimmed)) return undefined;
+  return trimmed.slice(0, 2000);
+}
+
+export function buildHttpInventoryHeaders(
+  source: Pick<ManagedSource, "httpAuthHeaderName" | "httpAuthHeaderValue">,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/json, text/plain, text/*, application/yaml, */*",
+  };
+  const name = normalizeHttpAuthHeaderName(source.httpAuthHeaderName);
+  const value = normalizeHttpAuthHeaderValue(source.httpAuthHeaderValue);
+  if (name && value) {
+    headers[name] = value;
+  }
+  return headers;
 }
 
 export function normalizeLastSyncStatus(
@@ -214,7 +262,7 @@ export function listDueHostDataSources(
 }
 
 /**
- * Auto-detect inventory format: MagiesTerminal JSON, or classic Ansible INI.
+ * Auto-detect inventory format: MagiesTerminal JSON, Ansible INI, or Ansible YAML.
  * Rejects payloads that embed secrets.
  */
 export function parseInventoryDocument(raw: string): HostInventoryDocument {
@@ -229,25 +277,30 @@ export function parseInventoryDocument(raw: string): HostInventoryDocument {
     const parsed = parseAnsibleInventoryIni(text);
     return { version: parsed.version, hosts: parsed.hosts };
   }
-  // Last chance: some JSON files start with whitespace already trimmed; try JSON
-  // before failing so pretty-printed documents without leading "{" after BOM still work.
+  if (looksLikeAnsibleInventoryYaml(text)) {
+    const parsed = parseAnsibleInventoryYaml(text);
+    return { version: parsed.version, hosts: parsed.hosts };
+  }
+  // Fallbacks: try JSON, then INI, then YAML with combined error.
+  const errors: string[] = [];
   try {
     return parseHostInventoryDocument(text);
-  } catch (jsonError) {
-    if (looksLikeAnsibleInventoryIni(text) || text.includes("[") && text.includes("]")) {
-      try {
-        const parsed = parseAnsibleInventoryIni(text);
-        return { version: parsed.version, hosts: parsed.hosts };
-      } catch (ansibleError) {
-        const jsonMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
-        const ansibleMsg = ansibleError instanceof Error ? ansibleError.message : String(ansibleError);
-        throw new Error(
-          `Unrecognized inventory format. JSON: ${jsonMsg}; Ansible INI: ${ansibleMsg}`,
-        );
-      }
-    }
-    throw jsonError;
+  } catch (err) {
+    errors.push(`JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
+  try {
+    const parsed = parseAnsibleInventoryIni(text);
+    return { version: parsed.version, hosts: parsed.hosts };
+  } catch (err) {
+    errors.push(`Ansible INI: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  try {
+    const parsed = parseAnsibleInventoryYaml(text);
+    return { version: parsed.version, hosts: parsed.hosts };
+  } catch (err) {
+    errors.push(`Ansible YAML: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  throw new Error(`Unrecognized inventory format. ${errors.join("; ")}`);
 }
 
 /**
@@ -543,6 +596,8 @@ export function createJsonManagedSource(input: {
   label?: string;
   syncMode?: HostDataSourceSyncMode;
   autoSyncIntervalMs?: number;
+  httpAuthHeaderName?: string;
+  httpAuthHeaderValue?: string;
   id?: string;
   now?: number;
 }): ManagedSource {
@@ -557,6 +612,12 @@ export function createJsonManagedSource(input: {
     syncMode: input.syncMode === "replace_group" ? "replace_group" : "merge",
     enabled: true,
     autoSyncIntervalMs: normalizeAutoSyncIntervalMs(input.autoSyncIntervalMs),
+    httpAuthHeaderName: input.type === "json_http"
+      ? normalizeHttpAuthHeaderName(input.httpAuthHeaderName)
+      : undefined,
+    httpAuthHeaderValue: input.type === "json_http"
+      ? normalizeHttpAuthHeaderValue(input.httpAuthHeaderValue)
+      : undefined,
   };
 }
 

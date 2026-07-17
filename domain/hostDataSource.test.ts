@@ -12,7 +12,10 @@ import {
   isHttpInventoryUrl,
   isHostDataSourceDueForAutoSync,
   listDueHostDataSources,
+  buildHttpInventoryHeaders,
   normalizeAutoSyncIntervalMs,
+  normalizeHttpAuthHeaderName,
+  normalizeHttpAuthHeaderValue,
   normalizeLastSyncError,
   normalizeLastSyncStatus,
   parseHostInventoryDocument,
@@ -64,6 +67,32 @@ api ansible_host=10.9.9.9 ansible_user=ops ansible_port=22
   assert.equal(ansibleDoc.hosts[0]?.hostname, "10.9.9.9");
   assert.equal(ansibleDoc.hosts[0]?.username, "ops");
   assert.equal(ansibleDoc.hosts[0]?.group, "app");
+});
+
+test("parseInventoryDocument accepts Ansible YAML inventory", () => {
+  const doc = parseInventoryDocument(`
+all:
+  hosts:
+    edge1:
+      ansible_host: 10.8.8.8
+      ansible_user: ops
+`);
+  assert.equal(doc.hosts.length, 1);
+  assert.equal(doc.hosts[0]?.hostname, "10.8.8.8");
+  assert.equal(doc.hosts[0]?.username, "ops");
+});
+
+test("buildHttpInventoryHeaders applies allowed auth headers only", () => {
+  assert.deepEqual(
+    buildHttpInventoryHeaders({
+      httpAuthHeaderName: "Authorization",
+      httpAuthHeaderValue: "Bearer secret",
+    }).Authorization,
+    "Bearer secret",
+  );
+  assert.equal(normalizeHttpAuthHeaderName("X-Evil"), undefined);
+  assert.equal(normalizeHttpAuthHeaderValue("a\nb"), undefined);
+  assert.equal(normalizeHttpAuthHeaderName("X-Api-Key"), "X-Api-Key");
 });
 
 test("parseHostInventoryDocument rejects secrets", () => {

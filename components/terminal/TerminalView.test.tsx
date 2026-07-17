@@ -178,9 +178,10 @@ test("terminal body keeps a slight inset from the surrounding chrome", () => {
   assert.match(source, /const terminalBodyInset = 4/);
   assert.match(source, /left: activeLineTimestampGutterWidth \+ terminalBodyInset/);
   assert.match(source, /right: terminalBodyInset/);
-  assert.match(source, /bottom: terminalBodyInset/);
+  // Hex diagnostics panel (when open) adds to the bottom inset.
+  assert.match(source, /bottom: terminalBodyInset \+ hexPanelHeight/);
   assert.match(source, /left=\{terminalBodyInset\}/);
-  assert.match(source, /bottom=\{terminalBodyInset\}/);
+  assert.match(source, /bottom=\{terminalBodyInset \+ hexPanelHeight\}/);
 });
 
 test("terminal theme updates force xterm renderer to repaint immediately", () => {

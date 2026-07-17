@@ -433,6 +433,14 @@ export const koCoreMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': '괄호 붙여넣기 모드',
   'settings.terminal.behavior.bracketedPaste.desc':
     '붙여넣은 텍스트를 이스케이프 시퀀스로 감싸 셸이 붙여넣기와 입력을 구분할 수 있도록 합니다. ^[[200~ 아티팩트가 보이면 사용 안 함으로 설정하세요.',
+  'settings.terminal.behavior.confirmDangerousPaste': '위험한 붙여넣기 확인',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': '위험 명령 차단 목록과 일치하는 텍스트를 붙여넣기 전에 확인합니다.',
+  'settings.terminal.behavior.pasteWaitForPrompt': '줄 사이 프롬프트 대기',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': '여러 줄을 붙여넣을 때 다음 줄 전에 셸 프롬프트를 기다립니다.',
+  'settings.terminal.behavior.pasteLineDelayMs': '붙여넣기 줄 지연 (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': '줄 사이 지연. 0은 즉시.',
+  'settings.terminal.behavior.pasteCharDelayMs': '붙여넣기 문자 지연 (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': '문자 사이 지연. 0은 즉시.',
   'settings.terminal.behavior.shiftEnterNewline': 'Shift+Enter 텍스트',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     '터미널에서 Shift+Enter를 누를 때 일반 Enter 대신 구성된 텍스트를 전송합니다.',

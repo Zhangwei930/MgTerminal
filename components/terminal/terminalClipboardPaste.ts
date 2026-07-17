@@ -1,7 +1,8 @@
 import type { Terminal as XTerm } from "@xterm/xterm";
 
+import type { SafePasteSettings } from "../../domain/safePaste";
 import { extractRootPathsFromClipboardFiles } from "./terminalHelpers";
-import { pasteTextIntoTerminal } from "./runtime/terminalUserPaste";
+import { performSafeTerminalPaste } from "./safeTerminalPaste";
 
 type ClipboardFileBridge = Pick<Partial<MagiesTerminalBridge>, "readClipboardFiles">;
 
@@ -14,9 +15,20 @@ type TerminalClipboardPasteOptions = {
   scrollToBottomAfterProgrammaticInput?: (data: string) => void;
   sessionId: string | null | undefined;
   terminalBackend: {
-    writeToSession: (sessionId: string, data: string, options?: { automated?: boolean }) => void;
+    writeToSession: (
+      sessionId: string,
+      data: string,
+      options?: { automated?: boolean; lineDelayMs?: number },
+    ) => void;
   };
-  term: Pick<XTerm, "paste" | "scrollToBottom"> & Partial<Pick<XTerm, "focus">>;
+  term: Pick<XTerm, "paste" | "scrollToBottom"> &
+    Partial<Pick<XTerm, "focus" | "buffer" | "cols" | "rows" | "write" | "modes" | "options">>;
+  safePasteSettings?: Partial<SafePasteSettings> | null;
+  confirmDangerous?: (info: {
+    text: string;
+    matchedPattern?: string;
+    sampleLine?: string;
+  }) => Promise<boolean>;
 };
 
 export async function handleTerminalClipboardPaste({
@@ -29,6 +41,8 @@ export async function handleTerminalClipboardPaste({
   sessionId,
   terminalBackend,
   term,
+  safePasteSettings,
+  confirmDangerous,
 }: TerminalClipboardPasteOptions): Promise<void> {
   const readClipboardFiles = bridge?.readClipboardFiles;
   if (isLocalConnection && readClipboardFiles) {
@@ -51,9 +65,15 @@ export async function handleTerminalClipboardPaste({
 
   const text = await readClipboardText();
   if (text && sessionId) {
-    pasteTextIntoTerminal(term, text, {
+    await performSafeTerminalPaste({
+      text,
+      term: term as never,
+      sessionId,
+      settings: safePasteSettings,
       scrollOnPaste,
+      terminalBackend,
       onPasteData,
+      confirmDangerous,
     });
   }
 }

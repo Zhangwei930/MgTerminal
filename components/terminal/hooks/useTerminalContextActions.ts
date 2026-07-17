@@ -3,13 +3,13 @@ import { useCallback } from "react";
 import type { RefObject } from "react";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import { logger } from "../../../lib/logger";
-import { pasteTextIntoTerminal } from "../runtime/terminalUserPaste";
 import { clearTerminalViewport } from "../clearTerminalViewport";
 import {
   handleRemoteClipboardImageUpload,
   type RemoteClipboardImageUploadResult,
 } from "../clipboardImagePaste";
 import { handleTerminalClipboardPaste } from "../terminalClipboardPaste";
+import type { SafePasteSettings } from "../../../domain/safePaste";
 
 type BroadcastPasteRefs = {
   sourceSessionId: string;
@@ -44,6 +44,8 @@ export const useTerminalContextActions = ({
   getRemoteCwd,
   scrollToBottomAfterProgrammaticInput,
   onClipboardImageUploadResult,
+  safePasteSettingsRef,
+  confirmDangerousPasteRef,
 }: {
   termRef: RefObject<XTerm | null>;
   sourceSessionId: string;
@@ -56,11 +58,24 @@ export const useTerminalContextActions = ({
   supportsRemoteImagePaste: boolean;
   clearWipesScrollbackRef?: RefObject<boolean | undefined>;
   terminalBackend: {
-    writeToSession: (sessionId: string, data: string, options?: { automated?: boolean }) => void;
+    writeToSession: (
+      sessionId: string,
+      data: string,
+      options?: { automated?: boolean; lineDelayMs?: number },
+    ) => void;
   };
   getRemoteCwd?: () => Promise<string | null | undefined>;
   scrollToBottomAfterProgrammaticInput?: (data: string) => void;
   onClipboardImageUploadResult?: (result: RemoteClipboardImageUploadResult) => void;
+  safePasteSettingsRef?: RefObject<Partial<SafePasteSettings> | null | undefined>;
+  confirmDangerousPasteRef?: RefObject<
+    | ((info: {
+        text: string;
+        matchedPattern?: string;
+        sampleLine?: string;
+      }) => Promise<boolean>)
+    | undefined
+  >;
 }) => {
   const broadcastUserPasteData = useCallback((data: string) => {
     return broadcastTerminalPasteData(data, {
@@ -94,13 +109,17 @@ export const useTerminalContextActions = ({
         sessionId: sessionRef.current,
         terminalBackend,
         term,
+        safePasteSettings: safePasteSettingsRef?.current,
+        confirmDangerous: confirmDangerousPasteRef?.current,
       });
     } catch (err) {
       logger.warn("Failed to paste from clipboard", err);
     }
   }, [
     broadcastUserPasteData,
+    confirmDangerousPasteRef,
     isLocalConnection,
+    safePasteSettingsRef,
     sessionRef,
     termRef,
     scrollOnPasteRef,
@@ -137,14 +156,30 @@ export const useTerminalContextActions = ({
 
   const onPasteSelection = useCallback(() => {
     const term = termRef.current;
-    if (!term) return;
+    const sessionId = sessionRef.current;
+    if (!term || !sessionId) return;
     const selection = term.getSelection();
-    if (!selection || !sessionRef.current) return;
-    pasteTextIntoTerminal(term, selection, {
+    if (!selection) return;
+    void handleTerminalClipboardPaste({
+      isLocalConnection: false,
+      readClipboardText: async () => selection,
       scrollOnPaste: scrollOnPasteRef?.current ?? false,
       onPasteData: broadcastUserPasteData,
+      sessionId,
+      terminalBackend,
+      term,
+      safePasteSettings: safePasteSettingsRef?.current,
+      confirmDangerous: confirmDangerousPasteRef?.current,
     });
-  }, [broadcastUserPasteData, sessionRef, termRef, scrollOnPasteRef]);
+  }, [
+    broadcastUserPasteData,
+    confirmDangerousPasteRef,
+    safePasteSettingsRef,
+    sessionRef,
+    termRef,
+    scrollOnPasteRef,
+    terminalBackend,
+  ]);
 
   const onSelectAll = useCallback(() => {
     const term = termRef.current;

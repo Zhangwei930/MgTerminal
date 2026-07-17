@@ -90,10 +90,10 @@ import {
 } from "./terminalOutputPipeline";
 import {
   markExpectedTerminalCursorPositionReport,
-  pasteTextIntoTerminal,
   shouldBroadcastTerminalUserInput,
   shouldSuppressTerminalInputScrollForUserPaste,
 } from "./terminalUserPaste";
+import { performSafeTerminalPaste } from "../safeTerminalPaste";
 import {
   type PromptLineBreakState,
 } from "./promptLineBreak";
@@ -174,6 +174,14 @@ export type CreateXTermRuntimeContext = {
   isBroadcastEnabledRef: RefObject<boolean | undefined>;
   onBroadcastInputRef: RefObject<
     ((data: string, sourceSessionId: string) => void) | undefined
+  >;
+  confirmDangerousPasteRef?: RefObject<
+    | ((info: {
+        text: string;
+        matchedPattern?: string;
+        sampleLine?: string;
+      }) => Promise<boolean>)
+    | undefined
   >;
 
   // Snippets for shortkey support
@@ -1083,14 +1091,25 @@ export const createXTermRuntime = (ctx: CreateXTermRuntimeContext): XTermRuntime
               break;
             }
             case "paste": {
-              navigator.clipboard.readText().then((text) => {
+              void navigator.clipboard.readText().then((text) => {
                 const id = ctx.sessionRef.current;
-                if (id) {
-                  pasteTextIntoTerminal(term, text, {
-                    scrollOnPaste: shouldScrollOnTerminalPaste(ctx.terminalSettingsRef.current),
-                    onPasteData: broadcastUserPasteData,
-                  });
-                }
+                if (!id || !text) return;
+                const settings = ctx.terminalSettingsRef.current;
+                void performSafeTerminalPaste({
+                  text,
+                  term,
+                  sessionId: id,
+                  settings: {
+                    pasteCharDelayMs: settings?.pasteCharDelayMs,
+                    pasteLineDelayMs: settings?.pasteLineDelayMs,
+                    pasteWaitForPrompt: settings?.pasteWaitForPrompt,
+                    confirmDangerousPaste: settings?.confirmDangerousPaste,
+                  },
+                  scrollOnPaste: shouldScrollOnTerminalPaste(settings),
+                  terminalBackend: ctx.terminalBackend,
+                  onPasteData: broadcastUserPasteData,
+                  confirmDangerous: ctx.confirmDangerousPasteRef?.current,
+                });
               });
               break;
             }
@@ -1098,9 +1117,21 @@ export const createXTermRuntime = (ctx: CreateXTermRuntimeContext): XTermRuntime
               const selection = term.getSelection();
               const id = ctx.sessionRef.current;
               if (selection && id) {
-                pasteTextIntoTerminal(term, selection, {
-                  scrollOnPaste: shouldScrollOnTerminalPaste(ctx.terminalSettingsRef.current),
+                const settings = ctx.terminalSettingsRef.current;
+                void performSafeTerminalPaste({
+                  text: selection,
+                  term,
+                  sessionId: id,
+                  settings: {
+                    pasteCharDelayMs: settings?.pasteCharDelayMs,
+                    pasteLineDelayMs: settings?.pasteLineDelayMs,
+                    pasteWaitForPrompt: settings?.pasteWaitForPrompt,
+                    confirmDangerousPaste: settings?.confirmDangerousPaste,
+                  },
+                  scrollOnPaste: shouldScrollOnTerminalPaste(settings),
+                  terminalBackend: ctx.terminalBackend,
                   onPasteData: broadcastUserPasteData,
+                  confirmDangerous: ctx.confirmDangerousPasteRef?.current,
                 });
               }
               break;

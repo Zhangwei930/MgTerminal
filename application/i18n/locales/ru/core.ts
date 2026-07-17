@@ -417,6 +417,14 @@ export const ruCoreMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': 'Режим bracketed paste',
   'settings.terminal.behavior.bracketedPaste.desc':
     'Оборачивать вставляемый текст escape-последовательностями, чтобы оболочка отличала вставку от обычного ввода. Отключите, если видите артефакты вида ^[[200~.',
+  'settings.terminal.behavior.confirmDangerousPaste': 'Подтверждать опасную вставку',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': 'Спрашивать перед вставкой текста, совпадающего со списком опасных команд.',
+  'settings.terminal.behavior.pasteWaitForPrompt': 'Ждать prompt между строками',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': 'При многострочной вставке ждать prompt оболочки перед следующей строкой.',
+  'settings.terminal.behavior.pasteLineDelayMs': 'Задержка строки при вставке (мс)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': 'Задержка между строками. 0 = мгновенно.',
+  'settings.terminal.behavior.pasteCharDelayMs': 'Задержка символа при вставке (мс)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': 'Задержка между символами. 0 = мгновенно.',
   'settings.terminal.behavior.shiftEnterNewline': 'Текст для Shift+Enter',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     'Отправлять настроенный текст вместо обычного Enter при нажатии Shift+Enter в терминале.',

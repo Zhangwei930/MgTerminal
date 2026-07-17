@@ -98,6 +98,64 @@ export const TerminalBehaviorSettings: React.FC<TerminalBehaviorSettingsProps> =
         </SettingRow>
 
         <SettingRow
+          label={t("settings.terminal.behavior.confirmDangerousPaste")}
+          description={t("settings.terminal.behavior.confirmDangerousPaste.desc")}
+        >
+          <Toggle
+            checked={terminalSettings.confirmDangerousPaste ?? false}
+            onChange={(v) => updateTerminalSetting("confirmDangerousPaste", v)}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("settings.terminal.behavior.pasteWaitForPrompt")}
+          description={t("settings.terminal.behavior.pasteWaitForPrompt.desc")}
+        >
+          <Toggle
+            checked={terminalSettings.pasteWaitForPrompt ?? false}
+            onChange={(v) => updateTerminalSetting("pasteWaitForPrompt", v)}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("settings.terminal.behavior.pasteLineDelayMs")}
+          description={t("settings.terminal.behavior.pasteLineDelayMs.desc")}
+        >
+          <Input
+            type="number"
+            min={0}
+            max={5000}
+            value={terminalSettings.pasteLineDelayMs ?? 0}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 0 && val <= 5000) {
+                updateTerminalSetting("pasteLineDelayMs", val);
+              }
+            }}
+            className="w-28"
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("settings.terminal.behavior.pasteCharDelayMs")}
+          description={t("settings.terminal.behavior.pasteCharDelayMs.desc")}
+        >
+          <Input
+            type="number"
+            min={0}
+            max={200}
+            value={terminalSettings.pasteCharDelayMs ?? 0}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 0 && val <= 200) {
+                updateTerminalSetting("pasteCharDelayMs", val);
+              }
+            }}
+            className="w-28"
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.terminal.behavior.shiftEnterNewline")}
           description={t("settings.terminal.behavior.shiftEnterNewline.desc")}
         >

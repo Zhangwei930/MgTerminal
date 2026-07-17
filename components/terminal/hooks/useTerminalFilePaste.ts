@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import { logger } from "../../../lib/logger";
 import type { TerminalSession } from "../../../types";
+import type { SafePasteSettings } from "../../../domain/safePaste";
 import { handleTerminalClipboardPaste } from "../terminalClipboardPaste";
 
 interface UseTerminalFilePasteOptions {
@@ -13,12 +14,25 @@ interface UseTerminalFilePasteOptions {
   termRef: React.MutableRefObject<XTerm | null>;
   sessionRef: React.MutableRefObject<string | null>;
   terminalBackend: {
-    writeToSession: (sessionId: string, data: string, options?: { automated?: boolean }) => void;
+    writeToSession: (
+      sessionId: string,
+      data: string,
+      options?: { automated?: boolean; lineDelayMs?: number },
+    ) => void;
   };
   scrollOnPasteRef?: React.RefObject<boolean>;
   onPasteData?: (data: string) => boolean | void;
   scrollToBottomAfterProgrammaticInput: (data: string) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  safePasteSettingsRef?: React.RefObject<Partial<SafePasteSettings> | null | undefined>;
+  confirmDangerousPasteRef?: React.RefObject<
+    | ((info: {
+        text: string;
+        matchedPattern?: string;
+        sampleLine?: string;
+      }) => Promise<boolean>)
+    | undefined
+  >;
 }
 
 export function useTerminalFilePaste({
@@ -31,6 +45,8 @@ export function useTerminalFilePaste({
   onPasteData,
   scrollToBottomAfterProgrammaticInput,
   containerRef,
+  safePasteSettingsRef,
+  confirmDangerousPasteRef,
 }: UseTerminalFilePasteOptions) {
   useEffect(() => {
     const container = containerRef.current;
@@ -63,6 +79,8 @@ export function useTerminalFilePaste({
             terminalBackend,
             term,
             scrollToBottomAfterProgrammaticInput,
+            safePasteSettings: safePasteSettingsRef?.current,
+            confirmDangerous: confirmDangerousPasteRef?.current,
           });
         } catch (error) {
           logger.error("Failed to handle file paste", error);
@@ -75,9 +93,11 @@ export function useTerminalFilePaste({
       container.removeEventListener("paste", handlePaste, true);
     };
   }, [
+    confirmDangerousPasteRef,
     containerRef,
     isLocalConnection,
     onPasteData,
+    safePasteSettingsRef,
     scrollOnPasteRef,
     scrollToBottomAfterProgrammaticInput,
     sessionRef,

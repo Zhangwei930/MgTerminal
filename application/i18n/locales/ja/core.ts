@@ -433,6 +433,14 @@ export const jaCoreMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': 'ブラケットペーストモード',
   'settings.terminal.behavior.bracketedPaste.desc':
     '貼り付けたテキストをエスケープシーケンスで囲み、シェルが貼り付けと入力を区別できるようにします。^[[200~ のようなアーティファクトが表示される場合は無効にしてください。',
+  'settings.terminal.behavior.confirmDangerousPaste': '危険な貼り付けを確認',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': '危険なコマンドのブロックリストに一致するテキストを貼り付ける前に確認します。',
+  'settings.terminal.behavior.pasteWaitForPrompt': '行の間でプロンプトを待つ',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': '複数行を貼り付けるとき、次の行の前にシェルプロンプトを待ちます。',
+  'settings.terminal.behavior.pasteLineDelayMs': '貼り付け行遅延 (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': '行の間の遅延。0 は即座。',
+  'settings.terminal.behavior.pasteCharDelayMs': '貼り付け文字遅延 (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': '文字の間の遅延。0 は即座。',
   'settings.terminal.behavior.shiftEnterNewline': 'Shift+Enter のテキスト',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     'ターミナルで Shift+Enter を押したときに、通常の Enter の代わりに設定したテキストを送信します。',

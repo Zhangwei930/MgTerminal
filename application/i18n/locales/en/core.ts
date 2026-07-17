@@ -441,6 +441,18 @@ export const enCoreMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': 'Bracketed paste mode',
   'settings.terminal.behavior.bracketedPaste.desc':
     'Wrap pasted text with escape sequences so the shell can distinguish paste from typed input. Disable if you see ^[[200~ artifacts.',
+  'settings.terminal.behavior.confirmDangerousPaste': 'Confirm dangerous paste',
+  'settings.terminal.behavior.confirmDangerousPaste.desc':
+    'Ask before pasting text that matches the dangerous-command blocklist (for example rm -rf, mkfs, or pipe-to-shell).',
+  'settings.terminal.behavior.pasteWaitForPrompt': 'Wait for prompt between lines',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc':
+    'When pasting multi-line text, wait until a shell prompt reappears before sending the next line.',
+  'settings.terminal.behavior.pasteLineDelayMs': 'Paste line delay (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc':
+    'Delay between lines when pasting multi-line text. 0 keeps instant paste. Ignored when wait-for-prompt is enabled.',
+  'settings.terminal.behavior.pasteCharDelayMs': 'Paste character delay (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc':
+    'Delay between characters when pasting. 0 keeps instant paste. Useful for slow serial devices.',
   'settings.terminal.behavior.shiftEnterNewline': 'Shift+Enter text',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     'Send configured text instead of normal Enter when pressing Shift+Enter in the terminal.',

@@ -264,6 +264,14 @@ export const zhTWTerminalMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': '括號貼上模式',
   'settings.terminal.behavior.bracketedPaste.desc':
     '貼上文字時使用轉義序列包裹，以便終端區分貼上和鍵入。如果出現 ^[[200~ 字樣請關閉此選項。',
+  'settings.terminal.behavior.confirmDangerousPaste': '危險貼上二次確認',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': '貼上內容符合危險指令黑名單時先確認。',
+  'settings.terminal.behavior.pasteWaitForPrompt': '行間等待 Shell 提示符',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': '多行貼上時，等出現 shell 提示符後再傳送下一行。',
+  'settings.terminal.behavior.pasteLineDelayMs': '貼上行延遲 (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': '多行貼上時行與行之間的延遲。0 表示立即傳送。',
+  'settings.terminal.behavior.pasteCharDelayMs': '貼上字元延遲 (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': '貼上時字元之間的延遲。0 表示立即傳送。',
   'settings.terminal.behavior.shiftEnterNewline': 'Shift+Enter 傳送文字',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     '在終端中按 Shift+Enter 時傳送設定的文字，而不是普通 Enter。',

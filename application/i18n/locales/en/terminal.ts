@@ -36,6 +36,10 @@ export const enTerminalMessages: Messages = {
   'terminal.toolbar.stopSessionLog': 'Stop session log',
   'terminal.toolbar.timestampsEnable': 'Show timestamps',
   'terminal.toolbar.timestampsDisable': 'Hide timestamps',
+  'terminal.paste.dangerous.title': 'Dangerous paste',
+  'terminal.paste.dangerous.message':
+    'This paste looks dangerous and may harm the remote system.\n\nMatched: {pattern}\nLine: {command}\n\nSend it anyway?',
+  'terminal.paste.dangerous.confirm': 'Paste anyway',
   'terminal.toolbar.broadcast': 'Broadcast',
   'terminal.toolbar.broadcastEnable': 'Enable Broadcast Mode',
   'terminal.toolbar.broadcastDisable': 'Disable Broadcast Mode',

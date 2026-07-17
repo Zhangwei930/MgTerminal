@@ -433,6 +433,14 @@ export const deCoreMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': 'Bracketed-Paste-Modus',
   'settings.terminal.behavior.bracketedPaste.desc':
     'Umschließt eingefügten Text mit Escape-Sequenzen, damit die Shell Einfügen von Tippen unterscheiden kann. Deaktivieren Sie, wenn Sie ^[[200~-Artefakte sehen.',
+  'settings.terminal.behavior.confirmDangerousPaste': 'Gefährliches Einfügen bestätigen',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': 'Vor dem Einfügen von Text fragen, der der Sperrliste für gefährliche Befehle entspricht.',
+  'settings.terminal.behavior.pasteWaitForPrompt': 'Zwischen Zeilen auf Prompt warten',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': 'Bei mehrzeiligem Einfügen auf die nächste Shell-Prompt warten.',
+  'settings.terminal.behavior.pasteLineDelayMs': 'Zeilenverzögerung beim Einfügen (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': 'Verzögerung zwischen eingefügten Zeilen. 0 = sofort.',
+  'settings.terminal.behavior.pasteCharDelayMs': 'Zeichenverzögerung beim Einfügen (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': 'Verzögerung zwischen Zeichen. 0 = sofort.',
   'settings.terminal.behavior.shiftEnterNewline': 'Umschalt+Eingabe-Text',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     'Sendet konfigurierten Text statt der normalen Eingabetaste, wenn Sie Umschalt+Eingabe im Terminal drücken.',

@@ -38,6 +38,20 @@ test("normalizeTerminalSettings defaults startupCommandDelayMs to 600", () => {
   assert.equal(normalizeTerminalSettings().startupCommandDelayMs, 600);
 });
 
+test("normalizeTerminalSettings defaults safe-paste options to off", () => {
+  const settings = normalizeTerminalSettings();
+  assert.equal(settings.pasteCharDelayMs, 0);
+  assert.equal(settings.pasteLineDelayMs, 0);
+  assert.equal(settings.pasteWaitForPrompt, false);
+  assert.equal(settings.confirmDangerousPaste, false);
+});
+
+test("normalizeTerminalSettings clamps paste delays", () => {
+  assert.equal(normalizeTerminalSettings({ pasteCharDelayMs: 9999 }).pasteCharDelayMs, 200);
+  assert.equal(normalizeTerminalSettings({ pasteLineDelayMs: 99999 }).pasteLineDelayMs, 5000);
+  assert.equal(normalizeTerminalSettings({ pasteCharDelayMs: 12 }).pasteCharDelayMs, 12);
+});
+
 test("normalizeTerminalSettings defaults dynamic tab titles to agent mode", () => {
   assert.equal(normalizeTerminalSettings().dynamicTabTitleMode, "agent");
 });

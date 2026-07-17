@@ -5,6 +5,10 @@ import {
   normalizeHibernateKeepRendererCount,
   normalizeHibernateReplayChunkBytes,
 } from '../terminalHibernate';
+import {
+  clampPasteCharDelayMs,
+  clampPasteLineDelayMs,
+} from '../safePaste';
 
 // Terminal appearance settings
 export type CursorShape = 'block' | 'bar' | 'underline';
@@ -106,6 +110,14 @@ export interface TerminalSettings {
 
   // Paste
   disableBracketedPaste: boolean; // Disable bracketed paste mode (avoid ^[[200~ artifacts)
+  /** Per-character delay (ms) when pasting; 0 = off (legacy instant paste). */
+  pasteCharDelayMs: number;
+  /** Per-line delay (ms) when pasting multi-line text; 0 = off. */
+  pasteLineDelayMs: number;
+  /** Wait for a shell prompt between pasted lines (production-safe pacing). */
+  pasteWaitForPrompt: boolean;
+  /** Confirm before pasting text that matches the dangerous-command blocklist. */
+  confirmDangerousPaste: boolean;
 
   // Shell `clear` command behavior — controls whether CSI 3 J (erase scrollback)
   // from the shell is honored. Default true matches POSIX/ncurses since 2013:
@@ -305,6 +317,10 @@ export const normalizeTerminalSettings = (
   return {
     ...mergedSettings,
     rendererType,
+    pasteCharDelayMs: clampPasteCharDelayMs(mergedSettings.pasteCharDelayMs),
+    pasteLineDelayMs: clampPasteLineDelayMs(mergedSettings.pasteLineDelayMs),
+    pasteWaitForPrompt: Boolean(mergedSettings.pasteWaitForPrompt),
+    confirmDangerousPaste: Boolean(mergedSettings.confirmDangerousPaste),
     hibernateHiddenTabsDelaySec: normalizeHibernateHiddenTabsDelaySec(
       mergedSettings.hibernateHiddenTabsDelaySec,
     ),
@@ -375,6 +391,10 @@ const DEFAULT_TERMINAL_SETTINGS: TerminalSettings = {
   systemManagerDockerListRefreshInterval: 5,
   systemManagerDockerStatsRefreshInterval: 3,
   disableBracketedPaste: false, // Bracketed paste enabled by default
+  pasteCharDelayMs: 0,
+  pasteLineDelayMs: 0,
+  pasteWaitForPrompt: false,
+  confirmDangerousPaste: false,
   clearWipesScrollback: true, // POSIX-standard: shell `clear` clears scrollback too
   preserveSelectionOnInput: false, // Opt-in: keep selection alive when typing
   forcePromptNewLine: false, // Opt-in: keep the next shell prompt visually separated from unterminated final output lines

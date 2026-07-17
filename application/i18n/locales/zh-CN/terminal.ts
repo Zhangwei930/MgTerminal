@@ -264,6 +264,14 @@ export const zhCNTerminalMessages: Messages = {
   'settings.terminal.behavior.bracketedPaste': '括号粘贴模式',
   'settings.terminal.behavior.bracketedPaste.desc':
     '粘贴文本时使用转义序列包裹，以便终端区分粘贴和键入。如果出现 ^[[200~ 字样请关闭此选项。',
+  'settings.terminal.behavior.confirmDangerousPaste': '危险粘贴二次确认',
+  'settings.terminal.behavior.confirmDangerousPaste.desc': '粘贴内容匹配危险命令黑名单时先确认（如 rm -rf、mkfs、管道执行 shell）。',
+  'settings.terminal.behavior.pasteWaitForPrompt': '行间等待 Shell 提示符',
+  'settings.terminal.behavior.pasteWaitForPrompt.desc': '多行粘贴时，等出现 shell 提示符后再发送下一行。',
+  'settings.terminal.behavior.pasteLineDelayMs': '粘贴行延时 (ms)',
+  'settings.terminal.behavior.pasteLineDelayMs.desc': '多行粘贴时行与行之间的延时。0 表示立即发送。启用“等待提示符”时忽略此项。',
+  'settings.terminal.behavior.pasteCharDelayMs': '粘贴字符延时 (ms)',
+  'settings.terminal.behavior.pasteCharDelayMs.desc': '粘贴时字符之间的延时。0 表示立即发送。适合慢速串口设备。',
   'settings.terminal.behavior.shiftEnterNewline': 'Shift+Enter 发送文本',
   'settings.terminal.behavior.shiftEnterNewline.desc':
     '在终端中按 Shift+Enter 时发送配置的文本，而不是普通回车。',

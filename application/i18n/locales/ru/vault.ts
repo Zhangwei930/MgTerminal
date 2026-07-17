@@ -119,6 +119,8 @@ export const ruVaultMessages: Messages = {
   'vault.dataSources.empty': 'Пока нет источников. Добавьте JSON / Ansible INI файл или URL для синхронизации из CMDB / Ansible / API.',
   'vault.dataSources.sync': 'Синхронизировать',
   'vault.dataSources.syncAll': 'Синхр. все',
+  'vault.dataSources.enabled': 'Вкл.',
+  'vault.dataSources.disabled': 'Выкл.',
   'vault.dataSources.status.ok': 'Последняя синхр.: ok',
   'vault.dataSources.status.unchanged': 'Последняя синхр.: без изменений',
   'vault.dataSources.status.error': 'Ошибка последней синхр.',
@@ -163,6 +165,9 @@ export const ruVaultMessages: Messages = {
     'Синхронизировано источников: {count} ({ok} обновлено, {unchanged} без изменений).',
   'vault.dataSources.toast.syncAllPartial':
     'Успешно: {ok}, ошибок: {failed}. Первая: {error}',
+  'vault.dataSources.toast.enabledTitle': 'Источник данных',
+  'vault.dataSources.toast.enabled': 'Источник включён — ручная и автосинхронизация разрешены.',
+  'vault.dataSources.toast.disabled': 'Источник выключен — «Синхр. все» и автосинхр. пропускают его.',
   'vault.dataSources.toast.syncSummary':
     'Добавлено {added}, обновлено {updated}, удалено {removed}, пропущено {skipped}.',
   'vault.dataSources.toast.removedTitle': 'Источник удалён',

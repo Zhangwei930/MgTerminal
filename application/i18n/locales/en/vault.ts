@@ -84,6 +84,8 @@ export const enVaultMessages: Messages = {
   'vault.dataSources.empty': 'No inventory sources yet. Add a JSON/Ansible INI file or URL to sync hosts from CMDB / Ansible / custom API.',
   'vault.dataSources.sync': 'Sync',
   'vault.dataSources.syncAll': 'Sync all',
+  'vault.dataSources.enabled': 'Enabled',
+  'vault.dataSources.disabled': 'Disabled',
   'vault.dataSources.status.ok': 'Last sync: ok',
   'vault.dataSources.status.unchanged': 'Last sync: unchanged',
   'vault.dataSources.status.error': 'Last sync failed',
@@ -128,6 +130,9 @@ export const enVaultMessages: Messages = {
     'Synced {count} source(s): {ok} updated, {unchanged} unchanged.',
   'vault.dataSources.toast.syncAllPartial':
     '{ok} ok, {failed} failed. First error: {error}',
+  'vault.dataSources.toast.enabledTitle': 'Data source',
+  'vault.dataSources.toast.enabled': 'Source enabled — manual and auto-sync allowed.',
+  'vault.dataSources.toast.disabled': 'Source disabled — skipped by Sync all and auto-sync.',
   'vault.dataSources.toast.syncSummary':
     'Added {added}, updated {updated}, removed {removed}, skipped {skipped}.',
   'vault.dataSources.toast.removedTitle': 'Source removed',

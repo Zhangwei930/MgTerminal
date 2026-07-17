@@ -20,6 +20,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Switch } from "../ui/switch";
 import { toast } from "../ui/toast";
 import type { HostDataSourceSyncOutcome } from "../../application/state/useHostDataSourceSync";
 
@@ -41,6 +42,7 @@ export type HostDataSourcesDialogProps = {
   onSyncAllSources?: (options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome[]>;
   onRemoveSource: (sourceId: string, options?: { deleteHosts?: boolean }) => boolean;
   onSetAutoSyncInterval: (sourceId: string, autoSyncIntervalMs: number | undefined) => void;
+  onSetSourceEnabled: (sourceId: string, enabled: boolean) => void;
 };
 
 function formatAutoSyncLabel(
@@ -96,6 +98,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   onSyncAllSources,
   onRemoveSource,
   onSetAutoSyncInterval,
+  onSetSourceEnabled,
 }) => {
   const { t } = useI18n();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -309,6 +312,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                   {jsonSources.map((source) => {
                     const busy = syncingSourceId === source.id;
                     const title = source.label || source.groupName;
+                    const enabled = source.enabled !== false;
                     const typeLabel =
                       source.type === "json_http"
                         ? t("vault.dataSources.type.http")
@@ -316,7 +320,10 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                     return (
                       <li
                         key={source.id}
-                        className="rounded-xl border border-border/60 bg-background px-3 py-3 flex flex-col gap-2"
+                        className={cn(
+                          "rounded-xl border border-border/60 bg-background px-3 py-3 flex flex-col gap-2",
+                          !enabled && "opacity-70",
+                        )}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
@@ -330,6 +337,11 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                               <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                                 {typeLabel}
                               </span>
+                              {!enabled && (
+                                <span className="text-[10px] rounded-md border border-border/60 px-1.5 py-0.5 text-muted-foreground">
+                                  {t("vault.dataSources.disabled")}
+                                </span>
+                              )}
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground break-all">
                               {source.filePath}
@@ -391,29 +403,53 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                               })}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={busy || source.enabled === false}
-                              onClick={() => void handleSync(source.id)}
-                            >
-                              {busy ? (
-                                <Loader2 size={14} className="mr-1 animate-spin" />
-                              ) : (
-                                <RefreshCw size={14} className="mr-1" />
-                              )}
-                              {t("vault.dataSources.sync")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              disabled={busy}
-                              onClick={() => handleRemove(source.id)}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-muted-foreground">
+                                {enabled
+                                  ? t("vault.dataSources.enabled")
+                                  : t("vault.dataSources.disabled")}
+                              </span>
+                              <Switch
+                                checked={enabled}
+                                className="h-5 w-9"
+                                disabled={busy}
+                                onCheckedChange={(checked) => {
+                                  onSetSourceEnabled(source.id, checked);
+                                  toast.success(
+                                    checked
+                                      ? t("vault.dataSources.toast.enabled")
+                                      : t("vault.dataSources.toast.disabled"),
+                                    t("vault.dataSources.toast.enabledTitle"),
+                                  );
+                                }}
+                                aria-label={t("vault.dataSources.enabled")}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy || !enabled}
+                                onClick={() => void handleSync(source.id)}
+                              >
+                                {busy ? (
+                                  <Loader2 size={14} className="mr-1 animate-spin" />
+                                ) : (
+                                  <RefreshCw size={14} className="mr-1" />
+                                )}
+                                {t("vault.dataSources.sync")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                disabled={busy}
+                                onClick={() => handleRemove(source.id)}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </li>

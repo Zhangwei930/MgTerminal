@@ -631,6 +631,8 @@ export const zhCNCoreMessages: Messages = {
   'vault.dataSources.empty': '还没有清单数据源。可添加 JSON / Ansible INI 文件或 URL，从 CMDB / Ansible / 自定义 API 同步主机。',
   'vault.dataSources.sync': '同步',
   'vault.dataSources.syncAll': '全部同步',
+  'vault.dataSources.enabled': '已启用',
+  'vault.dataSources.disabled': '已禁用',
   'vault.dataSources.status.ok': '上次同步：成功',
   'vault.dataSources.status.unchanged': '上次同步：无变化',
   'vault.dataSources.status.error': '上次同步失败',
@@ -675,6 +677,9 @@ export const zhCNCoreMessages: Messages = {
     '已同步 {count} 个数据源：{ok} 个有更新，{unchanged} 个无变化。',
   'vault.dataSources.toast.syncAllPartial':
     '{ok} 成功，{failed} 失败。首个错误：{error}',
+  'vault.dataSources.toast.enabledTitle': '数据源',
+  'vault.dataSources.toast.enabled': '已启用 — 可手动同步与自动同步。',
+  'vault.dataSources.toast.disabled': '已禁用 — 「全部同步」与自动同步会跳过。',
   'vault.dataSources.toast.syncSummary':
     '新增 {added}，更新 {updated}，移除 {removed}，跳过 {skipped}。',
   'vault.dataSources.toast.removedTitle': '已移除数据源',

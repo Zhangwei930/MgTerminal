@@ -1242,6 +1242,25 @@ function registerHandlers(ipcMain, options = {}) {
     const { listAgentIdentities } = require("./sshAgentIdentities.cjs");
     return await listAgentIdentities();
   });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-supported", async () => {
+    const { isPkcs11AgentLoadSupported } = require("./sshAgentPkcs11.cjs");
+    return { supported: isPkcs11AgentLoadSupported() };
+  });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-load", async (_event, payload) => {
+    const { managePkcs11Module } = require("./sshAgentPkcs11.cjs");
+    return await managePkcs11Module({
+      action: "add",
+      modulePath: payload?.modulePath,
+      pin: payload?.pin,
+    });
+  });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-unload", async (_event, payload) => {
+    const { managePkcs11Module } = require("./sshAgentPkcs11.cjs");
+    return await managePkcs11Module({
+      action: "remove",
+      modulePath: payload?.modulePath,
+    });
+  });
   ipcMain.handle("magiesTerminal:ssh:get-default-keys", async () => {
     const sshDir = path.join(os.homedir(), ".ssh");
     const keys = [];

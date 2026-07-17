@@ -237,6 +237,15 @@ function createPreloadApi(ctx) {
   listSshAgentIdentities: async () => {
     return ipcRenderer.invoke("magiesTerminal:ssh:list-agent-identities");
   },
+  sshPkcs11Supported: async () => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-supported");
+  },
+  sshPkcs11Load: async (payload) => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-load", payload);
+  },
+  sshPkcs11Unload: async (payload) => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-unload", payload);
+  },
   onSshAuthMethodUsed: (cb) => {
     sshAuthMethodUsedListeners.add(cb);
     return () => {

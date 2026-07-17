@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  inventoryItemsToAnsibleIni,
   looksLikeAnsibleInventoryIni,
   parseAnsibleInventoryIni,
 } from "./ansibleInventory.ts";
+import type { HostInventoryItem } from "./hostDataSource.ts";
 
 const sampleIni = `
 # web tier
@@ -109,4 +111,42 @@ box1 ansible_host=10.1.1.1 ansible_ssh_private_key_file=/home/ops/.ssh/id_ed2551
 `);
   assert.equal(doc.hosts[0]?.identityHint, "/home/ops/.ssh/id_ed25519");
   assert.equal(doc.hosts[0]?.authMethod, "key");
+});
+
+test("inventoryItemsToAnsibleIni round-trips through parser", () => {
+  const items: HostInventoryItem[] = [
+    {
+      id: "web-1",
+      label: "web-1",
+      hostname: "10.0.0.10",
+      port: 2222,
+      username: "deploy",
+      group: "app/web",
+      protocol: "ssh",
+    },
+    {
+      id: "db-1",
+      label: "db primary",
+      hostname: "db.example.com",
+      username: "ubuntu",
+      group: "data",
+      protocol: "ssh",
+      identityHint: "/keys/db.pem",
+    },
+  ];
+  const ini = inventoryItemsToAnsibleIni(items);
+  assert.match(ini, /\[app_web\]/);
+  assert.match(ini, /ansible_host=10\.0\.0\.10/);
+  assert.match(ini, /ansible_port=2222/);
+  assert.match(ini, /\[data\]/);
+  assert.match(ini, /ansible_ssh_private_key_file=\/keys\/db\.pem/);
+  // label with space falls back to id
+  assert.match(ini, /^db-1 /m);
+
+  const parsed = parseAnsibleInventoryIni(ini);
+  assert.equal(parsed.hosts.length, 2);
+  const web = parsed.hosts.find((h) => h.hostname === "10.0.0.10");
+  assert.ok(web);
+  assert.equal(web.username, "deploy");
+  assert.equal(web.port, 2222);
 });

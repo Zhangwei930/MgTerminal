@@ -9,6 +9,7 @@ import type { Host, ManagedSource } from "./models";
 import { sanitizeHost } from "./host";
 import { getNextVaultOrder } from "./vaultOrder";
 import {
+  inventoryItemsToAnsibleIni,
   looksLikeAnsibleInventoryIni,
   parseAnsibleInventoryIni,
 } from "./ansibleInventory";
@@ -636,6 +637,42 @@ export function exportHostsToInventoryDocument(
     json,
     exportedCount: items.length,
     skippedCount,
+  };
+}
+
+export type HostAnsibleInventoryExportResult = {
+  ini: string;
+  exportedCount: number;
+  skippedCount: number;
+};
+
+/**
+ * Team-safe Ansible INI share package (same host selection as JSON inventory).
+ * Metadata only — credentials stay local.
+ */
+export function exportHostsToAnsibleInventoryIni(
+  hosts: Host[],
+  options?: {
+    hostIds?: Iterable<string>;
+    headerComment?: string;
+  },
+): HostAnsibleInventoryExportResult {
+  const base = exportHostsToInventoryDocument(hosts, {
+    hostIds: options?.hostIds,
+    pretty: false,
+  });
+  // Drop telnet from Ansible INI export (SSH-oriented inventory).
+  const sshItems = base.document.hosts.filter((item) => item.protocol !== "telnet");
+  const skippedTelnet = base.document.hosts.length - sshItems.length;
+  const ini = inventoryItemsToAnsibleIni(sshItems, {
+    headerComment: options?.headerComment,
+  });
+  // Round-trip guard: exported INI must parse without secrets.
+  parseAnsibleInventoryIni(ini);
+  return {
+    ini,
+    exportedCount: sshItems.length,
+    skippedCount: base.skippedCount + skippedTelnet,
   };
 }
 

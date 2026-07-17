@@ -434,3 +434,103 @@ function sanitizeExternalId(alias: string): string {
   const cleaned = alias.trim().replace(/[^a-zA-Z0-9._@:+-]/g, "-");
   return cleaned.slice(0, 180) || "host";
 }
+
+/**
+ * Serialize inventory items to classic Ansible INI (metadata only).
+ * Never writes passwords or private key material — identityHint may become
+ * ansible_ssh_private_key_file path only.
+ */
+export function inventoryItemsToAnsibleIni(
+  items: HostInventoryItem[],
+  options?: { headerComment?: string },
+): string {
+  const byGroup = new Map<string, HostInventoryItem[]>();
+  for (const item of items) {
+    if (item.protocol === "telnet") {
+      // Ansible inventory here is SSH-oriented; skip telnet for clean re-import.
+      continue;
+    }
+    const group = ansibleGroupName(item.group);
+    const list = byGroup.get(group) || [];
+    list.push(item);
+    byGroup.set(group, list);
+  }
+
+  const lines: string[] = [];
+  const header = (options?.headerComment || "Exported by MagiesTerminal (metadata only; no secrets)")
+    .split(/\r?\n/)
+    .map((line) => (line.startsWith("#") ? line : `# ${line}`));
+  lines.push(...header);
+  lines.push("# Re-import via Vault → Data Sources (JSON or Ansible INI).");
+  lines.push("");
+
+  const groupNames = Array.from(byGroup.keys()).sort((a, b) => {
+    if (a === "ungrouped") return -1;
+    if (b === "ungrouped") return 1;
+    return a.localeCompare(b);
+  });
+
+  for (const group of groupNames) {
+    lines.push(`[${group}]`);
+    const hosts = byGroup.get(group) || [];
+    const seenAlias = new Set<string>();
+    for (const item of hosts) {
+      const alias = ansibleHostAlias(item);
+      if (seenAlias.has(alias)) continue;
+      seenAlias.add(alias);
+      lines.push(formatAnsibleHostLine(alias, item));
+    }
+    lines.push("");
+  }
+
+  return `${lines.join("\n").replace(/\n+$/, "")}\n`;
+}
+
+function ansibleGroupName(group?: string): string {
+  const cleaned = (group || "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("_")
+    .replace(/[^a-zA-Z0-9._:-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return cleaned || "ungrouped";
+}
+
+function ansibleHostAlias(item: HostInventoryItem): string {
+  const candidates = [item.label, item.id, item.hostname];
+  for (const raw of candidates) {
+    const token = (raw || "").trim();
+    if (!token) continue;
+    // Alias must be a single INI token (no spaces).
+    if (/\s/.test(token)) continue;
+    return sanitizeExternalId(token);
+  }
+  return "host";
+}
+
+function formatAnsibleHostLine(alias: string, item: HostInventoryItem): string {
+  const parts: string[] = [alias];
+  if (item.hostname && item.hostname !== alias) {
+    parts.push(`ansible_host=${quoteAnsibleValue(item.hostname)}`);
+  }
+  if (item.username) {
+    parts.push(`ansible_user=${quoteAnsibleValue(item.username)}`);
+  }
+  if (item.port && item.port !== 22) {
+    parts.push(`ansible_port=${item.port}`);
+  }
+  if (item.identityHint) {
+    parts.push(`ansible_ssh_private_key_file=${quoteAnsibleValue(item.identityHint)}`);
+  }
+  return parts.join(" ");
+}
+
+function quoteAnsibleValue(value: string): string {
+  if (/[\s#"']/.test(value)) {
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return value;
+}

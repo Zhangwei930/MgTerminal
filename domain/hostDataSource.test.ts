@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import type { Host } from "./models.ts";
 import {
   createJsonManagedSource,
+  exportHostsToAnsibleInventoryIni,
   exportHostsToInventoryDocument,
   hashInventoryContent,
   hostToInventoryItem,
@@ -226,6 +227,31 @@ test("export respects host id selection and managedExternalId", () => {
   assert.equal(result.exportedCount, 1);
   assert.equal(result.document.hosts[0]?.id, "cmdb-99");
   assert.equal(hostToInventoryItem(hosts[1]!)?.id, "local-2");
+});
+
+test("exportHostsToAnsibleInventoryIni is secret-free and re-importable", () => {
+  const hosts: Host[] = [
+    {
+      id: "h1",
+      label: "prod-web",
+      hostname: "10.0.0.5",
+      port: 22,
+      username: "deploy",
+      password: "super-secret",
+      tags: ["prod"],
+      group: "app",
+      os: "linux",
+      protocol: "ssh",
+    } as Host,
+  ];
+  const result = exportHostsToAnsibleInventoryIni(hosts);
+  assert.equal(result.exportedCount, 1);
+  assert.doesNotMatch(result.ini, /super-secret/);
+  assert.match(result.ini, /\[app\]/);
+  assert.match(result.ini, /ansible_host=10\.0\.0\.5/);
+  const roundTrip = parseInventoryDocument(result.ini);
+  assert.equal(roundTrip.hosts.length, 1);
+  assert.equal(roundTrip.hosts[0]?.hostname, "10.0.0.5");
 });
 
 test("normalizeAutoSyncIntervalMs clamps and clears invalid values", () => {

@@ -93,6 +93,7 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 | --- | --- | --- |
 | 主机数据源 JSON file/HTTP | 已实现 | PR #17 — 无凭据 pull 同步 |
 | Ansible inventory INI | 已实现 | 复用数据源管线；自动识别 INI / JSON |
+| Ansible inventory 导出 | 已实现 | 团队分享 INI（仅元数据，与 JSON 对称） |
 | 数据源定时自动同步 | 已实现 | per-source 间隔；默认关闭；hash 跳过 |
 | Hex / 原始数据流诊断 | 已实现 | PR #18 — 会话级 opt-in 面板 |
 | 团队清单分享（元数据 only） | 已实现 | PR #19 — 与数据源同 schema |

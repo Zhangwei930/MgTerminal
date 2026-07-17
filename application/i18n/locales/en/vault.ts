@@ -64,12 +64,15 @@ export const enVaultMessages: Messages = {
   'vault.import.sshConfig.noFilePathDesc': 'Unable to determine the file path. Managed sync requires access to the file system.',
 
   // Host data sources (JSON inventory / API Bridge style)
-  'vault.hosts.share': 'Share inventory',
+  'vault.hosts.share': 'Share inventory (JSON)',
+  'vault.hosts.shareAnsible': 'Share inventory (Ansible INI)',
   'vault.hosts.share.toast.title': 'Inventory shared',
   'vault.hosts.share.toast.noHosts': 'No hosts to share.',
   'vault.hosts.share.toast.noExportable': 'No shareable hosts (serial-only selections cannot be shared as inventory).',
   'vault.hosts.share.toast.success': 'Exported {count} hosts as metadata-only inventory JSON. Import via Data Sources — credentials stay local.',
   'vault.hosts.share.toast.successSelected': 'Exported {count} selected hosts as metadata-only inventory JSON.',
+  'vault.hosts.share.toast.successAnsible': 'Exported {count} hosts as metadata-only Ansible inventory INI. Import via Data Sources — credentials stay local.',
+  'vault.hosts.share.toast.successAnsibleSelected': 'Exported {count} selected hosts as metadata-only Ansible inventory INI.',
   'vault.hosts.share.toast.skipped': 'Skipped {skipped} unsupported host(s).',
   'vault.hosts.dataSources': 'Data Sources',
   'vault.dataSources.title': 'Host data sources',

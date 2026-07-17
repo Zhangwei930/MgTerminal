@@ -1,12 +1,17 @@
 /**
  * Pluggable host inventory (Termius API Bridge–style).
- * Pull-only JSON sources: local file or HTTP(S) URL.
+ * Pull-only sources: local file or HTTP(S) URL.
+ * Formats: MagiesTerminal JSON inventory, classic Ansible INI.
  * Credentials never imported — only host metadata + optional identity hints.
  */
 
 import type { Host, ManagedSource } from "./models";
 import { sanitizeHost } from "./host";
 import { getNextVaultOrder } from "./vaultOrder";
+import {
+  looksLikeAnsibleInventoryIni,
+  parseAnsibleInventoryIni,
+} from "./ansibleInventory";
 
 export type HostInventoryProtocol = "ssh" | "telnet";
 
@@ -104,6 +109,43 @@ export function normalizeManagedSource(value: unknown): ManagedSource | null {
     syncMode: record.syncMode === "replace_group" ? "replace_group" : "merge",
     enabled: record.enabled === false ? false : true,
   };
+}
+
+/**
+ * Auto-detect inventory format: MagiesTerminal JSON, or classic Ansible INI.
+ * Rejects payloads that embed secrets.
+ */
+export function parseInventoryDocument(raw: string): HostInventoryDocument {
+  const text = raw.replace(/^\uFEFF/, "").trim();
+  if (!text) {
+    throw new Error("Inventory is empty.");
+  }
+  if (text.startsWith("{")) {
+    return parseHostInventoryDocument(text);
+  }
+  if (looksLikeAnsibleInventoryIni(text)) {
+    const parsed = parseAnsibleInventoryIni(text);
+    return { version: parsed.version, hosts: parsed.hosts };
+  }
+  // Last chance: some JSON files start with whitespace already trimmed; try JSON
+  // before failing so pretty-printed documents without leading "{" after BOM still work.
+  try {
+    return parseHostInventoryDocument(text);
+  } catch (jsonError) {
+    if (looksLikeAnsibleInventoryIni(text) || text.includes("[") && text.includes("]")) {
+      try {
+        const parsed = parseAnsibleInventoryIni(text);
+        return { version: parsed.version, hosts: parsed.hosts };
+      } catch (ansibleError) {
+        const jsonMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
+        const ansibleMsg = ansibleError instanceof Error ? ansibleError.message : String(ansibleError);
+        throw new Error(
+          `Unrecognized inventory format. JSON: ${jsonMsg}; Ansible INI: ${ansibleMsg}`,
+        );
+      }
+    }
+    throw jsonError;
+  }
 }
 
 /**

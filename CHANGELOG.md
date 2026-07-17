@@ -17,9 +17,6 @@
 - **win-arm64 安装包补齐 mosh / ET 捆绑**：MoshMagies 0.1.9 与 EternalTerminal 6.2.10 首发 Windows arm64 原生二进制
 - **win-arm64 独立自动更新源**：更新元数据改走 `latest-arm64.yml` 专用频道，不再跟随 x64 更新（此前 arm64 更新会装到 x64 包、依赖模拟运行）
 
-### 优化
-- **mosh 客户端二进制源迁移至自有仓库**：`Zhangwei930/MoshMagies`（Rust 实现，五平台单文件静态二进制）
-
 ## [0.4.10] - 2026-07-17
 
 ### 功能

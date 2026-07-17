@@ -277,7 +277,7 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
               })()
             )}
 
-            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && (
+            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && form.authMethod !== "gssapi" && (
               <div className="relative">
                 <Input
                   placeholder={t("hostDetails.password.placeholder")}
@@ -428,6 +428,7 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
             {!selectedIdentity &&
               !form.identityFileId &&
               form.authMethod !== "agent" &&
+              form.authMethod !== "gssapi" &&
               !selectedCredentialType && (
                 <Popover
                   open={credentialPopoverOpen}

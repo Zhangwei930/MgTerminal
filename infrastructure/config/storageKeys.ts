@@ -37,6 +37,8 @@ export const STORAGE_KEY_CONNECTION_LOGS = 'magiesTerminal_connection_logs_v1';
 export const STORAGE_KEY_CONNECTION_LOG_TERMINAL_DATA = 'magiesTerminal_connection_log_terminal_data_v1';
 /** Bookmarks / notes for connection log replay positions, keyed by log id. */
 export const STORAGE_KEY_LOG_BOOKMARKS = 'magiesTerminal_log_bookmarks_v1';
+/** User-named reusable workspace layouts (hosts + splits + optional cwd/startup). */
+export const STORAGE_KEY_WORKSPACE_TEMPLATES = 'magiesTerminal_workspace_templates_v1';
 export const STORAGE_KEY_SESSION_RESTORE = 'magiesTerminal_session_restore_v1';
 export const STORAGE_KEY_RESTORE_PREVIOUS_SESSION = 'magiesTerminal_restore_previous_session_v1';
 export const STORAGE_KEY_RESTORE_TERMINAL_CWD = 'magiesTerminal_restore_terminal_cwd_v1';

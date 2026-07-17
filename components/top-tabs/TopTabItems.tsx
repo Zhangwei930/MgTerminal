@@ -709,6 +709,7 @@ interface WorkspaceTopTabProps {
   onTabDrop: (e: React.DragEvent, targetTabId: string) => void;
   onRenameWorkspace: (workspaceId: string) => void;
   onCloseWorkspace: (workspaceId: string) => void;
+  onSaveWorkspaceTemplate?: (workspaceId: string) => void;
   onDetachSessionFromWorkspace?: (workspaceId: string, sessionId: string) => void;
   workspaceSessionLabels?: Record<string, string>;
   renderBulkCloseItems: RenderBulkCloseItems;
@@ -732,6 +733,7 @@ export const WorkspaceTopTab: React.FC<WorkspaceTopTabProps> = memo(({
   onTabDrop,
   onRenameWorkspace,
   onCloseWorkspace,
+  onSaveWorkspaceTemplate,
   onDetachSessionFromWorkspace,
   workspaceSessionLabels,
   renderBulkCloseItems,
@@ -825,6 +827,11 @@ export const WorkspaceTopTab: React.FC<WorkspaceTopTabProps> = memo(({
         <ContextMenuItem onClick={() => onRenameWorkspace(workspace.id)}>
           {t('common.rename')}
         </ContextMenuItem>
+        {onSaveWorkspaceTemplate ? (
+          <ContextMenuItem onClick={() => onSaveWorkspaceTemplate(workspace.id)}>
+            {t('workspace.templates.saveAs')}
+          </ContextMenuItem>
+        ) : null}
         {onDetachSessionFromWorkspace && workspaceSessionLabels && Object.entries(workspaceSessionLabels).map(([sessionId, label]) => (
           <ContextMenuItem
             key={sessionId}

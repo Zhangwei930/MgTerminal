@@ -288,7 +288,7 @@ module.exports = {
         {
             provider: 'github',
             owner: 'JasonZhangDad',
-            repo: 'MgTerminal',
+            repo: 'MgTerminal-releases',
             releaseType: 'release'
         }
     ]

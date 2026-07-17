@@ -18,8 +18,8 @@ import {
 // Part 1: GitHub API Version Check
 // ================================
 
-const GITHUB_API_URL = 'https://api.github.com/repos/JasonZhangDad/MgTerminal/releases/latest';
-const RELEASES_PAGE_URL = 'https://github.com/JasonZhangDad/MgTerminal/releases';
+const GITHUB_API_URL = 'https://api.github.com/repos/JasonZhangDad/MgTerminal-releases/releases/latest';
+const RELEASES_PAGE_URL = 'https://github.com/JasonZhangDad/MgTerminal-releases/releases';
 
 export interface ReleaseInfo {
   version: string;       // e.g. "1.0.0" (without 'v' prefix)

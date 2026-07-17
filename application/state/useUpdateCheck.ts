@@ -325,7 +325,7 @@ export function useUpdateCheck(options?: {
             tagName: 'v1.0.0',
             name: 'MagiesTerminal v1.0.0',
             body: 'Demo release for testing update notification',
-            htmlUrl: 'https://github.com/JasonZhangDad/MgTerminal/releases',
+            htmlUrl: 'https://github.com/JasonZhangDad/MgTerminal-releases/releases',
             publishedAt: new Date().toISOString(),
             assets: [],
           },

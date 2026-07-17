@@ -57,3 +57,25 @@ test("follow audit persists across reset when disk path configured", () => {
 
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test("clearAudit wipes memory and disk for a session", () => {
+  follow.__resetForTests();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "follow-mgr-clear-"));
+  const filePath = path.join(dir, "follow-audit-v1.json");
+  follow.configureAuditPersistence({ filePath });
+
+  follow.startFollow("clear-1", 1, "Host");
+  follow.joinFollow("clear-1", 2, "Viewer");
+  follow.stopFollow("clear-1", 1);
+  assert.ok(follow.getAudit("clear-1").length >= 2);
+
+  const cleared = follow.clearAudit("clear-1");
+  assert.equal(cleared.success, true);
+  assert.deepEqual(follow.getAudit("clear-1"), []);
+
+  follow.__resetForTests();
+  follow.configureAuditPersistence({ filePath });
+  assert.deepEqual(follow.getAudit("clear-1"), []);
+
+  fs.rmSync(dir, { recursive: true, force: true });
+});

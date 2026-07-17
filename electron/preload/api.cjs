@@ -616,6 +616,7 @@ function createPreloadApi(ctx) {
   followRevokeControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:revokeControl", payload),
   followGetState: (payload) => ipcRenderer.invoke("magiesTerminal:follow:getState", payload),
   followGetAudit: (payload) => ipcRenderer.invoke("magiesTerminal:follow:getAudit", payload),
+  followClearAudit: (payload) => ipcRenderer.invoke("magiesTerminal:follow:clearAudit", payload),
   followLanCreateInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanCreateInvite", payload),
   followLanStopInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanStopInvite", payload),
   followLanGetInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanGetInvite", payload),

@@ -1570,6 +1570,9 @@ function registerHandlers(ipcMain, options = {}) {
   ipcMain.handle("magiesTerminal:follow:getAudit", (_event, payload) => {
     return { success: true, events: sessionFollowManager.getAudit(payload?.sessionId) };
   });
+  ipcMain.handle("magiesTerminal:follow:clearAudit", (_event, payload) => {
+    return sessionFollowManager.clearAudit(payload?.sessionId);
+  });
 
   // Push state changes to all peers in the room.
   if (!global.__magiesTerminalFollowStateHooked) {

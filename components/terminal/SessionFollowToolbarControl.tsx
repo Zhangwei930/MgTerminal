@@ -260,6 +260,25 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
     }
   }, [auditEvents, t]);
 
+  const handleClearAudit = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.followClearAudit) {
+      toast.error(t("terminal.follow.error.unavailable"));
+      return;
+    }
+    if (auditEvents.length === 0) {
+      toast.warning(t("terminal.follow.audit.empty"));
+      return;
+    }
+    const result = await bridge.followClearAudit({ sessionId });
+    if (!result?.success) {
+      toast.error(result?.error || t("terminal.follow.audit.clearFailed"));
+      return;
+    }
+    setAuditEvents([]);
+    toast.success(t("terminal.follow.audit.cleared"));
+  }, [auditEvents.length, sessionId, t]);
+
   const handleJoinLan = useCallback(async () => {
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.followLanConnect) {
@@ -447,6 +466,15 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
                   {t("terminal.follow.audit.copyNdjson")}
                 </Button>
               </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full h-7 text-[10px] text-destructive hover:text-destructive"
+                disabled={auditEvents.length === 0}
+                onClick={() => void handleClearAudit()}
+              >
+                {t("terminal.follow.audit.clear")}
+              </Button>
             </div>
           )}
 

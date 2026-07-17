@@ -326,6 +326,24 @@ function getAudit(sessionId) {
   return auditBySession.get(sessionId) || [];
 }
 
+/**
+ * Wipe collaboration audit for a session (memory + disk).
+ * Used for local privacy cleanup; does not write a "cleared" event.
+ */
+function clearAudit(sessionId) {
+  if (!sessionId || typeof sessionId !== "string") {
+    return { success: false, error: "Invalid session id." };
+  }
+  auditBySession.delete(sessionId);
+  const disk = ensureDiskAuditLoaded();
+  diskAuditCache = auditStore.setSessionEvents(disk, sessionId, [], {
+    maxEvents: MAX_AUDIT,
+  });
+  scheduleAuditPersist();
+  flushAuditPersist();
+  return { success: true, events: [] };
+}
+
 function getWebContentsIds(sessionId) {
   const room = rooms.get(sessionId);
   if (!room) return null;
@@ -460,6 +478,7 @@ module.exports = {
   revokeControl,
   getState,
   getAudit,
+  clearAudit,
   getWebContentsIds,
   shouldBlockWrite,
   shouldBlockWriteByPeerId,

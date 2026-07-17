@@ -28,6 +28,9 @@ declare global {
     followGetAudit?(payload: {
       sessionId: string;
     }): Promise<{ success: boolean; events?: SessionFollowAuditEvent[] }>;
+    followClearAudit?(payload: {
+      sessionId: string;
+    }): Promise<{ success: boolean; error?: string; events?: SessionFollowAuditEvent[] }>;
     followLanCreateInvite?(payload: {
       sessionId: string;
       hostLabel?: string;

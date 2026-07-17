@@ -14,6 +14,7 @@ const {
   parseEtBinRepository,
   replaceDir,
   resolveHostTarget,
+  TARGETS,
   resolveTarArchiveInvocation,
 } = require("./fetch-et-binaries.cjs");
 
@@ -75,7 +76,15 @@ test("resolveHostTarget maps the local platform to the bundled target", () => {
   assert.deepEqual(resolveHostTarget({ platform: "linux", arch: "x64" }), { platform: "linux", arch: "x64" });
   assert.deepEqual(resolveHostTarget({ platform: "linux", arch: "arm64" }), { platform: "linux", arch: "arm64" });
   assert.deepEqual(resolveHostTarget({ platform: "win32", arch: "x64" }), { platform: "win32", arch: "x64" });
+  assert.deepEqual(resolveHostTarget({ platform: "win32", arch: "arm64" }), { platform: "win32", arch: "arm64" });
   assert.throws(() => resolveHostTarget({ platform: "freebsd", arch: "x64" }), /No bundled et target/);
+});
+
+test("TARGETS cover win32-arm64", () => {
+  const target = TARGETS.find((t) => t.platform === "win32" && t.arch === "arm64");
+  assert.deepEqual(target, {
+    platform: "win32", arch: "arm64", file: "et-win32-arm64.tar.gz", localDir: "win32-arm64", extract: "tar.gz",
+  });
 });
 
 test("tar archive invocation uses a relative archive name for Windows paths", () => {
@@ -123,7 +132,7 @@ test("fetch-et-binaries host mode skips unsupported local targets", async (t) =>
 
   const { stderr } = await execFileAsync(
     process.execPath,
-    [script, "--host", "--platform=win32", "--arch=arm64"],
+    [script, "--host", "--platform=win32", "--arch=ia32"],
     {
       env: {
         ...process.env,
@@ -136,7 +145,7 @@ test("fetch-et-binaries host mode skips unsupported local targets", async (t) =>
     },
   );
 
-  assert.match(stderr, /No bundled et target for win32-arm64/);
+  assert.match(stderr, /No bundled et target for win32-ia32/);
   assert.equal(fs.existsSync(resDir), false);
 });
 

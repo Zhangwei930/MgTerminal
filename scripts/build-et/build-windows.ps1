@@ -1,14 +1,16 @@
-# Build a static EternalTerminal `et` client on Windows (x64, MSVC).
+# Build a static EternalTerminal `et` client on Windows (MSVC).
 #
 # Inputs (env):
 #   ET_REF   — git ref of MisterTea/EternalTerminal to build (e.g. et-v6.2.10)
-#   OUT_DIR  — directory to write et-win32-x64.tar.gz + sha256
+#   OUT_DIR  — directory to write et-win32-<arch>.tar.gz + sha256
+#   ET_ARCH  — target arch: x64 (default) or arm64. arm64 expects a native
+#              windows-11-arm runner with the arm64 MSVC toolchain active.
 #
 # Output:
-#   $OUT_DIR/et-win32-x64.tar.gz          (single static et.exe, no DLLs)
-#   $OUT_DIR/et-win32-x64.tar.gz.sha256
+#   $OUT_DIR/et-win32-<arch>.tar.gz          (single static et.exe, no DLLs)
+#   $OUT_DIR/et-win32-<arch>.tar.gz.sha256
 #
-# Uses the vendored vcpkg x64-windows-static triplet so the produced et.exe
+# Uses the vendored vcpkg <arch>-windows-static triplet so the produced et.exe
 # statically links the MSVC runtime and all third-party deps — no DLL bundle
 # is needed. Run from a Developer Command Prompt (ilammy/msvc-dev-cmd) so
 # cl.exe / ninja are on PATH.
@@ -17,6 +19,10 @@ Set-StrictMode -Version Latest
 
 if (-not $env:ET_REF) { throw "missing ET_REF" }
 if (-not $env:OUT_DIR) { throw "missing OUT_DIR" }
+
+$arch = if ($env:ET_ARCH) { $env:ET_ARCH } else { "x64" }
+if ($arch -notin @("x64", "arm64")) { throw "unsupported ET_ARCH: $arch" }
+$triplet = "$arch-windows-static"
 
 $etRef = $env:ET_REF
 if ($etRef -notmatch '^[A-Za-z0-9][A-Za-z0-9._/-]*$' -or $etRef -match '\.\.' -or $etRef -match '@\{' -or $etRef.EndsWith('/') -or $etRef.EndsWith('.lock')) {
@@ -53,17 +59,17 @@ try {
   (Get-Content $manifest) | Where-Object { $_ -notmatch '"sentry-native"' } | Set-Content $manifest
 
   # Build only the Release halves of the vcpkg deps (skip Debug) to roughly
-  # halve build time, via an overlay triplet mirroring x64-windows-static but
-  # forcing release-only.
+  # halve build time, via an overlay triplet mirroring <arch>-windows-static
+  # but forcing release-only.
   $overlay = Join-Path $work "vcpkg-overlay-triplets"
   New-Item -ItemType Directory -Force -Path $overlay | Out-Null
-  $srcTriplet = Join-Path $etDir "external\vcpkg\triplets\x64-windows-static.cmake"
+  $srcTriplet = Join-Path $etDir "external\vcpkg\triplets\$triplet.cmake"
   if (-not (Test-Path $srcTriplet)) {
-    $srcTriplet = Join-Path $etDir "external\vcpkg\triplets\community\x64-windows-static.cmake"
+    $srcTriplet = Join-Path $etDir "external\vcpkg\triplets\community\$triplet.cmake"
   }
-  if (-not (Test-Path $srcTriplet)) { throw "vcpkg triplet x64-windows-static.cmake not found" }
-  Copy-Item $srcTriplet (Join-Path $overlay "x64-windows-static.cmake")
-  Add-Content -Path (Join-Path $overlay "x64-windows-static.cmake") -Value 'set(VCPKG_BUILD_TYPE release)'
+  if (-not (Test-Path $srcTriplet)) { throw "vcpkg triplet $triplet.cmake not found" }
+  Copy-Item $srcTriplet (Join-Path $overlay "$triplet.cmake")
+  Add-Content -Path (Join-Path $overlay "$triplet.cmake") -Value 'set(VCPKG_BUILD_TYPE release)'
   $env:VCPKG_OVERLAY_TRIPLETS = $overlay
 
   & (Join-Path $etDir "external\vcpkg\bootstrap-vcpkg.bat") -disableMetrics
@@ -73,13 +79,13 @@ try {
     -GNinja `
     -DCMAKE_BUILD_TYPE=RelWithDebInfo `
     -DDISABLE_TELEMETRY=ON `
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static
+    -DVCPKG_TARGET_TRIPLET=$triplet
   if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
   cmake --build $buildDir --target et
   if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
 
-  $bundleDir = Join-Path $work "win32-x64-bundle"
+  $bundleDir = Join-Path $work "win32-$arch-bundle"
   New-Item -ItemType Directory -Force -Path $bundleDir | Out-Null
   $srcExe = Join-Path $buildDir "et.exe"
   if (-not (Test-Path $srcExe)) { $srcExe = Join-Path $buildDir "RelWithDebInfo\et.exe" }
@@ -90,14 +96,14 @@ try {
   Write-Host "--- et.exe built ---"
   Get-Item (Join-Path $bundleDir "et.exe") | Format-List Name, Length
 
-  $tgz = Join-Path $env:OUT_DIR "et-win32-x64.tar.gz"
+  $tgz = Join-Path $env:OUT_DIR "et-win32-$arch.tar.gz"
   # Windows ships bsdtar as tar.exe.
   tar -czf $tgz -C $bundleDir "et.exe"
   if ($LASTEXITCODE -ne 0) { throw "tar failed" }
 
   $hash = (Get-FileHash -Algorithm SHA256 $tgz).Hash.ToLower()
-  $sumLine = "$hash  et-win32-x64.tar.gz"
-  Set-Content -Path (Join-Path $env:OUT_DIR "et-win32-x64.tar.gz.sha256") -Value $sumLine -NoNewline
+  $sumLine = "$hash  et-win32-$arch.tar.gz"
+  Set-Content -Path (Join-Path $env:OUT_DIR "et-win32-$arch.tar.gz.sha256") -Value $sumLine -NoNewline
   Write-Host $sumLine
 }
 finally {

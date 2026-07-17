@@ -47,6 +47,7 @@ const TARGETS = [
   { platform: "linux", arch: "arm64", file: "et-linux-arm64.tar.gz", localDir: "linux-arm64", extract: "tar.gz" },
   { platform: "darwin", arch: "universal", file: "et-darwin-universal.tar.gz", localDir: "darwin-universal", extract: "tar.gz" },
   { platform: "win32", arch: "x64", file: "et-win32-x64.tar.gz", localDir: "win32-x64", extract: "tar.gz" },
+  { platform: "win32", arch: "arm64", file: "et-win32-arm64.tar.gz", localDir: "win32-arm64", extract: "tar.gz" },
 ];
 
 function log(msg) { console.log(`[fetch-et-binaries] ${msg}`); }
@@ -156,7 +157,7 @@ function resolveHostTarget(opts = {}) {
   const arch = opts.arch || process.arch;
   if (platform === "darwin") return { platform: "darwin", arch: "universal" };
   if (platform === "linux" && (arch === "x64" || arch === "arm64")) return { platform, arch };
-  if (platform === "win32" && arch === "x64") return { platform, arch };
+  if (platform === "win32" && (arch === "x64" || arch === "arm64")) return { platform, arch };
   throw new Error(`No bundled et target for ${platform}-${arch}`);
 }
 

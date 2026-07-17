@@ -11,6 +11,7 @@
 //   mosh-client-linux-arm64.tar.gz    -> resources/mosh/linux-arm64/mosh-client
 //   mosh-client-darwin-universal.tar.gz -> resources/mosh/darwin-universal/mosh-client
 //   mosh-client-win32-x64.tar.gz      -> resources/mosh/win32-x64/mosh-client.exe
+//   mosh-client-win32-arm64.tar.gz    -> resources/mosh/win32-arm64/mosh-client.exe
 //
 // Usage:
 //   node scripts/fetch-mosh-binaries.cjs
@@ -55,6 +56,10 @@ const TARGETS = [
   {
     platform: "win32", arch: "x64",
     file: "mosh-client-win32-x64.tar.gz", localDir: "win32-x64", binary: "mosh-client.exe",
+  },
+  {
+    platform: "win32", arch: "arm64",
+    file: "mosh-client-win32-arm64.tar.gz", localDir: "win32-arm64", binary: "mosh-client.exe",
   },
 ];
 
@@ -166,7 +171,7 @@ function resolveHostTarget(opts = {}) {
   const arch = opts.arch || process.arch;
   if (platform === "darwin") return { platform: "darwin", arch: "universal" };
   if (platform === "linux" && (arch === "x64" || arch === "arm64")) return { platform, arch };
-  if (platform === "win32" && arch === "x64") return { platform, arch };
+  if (platform === "win32" && (arch === "x64" || arch === "arm64")) return { platform, arch };
   throw new Error(`No bundled mosh-client target for ${platform}-${arch}`);
 }
 

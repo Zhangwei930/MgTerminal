@@ -144,8 +144,32 @@ jobs:
           path: out/
 
   # ------------------------------------------------------------------
-  # Windows arm64 — intentionally not built until a tested client exists.
+  # Windows arm64 — native build on the arm64 runner (no cross toolchain,
+  # so vcpkg host tools like protoc run natively).
   # ------------------------------------------------------------------
+  build-windows-arm64:
+    name: build-windows-arm64
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install ninja
+        run: choco install -y ninja
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: arm64
+      - name: Build et (win32-arm64)
+        env:
+          ET_REF: ${{ env.ET_REF }}
+          ET_ARCH: arm64
+          OUT_DIR: ${{ github.workspace }}\out
+        shell: pwsh
+        run: pwsh -File scripts/build-et/build-windows.ps1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: et-win32-arm64
+          path: out/
 
   # ------------------------------------------------------------------
   # Aggregate + optional release to the dedicated binary repository.
@@ -157,6 +181,7 @@ jobs:
       - build-linux-arm64
       - build-macos-universal
       - build-windows-x64
+      - build-windows-arm64
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
     permissions:

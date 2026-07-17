@@ -1,7 +1,12 @@
-import { Copy, Eye, Hand, Network, Users } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import { ClipboardList, Copy, Eye, Hand, Network, Users } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../application/i18n/I18nProvider";
-import type { SessionFollowPublicState } from "../../domain/sessionFollow";
+import type { SessionFollowAuditEvent, SessionFollowPublicState } from "../../domain/sessionFollow";
+import {
+  exportFollowAuditNdjson,
+  exportFollowAuditText,
+  formatFollowAuditLine,
+} from "../../domain/sessionFollow";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -36,7 +41,30 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
   const [lanInvite, setLanInvite] = useState<LanInviteInfo | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinValue, setJoinValue] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditEvents, setAuditEvents] = useState<SessionFollowAuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const active = Boolean(state);
+
+  const peerNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const peer of state?.peers || []) {
+      map[peer.peerId] = peer.displayName;
+    }
+    return map;
+  }, [state?.peers]);
+
+  const auditTypeLabels = useMemo(() => ({
+    follow_started: t("terminal.follow.audit.type.follow_started"),
+    follow_stopped: t("terminal.follow.audit.type.follow_stopped"),
+    peer_joined: t("terminal.follow.audit.type.peer_joined"),
+    peer_left: t("terminal.follow.audit.type.peer_left"),
+    control_requested: t("terminal.follow.audit.type.control_requested"),
+    control_granted: t("terminal.follow.audit.type.control_granted"),
+    control_revoked: t("terminal.follow.audit.type.control_revoked"),
+    control_denied: t("terminal.follow.audit.type.control_denied"),
+    input_denied: t("terminal.follow.audit.type.input_denied"),
+  }), [t]);
 
   useEffect(() => {
     const bridge = magiesTerminalBridge.get();
@@ -174,6 +202,64 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
     toast.success(t("terminal.follow.toast.revoked"));
   }, [sessionId, t]);
 
+  const refreshAudit = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.followGetAudit) {
+      toast.error(t("terminal.follow.error.unavailable"));
+      return;
+    }
+    setAuditLoading(true);
+    try {
+      const result = await bridge.followGetAudit({ sessionId });
+      if (!result?.success) {
+        toast.error(t("terminal.follow.audit.loadFailed"));
+        return;
+      }
+      setAuditEvents((result.events || []) as SessionFollowAuditEvent[]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [sessionId, t]);
+
+  const handleToggleAudit = useCallback(() => {
+    setAuditOpen((open) => {
+      const next = !open;
+      if (next) void refreshAudit();
+      return next;
+    });
+  }, [refreshAudit]);
+
+  const handleCopyAuditText = useCallback(async () => {
+    if (auditEvents.length === 0) {
+      toast.warning(t("terminal.follow.audit.empty"));
+      return;
+    }
+    const text = exportFollowAuditText(auditEvents, {
+      nameByPeerId: peerNameById,
+      typeLabels: auditTypeLabels,
+      header: `# MagiesTerminal follow audit · ${sessionId}`,
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(t("terminal.follow.audit.copied"));
+    } catch {
+      toast.error(t("terminal.follow.audit.copyFailed"));
+    }
+  }, [auditEvents, auditTypeLabels, peerNameById, sessionId, t]);
+
+  const handleCopyAuditNdjson = useCallback(async () => {
+    if (auditEvents.length === 0) {
+      toast.warning(t("terminal.follow.audit.empty"));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(exportFollowAuditNdjson(auditEvents));
+      toast.success(t("terminal.follow.audit.copiedNdjson"));
+    } catch {
+      toast.error(t("terminal.follow.audit.copyFailed"));
+    }
+  }, [auditEvents, t]);
+
   const handleJoinLan = useCallback(async () => {
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.followLanConnect) {
@@ -279,6 +365,79 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
                 <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={() => void handleRevoke()}>
                   {t("terminal.follow.revoke")}
                 </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full h-8 text-xs"
+                disabled={busy || auditLoading}
+                onClick={() => handleToggleAudit()}
+              >
+                <ClipboardList size={12} className="mr-1" />
+                {auditOpen ? t("terminal.follow.audit.hide") : t("terminal.follow.audit.show")}
+              </Button>
+              {auditOpen && (
+                <div className="rounded-md border border-border/50 p-2 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-medium">
+                      {t("terminal.follow.audit.title")}
+                      <span className="ml-1 text-muted-foreground font-normal">
+                        ({auditEvents.length})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground"
+                      onClick={() => void refreshAudit()}
+                      disabled={auditLoading}
+                    >
+                      {t("terminal.follow.audit.refresh")}
+                    </button>
+                  </div>
+                  {auditEvents.length === 0 ? (
+                    <div className="text-[11px] text-muted-foreground py-2 text-center">
+                      {auditLoading
+                        ? t("terminal.follow.audit.loading")
+                        : t("terminal.follow.audit.empty")}
+                    </div>
+                  ) : (
+                    <ul className="max-h-36 overflow-y-auto space-y-1 pr-0.5">
+                      {[...auditEvents].reverse().map((event, index) => (
+                        <li
+                          key={`${event.ts}-${event.type}-${index}`}
+                          className="text-[10px] leading-snug text-muted-foreground font-mono break-words"
+                        >
+                          {formatFollowAuditLine(event, {
+                            nameByPeerId: peerNameById,
+                            typeLabels: auditTypeLabels,
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-[10px]"
+                      disabled={auditEvents.length === 0}
+                      onClick={() => void handleCopyAuditText()}
+                    >
+                      <Copy size={10} className="mr-1" />
+                      {t("terminal.follow.audit.copyText")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-[10px]"
+                      disabled={auditEvents.length === 0}
+                      onClick={() => void handleCopyAuditNdjson()}
+                    >
+                      <Copy size={10} className="mr-1" />
+                      {t("terminal.follow.audit.copyNdjson")}
+                    </Button>
+                  </div>
+                </div>
               )}
               <Button size="sm" variant="ghost" className="w-full h-8 text-xs text-destructive" disabled={busy} onClick={() => void handleStop()}>
                 {t("terminal.follow.stop")}

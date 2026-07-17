@@ -319,3 +319,92 @@ export function appendFollowAudit(
   if (next.length <= maxEvents) return next;
   return next.slice(next.length - maxEvents);
 }
+
+/** Human-readable labels for audit event types (English fallback). */
+export const FOLLOW_AUDIT_TYPE_LABELS: Record<SessionFollowAuditType, string> = {
+  follow_started: "Follow started",
+  follow_stopped: "Follow stopped",
+  peer_joined: "Peer joined",
+  peer_left: "Peer left",
+  control_requested: "Control requested",
+  control_granted: "Control granted",
+  control_revoked: "Control revoked",
+  control_denied: "Control denied",
+  input_denied: "Input denied",
+};
+
+export function resolveFollowPeerLabel(
+  peerId: string | undefined,
+  nameByPeerId?: Record<string, string> | Map<string, string>,
+): string {
+  if (!peerId) return "";
+  if (!nameByPeerId) return peerId;
+  if (nameByPeerId instanceof Map) {
+    return nameByPeerId.get(peerId) || peerId;
+  }
+  return nameByPeerId[peerId] || peerId;
+}
+
+/**
+ * Single-line human summary for UI lists.
+ * Example: `14:02:03 Control granted · Host → Viewer`
+ */
+export function formatFollowAuditLine(
+  event: SessionFollowAuditEvent,
+  options?: {
+    nameByPeerId?: Record<string, string> | Map<string, string>;
+    typeLabels?: Partial<Record<SessionFollowAuditType, string>>;
+    locale?: string;
+  },
+): string {
+  const labels = { ...FOLLOW_AUDIT_TYPE_LABELS, ...(options?.typeLabels || {}) };
+  const typeLabel = labels[event.type] || event.type;
+  const time = new Date(event.ts).toLocaleTimeString(options?.locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const actor = resolveFollowPeerLabel(event.actorPeerId, options?.nameByPeerId);
+  const target = resolveFollowPeerLabel(event.targetPeerId, options?.nameByPeerId);
+  let who = "";
+  if (actor && target) who = `${actor} → ${target}`;
+  else if (actor) who = actor;
+  else if (target) who = target;
+  const detail = (event.detail || "").trim();
+  const parts = [time, typeLabel];
+  if (who) parts.push(who);
+  if (detail) parts.push(detail);
+  return parts.join(" · ");
+}
+
+/** NDJSON export (one event per line) for tooling / compliance paste. */
+export function exportFollowAuditNdjson(events: SessionFollowAuditEvent[]): string {
+  return events
+    .map((event) => JSON.stringify({
+      ts: event.ts,
+      sessionId: event.sessionId,
+      type: event.type,
+      actorPeerId: event.actorPeerId ?? null,
+      targetPeerId: event.targetPeerId ?? null,
+      detail: event.detail ?? null,
+    }))
+    .join("\n");
+}
+
+/** Plain-text multi-line export using formatFollowAuditLine. */
+export function exportFollowAuditText(
+  events: SessionFollowAuditEvent[],
+  options?: {
+    nameByPeerId?: Record<string, string> | Map<string, string>;
+    typeLabels?: Partial<Record<SessionFollowAuditType, string>>;
+    locale?: string;
+    header?: string;
+  },
+): string {
+  const lines = events.map((event) => formatFollowAuditLine(event, options));
+  if (options?.header) {
+    return [options.header, ...lines].join("\n");
+  }
+  return lines.join("\n");
+}

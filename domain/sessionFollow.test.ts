@@ -2,9 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  appendFollowAudit,
   canWriteFollowInput,
+  createFollowAuditEvent,
   createFollowPeer,
   createFollowRoom,
+  exportFollowAuditNdjson,
+  exportFollowAuditText,
+  formatFollowAuditLine,
   grantFollowControl,
   joinFollowRoom,
   leaveFollowRoom,
@@ -92,4 +97,49 @@ test("public state snapshot", () => {
   const state = toFollowPublicState(room);
   assert.equal(state.peerCount, 1);
   assert.equal(state.peers[0]?.displayName, "Host");
+});
+
+test("appendFollowAudit caps ring buffer", () => {
+  let events = [] as ReturnType<typeof createFollowAuditEvent>[];
+  for (let i = 0; i < 5; i += 1) {
+    events = appendFollowAudit(
+      events,
+      createFollowAuditEvent({ sessionId: "s1", type: "peer_joined", detail: String(i), now: 1000 + i }),
+      3,
+    );
+  }
+  assert.equal(events.length, 3);
+  assert.equal(events[0]?.detail, "2");
+  assert.equal(events[2]?.detail, "4");
+});
+
+test("formatFollowAuditLine and export formats", () => {
+  const event = createFollowAuditEvent({
+    sessionId: "s1",
+    type: "control_granted",
+    actorPeerId: "owner",
+    targetPeerId: "v1",
+    detail: "ok",
+    now: Date.UTC(2026, 0, 1, 12, 30, 45),
+  });
+  const line = formatFollowAuditLine(event, {
+    nameByPeerId: { owner: "Host", v1: "Viewer" },
+    locale: "en-GB",
+  });
+  assert.match(line, /Control granted/);
+  assert.match(line, /Host → Viewer/);
+  assert.match(line, /ok/);
+
+  const ndjson = exportFollowAuditNdjson([event]);
+  const parsed = JSON.parse(ndjson);
+  assert.equal(parsed.type, "control_granted");
+  assert.equal(parsed.actorPeerId, "owner");
+
+  const text = exportFollowAuditText([event], {
+    nameByPeerId: { owner: "Host", v1: "Viewer" },
+    header: "# follow audit",
+    locale: "en-GB",
+  });
+  assert.ok(text.startsWith("# follow audit\n"));
+  assert.match(text, /Control granted/);
 });

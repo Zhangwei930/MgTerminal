@@ -103,7 +103,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
     handleEndSessionDrag, handleFollowAppTerminalThemeChange, handleHostConnectWithProtocolCheck, handleHotkeyAction, handleKeyboardInteractiveCancel, handleKeyboardInteractiveSubmit,
     handleOpenHostFromVaultNote, handleOpenQuickSwitcher, handleOpenSettings, handleOpenVaultHostFromChat, handleOpenVaultNoteFromChat, handleOpenVaultSectionFromChat, handleOpenVaultSnippetFromChat, handleRootContextMenu, handlePassphraseCancel, handlePassphraseSkip, handlePassphraseSubmit, handleProtocolSelect,
     handleRequestCloseEditorTabRef, handleSessionStatusChange, handleSyncNowManual, handleTerminalDataCapture, handleToggleTheme, handleUpdateHostFromTerminal,
-    hostById, hosts, terminalHosts, updateTerminalHosts, hotkeyScheme, identities, importOrReuseKey, isBroadcastEnabled, isCreateWorkspaceOpen, isMacClient, isQuickSwitcherOpen,
+    hostById, hosts, terminalHosts, updateTerminalHosts, hotkeyScheme, identities, importOrReuseKey, isBroadcastEnabled, isCreateWorkspaceOpen, isMacClient, isQuickSwitcherOpen, isVaultInitialized,
     keyBindings, keyboardInteractiveQueue, keys, logViews, managedSources, navigateToSection, noteGroups, notes, openLogView, openNoteRequest, orderedTabsWithEditors, orphanSessions,
     passphraseQueue, protocolSelectHost, proxyProfiles, portForwardingRules, quickResults, quickSearch, removeSessionFromWorkspace, reorderWorkTabs, reorderWorkspaceSessions,
     resolveEmptyVaultConflict, resolvedTheme, resolveSessionAppearance, runSnippet, sessionLogsDir, sessionLogsEnabled, sessionLogsFormat, sessionLogsTimestampsEnabled, sessionRenameTarget, sshDebugLogsEnabled,
@@ -129,18 +129,46 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
     } as React.CSSProperties;
   }, [accentMode, customAccent, resolvedTheme, settings.darkUiThemeId, settings.lightUiThemeId]);
 
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    try {
-      return !isOnboardingComplete(localStorageAdapter.readBoolean(STORAGE_KEY_ONBOARDING_COMPLETE));
-    } catch {
-      return false;
-    }
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const completeOnboarding = useCallback(() => {
     localStorageAdapter.writeBoolean(STORAGE_KEY_ONBOARDING_COMPLETE, true);
     setShowOnboarding(false);
   }, []);
+
+  // First-run wizard only for a truly empty vault. Existing installs (upgrade
+  // path) must not see onboarding again — mark complete once vault data exists.
+  useEffect(() => {
+    try {
+      if (isOnboardingComplete(localStorageAdapter.readBoolean(STORAGE_KEY_ONBOARDING_COMPLETE))) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    // Wait until vault hydration finished so we don't treat "not loaded yet"
+    // as a brand-new empty install.
+    if (!isVaultInitialized) return;
+
+    const hasExistingVaultData =
+      hosts.length > 0 ||
+      keys.length > 0 ||
+      identities.length > 0 ||
+      (connectionLogs?.length ?? 0) > 0;
+
+    if (hasExistingVaultData) {
+      localStorageAdapter.writeBoolean(STORAGE_KEY_ONBOARDING_COMPLETE, true);
+      setShowOnboarding(false);
+      return;
+    }
+    setShowOnboarding(true);
+  }, [
+    connectionLogs?.length,
+    hosts.length,
+    identities.length,
+    isVaultInitialized,
+    keys.length,
+  ]);
 
   // After the first successful remote connection, surface a short product tip list once.
   useEffect(() => {

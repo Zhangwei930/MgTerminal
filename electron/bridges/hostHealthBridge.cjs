@@ -108,6 +108,13 @@ const createHostProber = (event, runId, sshBridge) => async (hostRequest) => {
     try {
       conn?.end();
     } catch { /* best-effort */ }
+    // Jump-chain stream is not always listed in connections; tear it down too.
+    if (sock && sock !== conn) {
+      try {
+        if (typeof sock.end === "function") sock.end();
+        else if (typeof sock.destroy === "function") sock.destroy();
+      } catch { /* best-effort */ }
+    }
     for (const chainConn of [...chainConnections].reverse()) {
       try {
         chainConn.end();

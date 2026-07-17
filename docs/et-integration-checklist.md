@@ -1,5 +1,10 @@
 # EternalTerminal (ET) 集成清单 — 按 Mosh 方式重做
 
+> **状态：已归档（2026-07-17）。** ET 集成已随 v0.4.8 发布（QuickConnect 入口、
+> 捆绑二进制 et-bin-6.2.10-1，macOS / Linux / Windows x64）。仅剩两项手动冒烟
+> （6.4 与文末"端到端冒烟"）未记录验证结果；win32-arm64 二进制尚未产出。
+> 本文档仅作历史参考，不再维护。
+
 > 目标：在上游最新架构（分支 `feat/et-history-reapply`，基于 `031bf0ee`）上，
 > **完全照搬 Mosh 的方式**重新集成 EternalTerminal：
 > 1. **打包客户端** —— 像 `mosh-client` 那样，把 `et` 客户端二进制构建 + 下载 +
@@ -144,14 +149,14 @@
       `components/terminal/runtime/` —— 落点以上游为准。
 - [x] **5.4** UI 组件（照搬 `git show b1a306f8 6c0d5bf3 55caa268` 的相应文件，
       映射到上游同名组件）：
-      - [ ] `components/ProtocolSelectDialog.tsx` —— 新增 ET 选项
-      - [ ] `components/QuickConnectWizard.tsx`
-      - [ ] `components/HostDetailsPanel.tsx` —— ET 设置（启用、ET 端口、etterminal 路径）
-      - [ ] `components/GroupDetailsPanel.tsx`
-      - [ ] `components/VaultView.tsx`
-      - [ ] `components/Terminal.tsx` / `components/TerminalLayer.tsx`
-      - [ ] `components/terminal/TerminalConnectionDialog.tsx` / `TerminalToolbar.tsx`
-      - [ ] `App.tsx`
+      - [x] `components/ProtocolSelectDialog.tsx` —— 新增 ET 选项
+      - [x] `components/QuickConnectWizard.tsx`
+      - [x] `components/HostDetailsPanel.tsx` —— ET 设置（启用、ET 端口、etterminal 路径）
+      - [x] `components/GroupDetailsPanel.tsx`
+      - [x] `components/VaultView.tsx`
+      - [x] `components/Terminal.tsx` / `components/TerminalLayer.tsx`
+      - [x] `components/terminal/TerminalConnectionDialog.tsx` / `TerminalToolbar.tsx`
+      - [x] `App.tsx`
 - [x] **5.5** i18n：`application/i18n/locales/en.ts` 与 `zh-CN.ts` 加 ET 文案
       （照搬旧 diff，键名对齐上游现有 mosh 文案结构）。
 
@@ -207,9 +212,9 @@
     `terminal.connection.protocol.et`、`terminal.et.*`
 
 ### 剩余（可选 / 非阻塞）
-- [ ] **QuickConnectWizard.tsx**：把 ET 加为“快速连接”协议按钮（type/端口/建主机映射 +
+- [x] **QuickConnectWizard.tsx**：把 ET 加为“快速连接”协议按钮（type/端口/建主机映射 +
       UI 按钮）。当前快速连接未列 ET；保存主机后开启 ET 再连即可，故仅为便利项。
-- [ ] **产出二进制**：手动 `workflow_dispatch` 跑 `build-et-binaries.yml`（带
+- [x] **产出二进制**：手动 `workflow_dispatch` 跑 `build-et-binaries.yml`（带
       `release_tag=et-bin-<ver>-1`）发布到 `MagiesTerminal-et-bin`，并配 `ET_BIN_RELEASE_TOKEN`
       secret。之后 `ET_BIN_RELEASE=... npm run fetch:et` 即可本地/打包捆绑 `et`。
       build-et 脚本本机无法编译 C++，需在 CI 验证。

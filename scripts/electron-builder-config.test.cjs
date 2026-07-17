@@ -260,3 +260,34 @@ test("linux FPM packages refresh the hicolor icon cache after install and remove
     );
   }
 });
+
+test("win publish overrides to a dedicated arm64 update channel", () => {
+  const configPath = require.resolve("../electron-builder.config.cjs");
+  const originalArch = process.env.npm_config_arch;
+  delete require.cache[configPath];
+  process.env.npm_config_arch = "arm64";
+  try {
+    const armConfig = require(configPath);
+    assert.deepEqual(armConfig.win.publish, [
+      {
+        provider: "github",
+        owner: "JasonZhangDad",
+        repo: "MgTerminal-releases",
+        releaseType: "release",
+        channel: "latest-arm64",
+      },
+    ]);
+  } finally {
+    if (originalArch === undefined) {
+      delete process.env.npm_config_arch;
+    } else {
+      process.env.npm_config_arch = originalArch;
+    }
+    delete require.cache[configPath];
+  }
+  assert.equal(
+    config.win.publish,
+    undefined,
+    "default (x64) win build must keep the top-level latest feed",
+  );
+});

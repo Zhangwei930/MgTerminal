@@ -23,7 +23,7 @@ single `et` (`et.exe` on Windows) binary.
    | `linux-arm64`     | upstream source, manylinux2014, vcpkg static deps + glibc        |
    | `darwin-universal`| upstream source, lipo arm64 + x86_64, macOS system dylibs only   |
    | `win32-x64`       | upstream source, MSVC + vcpkg `x64-windows-static` (no DLLs)     |
-   | `win32-arm64`     | (not built — add after a tested arm64 client is available)       |
+   | `win32-arm64`     | upstream source, MSVC + vcpkg `arm64-windows-static` (no DLLs)   |
 
    ET builds with CMake + Ninja + vcpkg
    (`cmake -DDISABLE_TELEMETRY=ON -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo`).

@@ -14,6 +14,7 @@ MagiesTerminal runs SSH + `mosh-server` bootstrap itself, then launches this bin
 | Linux arm64 | `mosh-client-linux-arm64.tar.gz` | `linux-arm64/mosh-client` |
 | macOS universal | `mosh-client-darwin-universal.tar.gz` | `darwin-universal/mosh-client` |
 | Windows x64 | `mosh-client-win32-x64.tar.gz` | `win32-x64/mosh-client.exe` |
+| Windows arm64 | `mosh-client-win32-arm64.tar.gz` | `win32-arm64/mosh-client.exe` |
 
 Each tarball contains **only** the client binary (no Cygwin DLLs, no terminfo).
 Windows builds static-link the MSVC CRT (`moshmagies-0.1.1+`).

@@ -157,3 +157,33 @@ test("et binary build scripts retry dependency configure and pin ninja", () => {
     assert.match(script, /-DCMAKE_MAKE_PROGRAM="\$NINJA_BIN"/, `${name} et build must pass the resolved ninja path`);
   }
 });
+
+test("build workflow bundles mosh and et for windows-arm64", () => {
+  assert.match(
+    buildWorkflow,
+    /npm run fetch:mosh -- --platform=win32 --arch=arm64/,
+    "windows-arm64 build must fetch the arm64 mosh-client",
+  );
+  assert.match(
+    buildWorkflow,
+    /npm run fetch:et -- --platform=win32 --arch=arm64/,
+    "windows-arm64 build must fetch the arm64 et client",
+  );
+});
+
+test("build workflow keeps a dedicated windows arm64 update feed", () => {
+  assert.ok(
+    !buildWorkflow.includes("Drop arm64 auto-update metadata"),
+    "arm64 update metadata must be published (latest-arm64.yml), not dropped",
+  );
+  assert.match(
+    buildWorkflow,
+    /latest-arm64\.yml/,
+    "release job must verify the windows arm64 feed file",
+  );
+  assert.match(
+    buildWorkflow,
+    /magiesTerminal-windows-arm64/,
+    "yml recovery must also re-download the windows-arm64 artifact",
+  );
+});

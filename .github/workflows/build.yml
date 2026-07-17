@@ -282,6 +282,8 @@ jobs:
             npm run fetch:mosh -- --platform=darwin --arch=universal
           elif [[ "${{ matrix.name }}" == "windows" ]]; then
             npm run fetch:mosh -- --platform=win32 --arch=x64
+          elif [[ "${{ matrix.name }}" == "windows-arm64" ]]; then
+            npm run fetch:mosh -- --platform=win32 --arch=arm64
           fi
 
       - name: Fetch bundled et-client
@@ -292,6 +294,8 @@ jobs:
             npm run fetch:et -- --platform=darwin --arch=universal
           elif [[ "${{ matrix.name }}" == "windows" ]]; then
             npm run fetch:et -- --platform=win32 --arch=x64
+          elif [[ "${{ matrix.name }}" == "windows-arm64" ]]; then
+            npm run fetch:et -- --platform=win32 --arch=arm64
           fi
 
       - name: Set version
@@ -324,14 +328,9 @@ jobs:
         shell: bash
         run: node scripts/verify-win-asar-integrity.cjs release/win-arm64-unpacked
 
-      # latest.yml is produced per electron-builder run; keeping the arm64
-      # copy would clobber the x64 auto-update feed in the merged artifacts
-      # dir. arm64 installs follow the x64 feed for now (runs under emulation).
-      - name: Drop arm64 auto-update metadata
-        if: matrix.name == 'windows-arm64'
-        shell: bash
-        run: rm -f release/*.yml
-
+      # The arm64 build publishes its own update channel (latest-arm64.yml,
+      # set in electron-builder.config.cjs), so its metadata no longer
+      # clobbers the x64 latest.yml in the merged artifacts dir.
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
@@ -815,7 +814,7 @@ jobs:
       - name: Verify update metadata files
         run: |
           missing=0
-          for f in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
+          for f in latest.yml latest-arm64.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::warning::Missing $f in merged artifacts, attempting recovery..."
               missing=1
@@ -823,7 +822,7 @@ jobs:
           done
           if [ "$missing" = "1" ]; then
             echo "Re-downloading individual artifacts to recover missing files..."
-            for name in magiesTerminal-macos magiesTerminal-windows magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
+            for name in magiesTerminal-macos magiesTerminal-windows magiesTerminal-windows-arm64 magiesTerminal-linux-x64 magiesTerminal-linux-arm64; do
               tmpdir="/tmp/artifact-${name}"
               gh run download ${{ github.run_id }} --name "${name}" --dir "${tmpdir}" 2>/dev/null || true
               if [ -d "${tmpdir}" ]; then
@@ -835,7 +834,7 @@ jobs:
             echo "After recovery:"
             ls -la artifacts/*.yml 2>/dev/null || echo "(no yml files found)"
           fi
-          for f in latest.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
+          for f in latest.yml latest-arm64.yml latest-mac.yml latest-linux.yml latest-linux-arm64.yml; do
             if [ ! -f "artifacts/$f" ]; then
               echo "::error::$f is still missing after recovery attempt"
               exit 1

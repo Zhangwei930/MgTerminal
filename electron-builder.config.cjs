@@ -1,5 +1,10 @@
+const process = require('node:process');
 const { moshExtraResources } = require('./scripts/mosh-extra-resources.cjs');
 const { etExtraResources } = require('./scripts/et-extra-resources.cjs');
+
+function requestedArch() {
+    return process.env.npm_config_arch || process.env.npm_config_target_arch || process.arch;
+}
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -225,7 +230,23 @@ module.exports = {
         // Let the --x64 CLI flag select the architecture so electron-builder
         // does not also emit ARM64 and combined installers with x64 payloads.
         target: ['nsis', 'portable', 'zip'],
-        extraResources: [...moshExtraResources('win32'), ...etExtraResources('win32')]
+        extraResources: [...moshExtraResources('win32'), ...etExtraResources('win32')],
+        // The arm64 build publishes its update metadata on its own channel
+        // (latest-arm64.yml) so it cannot clobber the x64 latest.yml in the
+        // release assets, and arm64 installs update to arm64 payloads.
+        ...(requestedArch() === 'arm64'
+            ? {
+                publish: [
+                    {
+                        provider: 'github',
+                        owner: 'JasonZhangDad',
+                        repo: 'MgTerminal-releases',
+                        releaseType: 'release',
+                        channel: 'latest-arm64'
+                    }
+                ]
+            }
+            : {})
     },
     portable: {
         artifactName: '${productName}-${version}-portable-${os}-${arch}.${ext}',

@@ -237,6 +237,15 @@ function createPreloadApi(ctx) {
   listSshAgentIdentities: async () => {
     return ipcRenderer.invoke("magiesTerminal:ssh:list-agent-identities");
   },
+  sshPkcs11Supported: async () => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-supported");
+  },
+  sshPkcs11Load: async (payload) => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-load", payload);
+  },
+  sshPkcs11Unload: async (payload) => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:pkcs11-unload", payload);
+  },
   onSshAuthMethodUsed: (cb) => {
     sshAuthMethodUsedListeners.add(cb);
     return () => {
@@ -597,6 +606,52 @@ function createPreloadApi(ctx) {
     ipcRenderer.on("magiesTerminal:window:openSession", handler);
     return () => ipcRenderer.removeListener("magiesTerminal:window:openSession", handler);
   },
+  // Local follow mode (multiplayer foundation)
+  followStart: (payload) => ipcRenderer.invoke("magiesTerminal:follow:start", payload),
+  followStop: (payload) => ipcRenderer.invoke("magiesTerminal:follow:stop", payload),
+  followJoin: (payload) => ipcRenderer.invoke("magiesTerminal:follow:join", payload),
+  followLeave: (payload) => ipcRenderer.invoke("magiesTerminal:follow:leave", payload),
+  followRequestControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:requestControl", payload),
+  followGrantControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:grantControl", payload),
+  followRevokeControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:revokeControl", payload),
+  followGetState: (payload) => ipcRenderer.invoke("magiesTerminal:follow:getState", payload),
+  followGetAudit: (payload) => ipcRenderer.invoke("magiesTerminal:follow:getAudit", payload),
+  followClearAudit: (payload) => ipcRenderer.invoke("magiesTerminal:follow:clearAudit", payload),
+  followLanCreateInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanCreateInvite", payload),
+  followLanStopInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanStopInvite", payload),
+  followLanGetInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanGetInvite", payload),
+  followLanDecodeInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanDecodeInvite", payload),
+  followLanConnect: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanConnect", payload),
+  followLanViewerInput: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerInput", payload),
+  followLanViewerRequestControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerRequestControl", payload),
+  followLanViewerDisconnect: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerDisconnect", payload),
+  onFollowLanClientEvent: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on("magiesTerminal:follow:lanClientEvent", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:follow:lanClientEvent", handler);
+  },
+  openFollowSessionWindow: (payload) => ipcRenderer.invoke("magiesTerminal:window:openFollowSession", payload),
+  openLanFollowWindow: (payload) => ipcRenderer.invoke("magiesTerminal:window:openLanFollow", payload),
+  onOpenLanFollow: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on("magiesTerminal:window:openLanFollow", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:window:openLanFollow", handler);
+  },
+  onFollowSessionOpen: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on("magiesTerminal:window:openFollowSession", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:window:openFollowSession", handler);
+  },
+  onFollowState: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on("magiesTerminal:follow:state", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:follow:state", handler);
+  },
+  onFollowInputDenied: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on("magiesTerminal:follow:inputDenied", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:follow:inputDenied", handler);
+  },
   onWindowCommandCloseRequested: (cb) => {
     const handler = () => cb();
     ipcRenderer.on("magiesTerminal:window:command-close", handler);
@@ -756,11 +811,25 @@ function createPreloadApi(ctx) {
   listPortForwards: async () => {
     return ipcRenderer.invoke("magiesTerminal:portforward:list");
   },
+  listPortForwardChannels: async () => {
+    return ipcRenderer.invoke("magiesTerminal:portforward:listChannels");
+  },
   stopAllPortForwards: async () => {
     return ipcRenderer.invoke("magiesTerminal:portforward:stopAll");
   },
   stopPortForwardByRuleId: async (ruleId) => {
     return ipcRenderer.invoke("magiesTerminal:portforward:stopByRuleId", { ruleId });
+  },
+  onPortForwardChannels: (cb) => {
+    const handler = (_event, payload) => {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.warn("[preload] onPortForwardChannels callback failed:", err);
+      }
+    };
+    ipcRenderer.on("magiesTerminal:portforward:channels", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:portforward:channels", handler);
   },
   onPortForwardStatus: (tunnelId, cb) => {
     if (!portForwardStatusListeners.has(tunnelId)) {
@@ -1060,6 +1129,10 @@ function createPreloadApi(ctx) {
   readClipboardImage: async () => {
     return ipcRenderer.invoke("magiesTerminal:clipboard:readImage");
   },
+
+  // Platform user-presence auth (Touch ID) for opt-in vault unlock
+  platformAuthStatus: () => ipcRenderer.invoke("magiesTerminal:platformAuth:status"),
+  platformAuthPrompt: (payload) => ipcRenderer.invoke("magiesTerminal:platformAuth:prompt", payload),
 
   // Credential encryption (safeStorage + local vault fallback)
   credentialsAvailable: () => ipcRenderer.invoke("magiesTerminal:credentials:available"),

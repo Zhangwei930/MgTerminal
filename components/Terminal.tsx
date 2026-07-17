@@ -3,7 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { SearchAddon } from "@xterm/addon-search";
 import "@xterm/xterm/css/xterm.css";
-import { Activity, Cpu, Clock3, Copy, HardDrive, Maximize2, MemoryStick, Radio, ArrowDownToLine, ArrowUpFromLine, Sparkles, SquareArrowOutUpRight } from "lucide-react";
+import { Activity, Binary, Cpu, Clock3, Copy, HardDrive, Maximize2, MemoryStick, Radio, ArrowDownToLine, ArrowUpFromLine, Sparkles, SquareArrowOutUpRight } from "lucide-react";
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
 import { detectLocalOs } from "../lib/localShell";
@@ -78,6 +78,8 @@ import { SSH_TCP_CONNECT_TIMEOUT_MS } from "./terminal/connectionTimeouts";
 import { HostKeyInfo } from "./terminal/TerminalHostKeyVerification";
 import { createKnownHostFromHostKeyInfo, toHostKeyInfo } from "./terminal/hostKeyVerification";
 import { TerminalToolbar } from "./terminal/TerminalToolbar";
+import { TerminalHexPanel } from "./terminal/TerminalHexPanel";
+import { TerminalHexRingBuffer } from "../domain/terminalHexDump";
 import { ScriptRecordingIndicator } from "./terminal/ScriptRecordingIndicator";
 import { ScriptSaveRecordingDialog } from "./scripts/ScriptSaveRecordingDialog";
 import { registerScreenSnapshotProvider } from "@/infrastructure/scripts/screenSnapshotRegistry.ts";
@@ -97,6 +99,8 @@ import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBr
 import { ScriptExecutionOverlay } from "./terminal/ScriptExecutionOverlay";
 import { isScriptSnippet } from "@/domain/snippetScript.ts";
 import { useOutputTriggers } from "@/application/state/useOutputTriggers.ts";
+import { executeTriggerActions } from "../application/state/triggerActionEffects";
+import { resolveTriggerActions } from "../domain/triggerActions";
 import { TerminalComposeBar } from "./terminal/TerminalComposeBar";
 import { TerminalContextMenu } from "./terminal/TerminalContextMenu";
 import { TerminalSearchBar } from "./terminal/TerminalSearchBar";
@@ -331,20 +335,6 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     }
     setActiveScriptRun(undefined);
   }, [activeScriptRun]);
-  const outputTriggers = useOutputTriggers({
-    sessionId,
-    hostId: host.id,
-    snippets,
-    onRunScript: (snippet, sid) => runAutomationScript({ snippet, sessionId: sid }).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(message.includes('Observer mode') ? t('scripts.observer.blocked') : message);
-      throw err;
-    }),
-  });
-  const appendOutputTriggerOutputRef = useRef(outputTriggers.appendOutput);
-  appendOutputTriggerOutputRef.current = outputTriggers.appendOutput;
-  const noteOutputTriggerUserInputRef = useRef(outputTriggers.noteUserInput);
-  noteOutputTriggerUserInputRef.current = outputTriggers.noteUserInput;
   const availableFonts = useAvailableFonts();
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
@@ -461,12 +451,71 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const lastFittedSizeRef = useRef<{ width: number; height: number } | null>(null);
   const fontWeightFixupDoneRef = useRef(false);
 
+  // Hex / raw diagnostics: session-local, default off. Captures decoded stream
+  // as UTF-8 bytes for opt-in dump panel (does not change xterm write path).
+  const [hexDiagnosticsOpen, setHexDiagnosticsOpen] = useState(false);
+  const [hexDumpText, setHexDumpText] = useState("");
+  const [hexByteLength, setHexByteLength] = useState(0);
+  const hexRingRef = useRef(new TerminalHexRingBuffer());
+  const hexOpenRef = useRef(false);
+  const hexRafRef = useRef(0);
+  hexOpenRef.current = hexDiagnosticsOpen;
+
+  const flushHexDumpView = useCallback(() => {
+    hexRafRef.current = 0;
+    const ring = hexRingRef.current;
+    setHexDumpText(ring.format());
+    setHexByteLength(ring.byteLength);
+  }, []);
+
+  const scheduleHexDumpView = useCallback(() => {
+    if (hexRafRef.current) return;
+    hexRafRef.current = requestAnimationFrame(flushHexDumpView);
+  }, [flushHexDumpView]);
+
+  const appendHexDiagnostics = useCallback((data: string) => {
+    if (!hexOpenRef.current || !data) return;
+    hexRingRef.current.pushString(data);
+    scheduleHexDumpView();
+  }, [scheduleHexDumpView]);
+
+  const handleToggleHexDiagnostics = useCallback(() => {
+    setHexDiagnosticsOpen((open) => {
+      const next = !open;
+      if (next) {
+        hexRingRef.current.clear();
+        setHexDumpText("");
+        setHexByteLength(0);
+      } else {
+        if (hexRafRef.current) {
+          cancelAnimationFrame(hexRafRef.current);
+          hexRafRef.current = 0;
+        }
+        hexRingRef.current.clear();
+        setHexDumpText("");
+        setHexByteLength(0);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearHexDiagnostics = useCallback(() => {
+    hexRingRef.current.clear();
+    setHexDumpText("");
+    setHexByteLength(0);
+  }, []);
+
+  useEffect(() => () => {
+    if (hexRafRef.current) cancelAnimationFrame(hexRafRef.current);
+  }, []);
+
   const captureTerminalLogData = useCallback((data: string) => {
+    appendHexDiagnostics(data);
     const readableCommandData = commandLogRewriterRef.current.append(data);
     const replaySafeData = terminalLogSanitizerRef.current.append(readableCommandData);
     if (!replaySafeData) return;
     connectionLogBufferRef.current.append(replaySafeData);
-  }, []);
+  }, [appendHexDiagnostics]);
 
   const finalizeTerminalLogData = useCallback(() => {
     const readableCommandData = commandLogRewriterRef.current.finish();
@@ -643,6 +692,42 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const [isCancelling, setIsCancelling] = useState(false);
   const [showSFTP, setShowSFTP] = useState(false);
   const [isSessionLogging, setIsSessionLogging] = useState(false);
+  const outputTriggers = useOutputTriggers({
+    sessionId,
+    hostId: host.id,
+    snippets,
+    onTriggerMatch: async (snippet, sid, meta) => {
+      const actions = resolveTriggerActions(snippet);
+      await executeTriggerActions(actions, {
+        sessionId: sid,
+        snippet,
+        matchedText: meta.matchedText,
+        startSessionLog: async (logSessionId) => {
+          try {
+            const result = await startManualSessionLog({
+              sessionId: logSessionId,
+              sessionName: sessionDisplayName || host.label || host.hostname,
+            });
+            if (result?.success || result?.started) {
+              setIsSessionLogging(true);
+            }
+          } catch {
+            // ignore log start failures
+          }
+        },
+        runScript: (scriptSnippet, scriptSessionId) =>
+          runAutomationScript({ snippet: scriptSnippet, sessionId: scriptSessionId }).catch((err) => {
+            const message = err instanceof Error ? err.message : String(err);
+            toast.error(message.includes('Observer mode') ? t('scripts.observer.blocked') : message);
+            throw err;
+          }),
+      });
+    },
+  });
+  const appendOutputTriggerOutputRef = useRef(outputTriggers.appendOutput);
+  appendOutputTriggerOutputRef.current = outputTriggers.appendOutput;
+  const noteOutputTriggerUserInputRef = useRef(outputTriggers.noteUserInput);
+  noteOutputTriggerUserInputRef.current = outputTriggers.noteUserInput;
   const [progressValue, setProgressValue] = useState(15);
   const [hasSelection, setHasSelection] = useState(false);
   const [selectionOverlayPosition, setSelectionOverlayPosition] = useState<{ left: number; top: number } | null>(null);
@@ -2868,7 +2953,7 @@ const TerminalComponent: React.FC<TerminalProps> = ({
 
   return (
     <>
-      <TerminalView ctx={{ Activity, ArrowDownToLine, ArrowUpFromLine, Button, Clock3, Copy, Cpu, HardDrive, HoverCard, HoverCardContent, HoverCardTrigger, Maximize2, MemoryStick, Radio, Sparkles, SquareArrowOutUpRight, TerminalAutocomplete, TerminalComposeBar, TerminalConnectionDialog, TerminalContextMenu, TerminalSearchBar, Tooltip, TooltipContent, TooltipTrigger, ZmodemOverwriteDialog, ZmodemProgressIndicator, auth, autocompleteAcceptTextRef, autocompleteCloseRef, autocompleteHostOs, autocompleteInputRef, autocompleteKeyEventRef, autocompleteRepositionRef, autocompleteSettings, chainProgress, cn, compactToolbar, lineTimestampsAvailable, containerRef, effectiveFontSize, effectiveFontWeight, effectiveTheme, error, executeSnippet, executeSnippetCommand, handleAddSelectionToAI, handleCancelConnect, handleCloseDisconnectedSession, handleCloseSearch, handleDismissDisconnectedDialog, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, handleFindNext, handleFindPrevious, handleHostKeyAddAndContinue, handleHostKeyClose, handleHostKeyContinue, handleOsc52ReadResponse, handleOsc7SetupConfirm, handleOsc7SetupOpenChange, handleReceiveYmodem, handleRetry, handleSearch, handleSendYmodem, handleTopOverlayMouseDownCapture, hasMouseTracking, hasSelection, host, hotkeyScheme, inWorkspace, isBroadcastEnabled, dangerousPasteDialog, handleDangerousPasteDialogOpenChange, handleDangerousPasteConfirm, broadcastConfig, onUpdateBroadcastConfig, broadcastSessionOptions, broadcastAllSessionRefs, isCancelling, isComposeBarOpen: effectiveComposeBarOpen, isConnectionAwaitingUserInput, isDraggingOver, isFocusMode, isLocalConnection, remoteDragDropUsesZmodem, isSerialConnection, isSearchOpen, isSupportedOs, isSystemSidebarEligible, isVisible, keyBindings, keys, knownCwdRef, needsHostKeyVerification, onAddSelectionToAI, onBroadcastInput, onCloseSession, onDetach, onDetachDragEnd, onDetachDragStart, onDetachPointerDown, onEndSessionDrag, onExpandToFocus, onOpenSystem, onRename, onRunDiagnostics: canRunDiagnostics ? handleRunDiagnostics : undefined, onSplitHorizontal, onSplitVertical, onStartSessionDrag, onToggleBroadcast, onUpdateHost: handleUpdateHostFromTerminal, osc52ReadPromptVisible, osc7SetupOpen, osc7SetupRunning, pendingHostKeyInfo, progressLogs, progressValue, renderControls, resolvedFontFamily, restoreState, scrollToBottomAfterProgrammaticInput, searchMatchCount, searchFocusToken, scriptExecutionOverlay: activeScriptRun ? (
+      <TerminalView ctx={{ Activity, ArrowDownToLine, ArrowUpFromLine, Button, Clock3, Copy, Cpu, HardDrive, HoverCard, HoverCardContent, HoverCardTrigger, Maximize2, MemoryStick, Radio, Sparkles, SquareArrowOutUpRight, TerminalAutocomplete, TerminalComposeBar, TerminalConnectionDialog, TerminalContextMenu, TerminalSearchBar, Tooltip, TooltipContent, TooltipTrigger, ZmodemOverwriteDialog, ZmodemProgressIndicator, auth, autocompleteAcceptTextRef, autocompleteCloseRef, autocompleteHostOs, autocompleteInputRef, autocompleteKeyEventRef, autocompleteRepositionRef, autocompleteSettings, chainProgress, cn, compactToolbar, lineTimestampsAvailable, Binary, hexDiagnosticsOpen, hexDumpText, hexByteLength, handleToggleHexDiagnostics, handleClearHexDiagnostics, TerminalHexPanel, containerRef, effectiveFontSize, effectiveFontWeight, effectiveTheme, error, executeSnippet, executeSnippetCommand, handleAddSelectionToAI, handleCancelConnect, handleCloseDisconnectedSession, handleCloseSearch, handleDismissDisconnectedDialog, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, handleFindNext, handleFindPrevious, handleHostKeyAddAndContinue, handleHostKeyClose, handleHostKeyContinue, handleOsc52ReadResponse, handleOsc7SetupConfirm, handleOsc7SetupOpenChange, handleReceiveYmodem, handleRetry, handleSearch, handleSendYmodem, handleTopOverlayMouseDownCapture, hasMouseTracking, hasSelection, host, hotkeyScheme, inWorkspace, isBroadcastEnabled, dangerousPasteDialog, handleDangerousPasteDialogOpenChange, handleDangerousPasteConfirm, broadcastConfig, onUpdateBroadcastConfig, broadcastSessionOptions, broadcastAllSessionRefs, isCancelling, isComposeBarOpen: effectiveComposeBarOpen, isConnectionAwaitingUserInput, isDraggingOver, isFocusMode, isLocalConnection, remoteDragDropUsesZmodem, isSerialConnection, isSearchOpen, isSupportedOs, isSystemSidebarEligible, isVisible, keyBindings, keys, knownCwdRef, needsHostKeyVerification, onAddSelectionToAI, onBroadcastInput, onCloseSession, onDetach, onDetachDragEnd, onDetachDragStart, onDetachPointerDown, onEndSessionDrag, onExpandToFocus, onOpenSystem, onRename, onRunDiagnostics: canRunDiagnostics ? handleRunDiagnostics : undefined, onSplitHorizontal, onSplitVertical, onStartSessionDrag, onToggleBroadcast, onUpdateHost: handleUpdateHostFromTerminal, osc52ReadPromptVisible, osc7SetupOpen, osc7SetupRunning, pendingHostKeyInfo, progressLogs, progressValue, renderControls, resolvedFontFamily, restoreState, scrollToBottomAfterProgrammaticInput, searchMatchCount, searchFocusToken, scriptExecutionOverlay: activeScriptRun ? (
         <ScriptExecutionOverlay
           run={activeScriptRun}
           onPause={() => { void pauseScriptRun(activeScriptRun.runId); }}

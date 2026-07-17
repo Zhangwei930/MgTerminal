@@ -87,6 +87,41 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 - **协作与团队能力** 优先本地 / 自托管协议，避免订阅墙。
 - **密码学与企业认证** 跟随 ssh2 / OS 能力成熟度，不自研算法。
 
+### P1 落地进度（相对 `feat/workspace-templates` 栈）
+
+| 切片 | 状态 | 说明 |
+| --- | --- | --- |
+| 主机数据源 JSON file/HTTP | 已实现 | PR #17 — 无凭据 pull 同步 |
+| Ansible inventory INI | 已实现 | 复用数据源管线；自动识别 INI / JSON |
+| Ansible inventory YAML | 已实现 | 导入解析 all/hosts/children + 导出/分享/复制 YAML；拒 secrets |
+| HTTP 数据源鉴权头 | 已实现 | 新建与已有 json_http 源可编辑 Authorization / X-Api-Key 等 |
+| Ansible inventory 导出 | 已实现 | 团队分享 INI + YAML（仅元数据，与 JSON 对称） |
+| 清单分享到剪贴板 | 已实现 | JSON / Ansible INI / YAML 复制，无凭据 |
+| 剪贴板粘贴导入清单 | 已实现 | 校验 → 临时文件 → 数据源同步 |
+| 数据源定时自动同步 | 已实现 | per-source 间隔；默认关闭；hash 跳过 |
+| 数据源同步状态 / 全部同步 | 已实现 | lastSyncStatus/error + Sync all |
+| 数据源启用开关 | 已实现 | enabled=false 跳过手动/自动/Sync all |
+| Hex / 原始数据流诊断 | 已实现 | PR #18 — 会话级 opt-in 面板 |
+| 团队清单分享（元数据 only） | 已实现 | PR #19 — 与数据源同 schema |
+| 本地 Follow（观看/控制锁） | 已实现 | PR #20 |
+| 设备解锁（Touch ID / PIN） | 已实现 | PR #21 — 非可移植 FIDO2 身份 |
+| PKCS#11 → ssh-agent | 已实现 | PR #22 — macOS/Linux，`ssh-add -s` |
+| LAN Follow 邀请 | 已实现 | PR #23 — 局域网 TCP NDJSON |
+| Follow 协作审计导出 | 已实现 | 工具栏审计列表 + 文本/NDJSON 复制（主进程已有 ring） |
+| Follow 审计落盘 | 已实现 | userData `follow-audit-v1.json`；重启可查 |
+| Follow 审计清除 | 已实现 | 本机会话历史一键清空（内存+磁盘） |
+| GSSAPI / Kerberos | 已实现 | 系统 OpenSSH + GSSAPIAuthentication（非 ssh2）；无跳板/应用代理 |
+| 系统 OpenSSH 传输 | 已实现 | per-host `useSystemOpenSsh`；与 GSSAPI/PQ 共用 pty 路径 |
+| 后量子 SSH（hybrid KEX 偏好） | **部分** | per-host `preferPostQuantumKex` → 系统 OpenSSH `KexAlgorithms`（mlkem768/sntrup761 + 经典回退）；内置 ssh2 仍无 PQ |
+| 后量子 SSH（完整 ssh2 原生） | **阻塞 / 延后** | ssh2 1.17 无 PQ KEX；待库支持后再做内置路径 |
+
+### P1 收口说明
+
+- **产品 P1 主线已完成**（数据源含 YAML 进出与 HTTP 鉴权编辑、Hex、团队元数据分享、本地/LAN Follow、审计、设备解锁、PKCS#11、GSSAPI、系统 OpenSSH / PQ KEX 偏好）。
+- **部分交付**：后量子 hybrid KEX 通过系统 OpenSSH 可选偏好实现；**不自研算法**；内置 ssh2 路径仍等库支持。
+- **范围边界**：GSSAPI / 系统 OpenSSH 依赖本机 `ssh` 与（GSSAPI 时）Kerberos 票据；不支持 jump chain 与 MagiesTerminal 内置代理（见主机设置提示）。
+- **团队 Vault 完整角色/云端**、**可移植 FIDO2 身份**、**WAN multiplayer** 属更深企业能力，不在本批 P1 必达范围（元数据分享 + 本机解锁已交付）。
+
 ---
 
 ## P2：根据用户需求再做

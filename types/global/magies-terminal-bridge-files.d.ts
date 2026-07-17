@@ -102,6 +102,17 @@ declare global {
     readClipboardFiles?(): Promise<Array<{ path: string; name: string; isDirectory: boolean; size?: number }>>;
     readClipboardImage?(): Promise<{ path: string; name: string; mediaType: string; size?: number } | null>;
 
+    // Platform user-presence auth (Touch ID) for opt-in vault unlock
+    platformAuthStatus?(): Promise<{
+      platform: string;
+      available: boolean;
+      methods: string[];
+      label: string;
+    }>;
+    platformAuthPrompt?(payload?: {
+      reason?: string;
+    }): Promise<{ success: boolean; error?: string; message?: string }>;
+
     // Credential encryption (safeStorage + local vault fallback)
     credentialsAvailable?(): Promise<boolean>;
     credentialsStatus?(): Promise<{ available: boolean; safeStorage: boolean; localVault: boolean }>;

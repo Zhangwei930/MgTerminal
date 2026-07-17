@@ -133,6 +133,10 @@ export const useManagedSourceSync = ({
 
   const syncManagedSource = useCallback(
     async (source: ManagedSource): Promise<{ sourceId: string; success: boolean }> => {
+      // JSON inventory sources are pull-only (see useHostDataSourceSync).
+      if (source.type !== "ssh_config") {
+        return { sourceId: source.id, success: true };
+      }
       const managedHosts = getManagedHostsForSource(source.id);
       const success = await writeSshConfigToFile(source, managedHosts);
       return { sourceId: source.id, success };
@@ -152,8 +156,11 @@ export const useManagedSourceSync = ({
   // This should be called before deleting a managed group to avoid stale entries
   const clearAndRemoveSource = useCallback(
     async (source: ManagedSource) => {
-      // Write empty hosts list to clear the managed block
-      const success = await writeSshConfigToFile(source, []);
+      // Write empty hosts list to clear the managed block (ssh_config only)
+      const success =
+        source.type === "ssh_config"
+          ? await writeSshConfigToFile(source, [])
+          : true;
       // Remove the source regardless of write success
       const updatedSources = managedSourcesRef.current.filter((s) => s.id !== source.id);
       onUpdateManagedSources(updatedSources);
@@ -168,9 +175,12 @@ export const useManagedSourceSync = ({
     async (sources: ManagedSource[]) => {
       if (sources.length === 0) return;
 
-      // Clear all files in parallel
+      // Clear ssh_config managed blocks in parallel (JSON sources are pull-only)
       await Promise.all(
         sources.map(async (source) => {
+          if (source.type !== "ssh_config") {
+            return { sourceId: source.id, success: true };
+          }
           const success = await writeSshConfigToFile(source, []);
           return { sourceId: source.id, success };
         })
@@ -205,8 +215,9 @@ export const useManagedSourceSync = ({
     const changedSourceIds = new Set<string>();
 
     if (isInitialSync) {
-      // Initial sync: sync all sources that have hosts
+      // Initial sync: writeback ssh_config sources that have hosts
       for (const source of managedSources) {
+        if (source.type !== "ssh_config") continue;
         const currManaged = hosts.filter((h) => h.managedSourceId === source.id);
         if (currManaged.length > 0) {
           changedSourceIds.add(source.id);
@@ -254,6 +265,8 @@ export const useManagedSourceSync = ({
       };
 
       for (const source of managedSources) {
+        if (source.type !== "ssh_config") continue;
+
         const prevManaged = prevHostsBySource.get(source.id) || [];
         const currManaged = currHostsBySource.get(source.id) || [];
 
@@ -316,7 +329,7 @@ export const useManagedSourceSync = ({
         managedSources
           .filter((s) => changedSourceIds.has(s.id))
           .map(syncManagedSource),
-      ).then((results) => {
+      ).then((results: Array<{ sourceId: string; success: boolean }>) => {
         // Batch update lastSyncedAt for all successful syncs to avoid race conditions
         const successfulSourceIds = new Set(
           results.filter(r => r.success).map(r => r.sourceId)

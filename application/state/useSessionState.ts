@@ -52,6 +52,11 @@ import {
   normalizeBroadcastConfig,
   type BroadcastConfig,
 } from '../../domain/broadcastTargets';
+import {
+  captureWorkspaceTemplate,
+  materializeWorkspaceFromTemplate,
+  type WorkspaceTemplate,
+} from '../../domain/workspaceTemplates';
 
 export function addWorkspaceIfMissing(
   workspaces: Workspace[],
@@ -520,6 +525,86 @@ export const useSessionState = ({
     setWorkspaceRenameTarget(null);
     setWorkspaceRenameValue('');
   }, []);
+
+  /**
+   * Snapshot the given workspace (layout + host bindings + cwd/startup hints)
+   * into a reusable template recipe. Does not persist — caller stores it.
+   */
+  const buildWorkspaceTemplate = useCallback((
+    workspaceId: string,
+    name: string,
+  ): WorkspaceTemplate | null => {
+    const workspace = workspacesRef.current.find((item) => item.id === workspaceId);
+    if (!workspace) return null;
+    return captureWorkspaceTemplate({
+      workspace,
+      sessions: sessionsRef.current,
+      name,
+    });
+  }, []);
+
+  /**
+   * Apply a template: create sessions, open a workspace, start connecting.
+   * Missing hosts are skipped (orphan panes dropped from the tree).
+   */
+  const applyWorkspaceTemplate = useCallback((
+    template: WorkspaceTemplate,
+    hosts: Host[],
+  ): string | null => {
+    const hostById = new Map(hosts.map((host) => [host.id, host]));
+    const paneSessionIds = new Map<string, string>();
+    const newSessions: TerminalSession[] = [];
+
+    for (const pane of template.panes) {
+      const sessionId = crypto.randomUUID();
+      if (pane.kind === 'local') {
+        const session = createLocalTerminalSession(sessionId, {
+          shell: pane.localShell,
+          shellArgs: pane.localShellArgs,
+          shellName: pane.localShellName,
+          shellIcon: pane.localShellIcon,
+          localStartDir: pane.localStartDir || pane.lastCwd,
+        });
+        if (pane.startupCommand) session.startupCommand = pane.startupCommand;
+        if (pane.lastCwd) session.lastCwd = pane.lastCwd;
+        newSessions.push(session);
+        paneSessionIds.set(pane.id, sessionId);
+        continue;
+      }
+
+      const host = pane.hostId ? hostById.get(pane.hostId) : undefined;
+      if (!host) continue;
+
+      const session = createHostTerminalSession(sessionId, host);
+      if (pane.startupCommand) session.startupCommand = pane.startupCommand;
+      if (pane.lastCwd) session.lastCwd = pane.lastCwd;
+      // Prefer template cwd as local start dir for serial/local-like cases.
+      if (pane.kind === 'serial' && pane.lastCwd) {
+        session.localStartDir = pane.lastCwd;
+      }
+      newSessions.push(session);
+      paneSessionIds.set(pane.id, sessionId);
+    }
+
+    if (newSessions.length === 0) return null;
+
+    const workspace = materializeWorkspaceFromTemplate({
+      template,
+      paneSessionIds,
+    });
+    if (!workspace) return null;
+
+    const sessionsWithWorkspace = newSessions.map((session) => ({
+      ...session,
+      workspaceId: workspace.id,
+    }));
+
+    setSessions((prev) => [...prev, ...sessionsWithWorkspace]);
+    setWorkspaces((prev) => [...prev, workspace]);
+    setTabOrder((prev) => [...prev, workspace.id]);
+    setActiveTabId(workspace.id);
+    return workspace.id;
+  }, [setActiveTabId]);
 
   const createWorkspaceWithHosts = useCallback((name: string, hosts: Host[]) => {
     if (hosts.length === 0) return;
@@ -1227,6 +1312,8 @@ export const useSessionState = ({
     createWorkspaceWithHosts,
     createWorkspaceFromTargets,
     createWorkspaceFromSessions,
+    buildWorkspaceTemplate,
+    applyWorkspaceTemplate,
     addSessionToWorkspace,
     removeSessionFromWorkspace,
     appendHostToWorkspace,

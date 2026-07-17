@@ -312,6 +312,15 @@ export const zhTWVaultMessages: Messages = {
   'logView.customizeAppearance': '自訂外觀',
   'logView.appearance': '外觀',
   'logView.readOnly': '只讀',
+  'logView.bookmarks.title': '書籤',
+  'logView.bookmarks.add': '將目前位置加入書籤',
+  'logView.bookmarks.search': '搜尋書籤…',
+  'logView.bookmarks.empty': '尚無書籤。捲動日誌後點 + 標記位置。',
+  'logView.bookmarks.noMatch': '沒有符合的書籤。',
+  'logView.bookmarks.notePlaceholder': '新增備註…',
+  'logView.bookmarks.addNote': '新增備註',
+  'logView.bookmarks.remove': '刪除書籤',
+  'logView.bookmarks.count': '{count} 個書籤',
   'logView.export': '匯出',
 
   // Terminal toolbar / search / context menu / auth

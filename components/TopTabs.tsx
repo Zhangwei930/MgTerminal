@@ -130,6 +130,7 @@ interface TopTabsProps {
   onCopySessionToNewWindow: (sessionId: string) => void;
   onRenameWorkspace: (workspaceId: string) => void;
   onCloseWorkspace: (workspaceId: string) => void;
+  onSaveWorkspaceTemplate?: (workspaceId: string) => void;
   onCloseLogView: (logViewId: string) => void;
   onCloseTabsBatch: (targetIds: string[]) => void;
   onOpenQuickSwitcher: () => void;
@@ -169,6 +170,7 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
   onCopySessionToNewWindow,
   onRenameWorkspace,
   onCloseWorkspace,
+  onSaveWorkspaceTemplate,
   onCloseLogView,
   onCloseTabsBatch,
   onOpenQuickSwitcher,
@@ -803,6 +805,7 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
             onTabDrop={handleTabDrop}
             onRenameWorkspace={onRenameWorkspace}
             onCloseWorkspace={onCloseWorkspace}
+            onSaveWorkspaceTemplate={onSaveWorkspaceTemplate}
             onDetachSessionFromWorkspace={(_workspaceId, sessionId) => onRemoveSessionFromWorkspace(sessionId)}
             workspaceSessionLabels={workspaceSessionLabels}
             renderBulkCloseItems={renderBulkCloseItems}

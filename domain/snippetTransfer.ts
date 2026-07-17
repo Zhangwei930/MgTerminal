@@ -1,4 +1,5 @@
 import type { Snippet } from "./models";
+import { normalizeTriggerActions, type TriggerAction } from "./triggerActions";
 import { normalizeVaultOrder } from "./vaultOrder";
 
 export const SNIPPET_EXPORT_KIND = "magiesTerminal.snippets" as const;
@@ -20,6 +21,7 @@ export type SnippetExportItem = {
   description?: string;
   trigger?: "manual" | "onConnect" | "onOutput";
   triggerPattern?: string;
+  triggerActions?: TriggerAction[];
 };
 
 export type SnippetExportPayload = {
@@ -109,6 +111,9 @@ const toExportItem = (snippet: Snippet): SnippetExportItem => ({
   ...(snippet.description ? { description: snippet.description } : {}),
   ...(snippet.trigger ? { trigger: snippet.trigger } : {}),
   ...(snippet.triggerPattern ? { triggerPattern: snippet.triggerPattern } : {}),
+  ...(Array.isArray(snippet.triggerActions) && snippet.triggerActions.length > 0
+    ? { triggerActions: snippet.triggerActions }
+    : {}),
 });
 
 export const buildSnippetExportPayload = ({
@@ -168,6 +173,10 @@ const sanitizeImportItem = (value: unknown): SnippetExportItem | null => {
     triggerPattern: typeof value.triggerPattern === "string" && value.triggerPattern.trim()
       ? value.triggerPattern.trim()
       : undefined,
+    triggerActions: (() => {
+      const actions = normalizeTriggerActions(value.triggerActions);
+      return actions.length > 0 ? actions : undefined;
+    })(),
   };
 };
 
@@ -255,6 +264,9 @@ const toImportedSnippet = (item: SnippetExportItem, id: string, order?: number):
   ...(item.description ? { description: item.description } : {}),
   ...(item.trigger ? { trigger: item.trigger } : {}),
   ...(item.triggerPattern ? { triggerPattern: item.triggerPattern } : {}),
+  ...(item.triggerActions && item.triggerActions.length > 0
+    ? { triggerActions: item.triggerActions }
+    : {}),
   order,
 });
 

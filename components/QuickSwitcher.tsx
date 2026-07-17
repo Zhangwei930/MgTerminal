@@ -78,6 +78,7 @@ interface QuickSwitcherProps {
   onClose: () => void;
   onCreateLocalTerminal?: (shell?: { command: string; args?: string[]; name?: string; icon?: string }) => void;
   onCreateWorkspace?: () => void;
+  onOpenWorkspaceTemplates?: () => void;
   /** Command palette actions (settings / new host / import / health). */
   onCommandAction?: (actionId: CommandPaletteActionId) => void;
   keyBindings?: KeyBinding[];
@@ -97,6 +98,7 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
   onClose,
   onCreateLocalTerminal,
   onCreateWorkspace,
+  onOpenWorkspaceTemplates,
   onCommandAction,
   keyBindings,
   showSftpTab,
@@ -367,19 +369,34 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
                   {quickSwitchKey.replace(/ \+ /g, '+')}
                 </kbd>
               )}
-              {onCreateWorkspace && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onCreateWorkspace();
-                    onClose();
-                  }}
-                  className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded px-1.5 py-0.5 transition-colors hover:bg-muted/50"
-                >
-                  <Plus size={11} />
-                  <span>New Workspace</span>
-                </button>
-              )}
+              <div className="ml-auto flex items-center gap-1.5">
+                {onOpenWorkspaceTemplates && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenWorkspaceTemplates();
+                      onClose();
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded px-1.5 py-0.5 transition-colors hover:bg-muted/50"
+                  >
+                    <LayoutGrid size={11} />
+                    <span>{t("workspace.templates.shortTitle")}</span>
+                  </button>
+                )}
+                {onCreateWorkspace && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCreateWorkspace();
+                      onClose();
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded px-1.5 py-0.5 transition-colors hover:bg-muted/50"
+                  >
+                    <Plus size={11} />
+                    <span>New Workspace</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Hosts section */}

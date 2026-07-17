@@ -11,6 +11,7 @@ import {
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
 import { usePortForwardingState } from "../application/state/usePortForwardingState";
+import { usePortForwardChannels } from "../application/state/usePortForwardChannels";
 import {
   GroupConfig,
   Host,
@@ -50,6 +51,7 @@ import {
   generateRuleLabel as buildRuleLabel,
   getTypeMenuLabel,
   NewFormPanel,
+  ActiveChannelsPanel,
   RuleCard,
   WizardContent,
 } from "./port-forwarding";
@@ -116,6 +118,7 @@ const PortForwarding: React.FC<PortForwardingProps> = ({
     preferFormMode,
     setPreferFormMode,
   } = usePortForwardingState();
+  const { channels: activeChannels } = usePortForwardChannels();
 
   // Track connecting/stopping states
   const [pendingOperations, setPendingOperations] = useState<Set<string>>(
@@ -720,6 +723,11 @@ const PortForwarding: React.FC<PortForwardingProps> = ({
                   {t("pf.rulesCount", { count: filteredRules.length })}
                 </span>
               </div>
+
+              <ActiveChannelsPanel
+                channels={activeChannels}
+                rules={_rules}
+              />
 
               <div
                 ref={ruleListRef}

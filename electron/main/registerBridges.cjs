@@ -232,6 +232,10 @@ function createBridgeRegistrar(context) {
     compressUploadBridge.registerHandlers(ipcMain, { terminalWorkerManager });
     globalShortcutBridge.registerHandlers(ipcMain);
     credentialBridge.registerHandlers(ipcMain, electronModule);
+
+    // Opt-in platform unlock (Touch ID / user presence) for vault secrets
+    const { createPlatformAuthBridge } = require("../bridges/platformAuthBridge.cjs");
+    createPlatformAuthBridge({ electronModule, console }).register(ipcMain);
     autoUpdateBridge.init(deps);
     autoUpdateBridge.registerHandlers(ipcMain);
     aiBridge.registerHandlers(ipcMain);
@@ -475,6 +479,89 @@ function createBridgeRegistrar(context) {
       } catch (err) {
         console.error("[Main] Failed to open session in new window:", err);
         return { success: false, error: err?.message || "Failed to open new window" };
+      }
+    });
+
+    // LAN follow join window — connects to a remote host invite over TCP.
+    ipcMain.handle("magiesTerminal:window:openLanFollow", async (_event, payload) => {
+      try {
+        if (!payload?.shareString) {
+          return { success: false, error: "Invalid LAN follow payload" };
+        }
+        const win = await getWindowManager().createWindow(electronModule, {
+          preload,
+          devServerUrl: effectiveDevServerUrl,
+          isDev,
+          appIcon: getAppIconPath(),
+          isMac,
+          electronDir,
+          route: "lan-follow",
+          registerAsMainWindow: false,
+          onRegisterBridge: registerBridges,
+        });
+        try {
+          win.setTitle("LAN Follow");
+        } catch {
+          // ignore
+        }
+        const delivery = await getWindowManager().sendWhenRendererReady(
+          win,
+          "magiesTerminal:window:openLanFollow",
+          { shareString: payload.shareString },
+          { timeoutMs: 8000 },
+        );
+        if (!delivery.success) {
+          return { success: false, error: delivery.error || "Failed to open LAN follow window" };
+        }
+        return { success: true };
+      } catch (err) {
+        console.error("[Main] Failed to open LAN follow window:", err);
+        return { success: false, error: err?.message || "Failed to open LAN follow window" };
+      }
+    });
+
+    // Local follow viewer — attaches to an existing backend sessionId (no second login).
+    ipcMain.handle("magiesTerminal:window:openFollowSession", async (_event, payload) => {
+      try {
+        if (!payload || typeof payload !== "object" || !payload.sessionId) {
+          return { success: false, error: "Invalid follow payload" };
+        }
+        const title = typeof payload.title === "string" && payload.title.trim()
+          ? payload.title.trim()
+          : "Follow session";
+        const win = await getWindowManager().createWindow(electronModule, {
+          preload,
+          devServerUrl: effectiveDevServerUrl,
+          isDev,
+          appIcon: getAppIconPath(),
+          isMac,
+          electronDir,
+          route: "follow-session",
+          registerAsMainWindow: false,
+          onRegisterBridge: registerBridges,
+        });
+        try {
+          win.setTitle(`${title} (follow)`);
+        } catch {
+          // ignore
+        }
+        const delivery = await getWindowManager().sendWhenRendererReady(
+          win,
+          "magiesTerminal:window:openFollowSession",
+          {
+            title,
+            sessionId: payload.sessionId,
+            hostLabel: payload.hostLabel || title,
+          },
+          { timeoutMs: 8000 },
+        );
+        if (!delivery.success) {
+          return { success: false, error: delivery.error || "Failed to open follow window" };
+        }
+        return { success: true };
+      } catch (err) {
+        console.error("[Main] Failed to open follow session window:", err);
+        return { success: false, error: err?.message || "Failed to open follow window" };
       }
     });
 

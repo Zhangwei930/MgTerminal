@@ -49,6 +49,32 @@ export const useApplicationBackend = () => {
     return result ?? { available: false, identities: [] };
   }, []);
 
-  return { openExternal, getApplicationInfo, checkSshAgent, listSshAgentIdentities };
+  const sshPkcs11Supported = useCallback(async (): Promise<boolean> => {
+    const result = await magiesTerminalBridge.get()?.sshPkcs11Supported?.();
+    return Boolean(result?.supported);
+  }, []);
+
+  const sshPkcs11Load = useCallback(async (payload: {
+    modulePath: string;
+    pin?: string;
+  }) => {
+    return magiesTerminalBridge.get()?.sshPkcs11Load?.(payload)
+      ?? { success: false, error: "unavailable" };
+  }, []);
+
+  const sshPkcs11Unload = useCallback(async (payload: { modulePath: string }) => {
+    return magiesTerminalBridge.get()?.sshPkcs11Unload?.(payload)
+      ?? { success: false, error: "unavailable" };
+  }, []);
+
+  return {
+    openExternal,
+    getApplicationInfo,
+    checkSshAgent,
+    listSshAgentIdentities,
+    sshPkcs11Supported,
+    sshPkcs11Load,
+    sshPkcs11Unload,
+  };
 };
 

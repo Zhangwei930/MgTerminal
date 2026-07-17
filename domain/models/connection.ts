@@ -152,12 +152,23 @@ export interface Host {
   autoOpenSftpPanel?: boolean;
   password?: string;
   savePassword?: boolean; // Whether to save the password (default: true)
-  authMethod?: 'password' | 'key' | 'certificate' | 'agent';
+  authMethod?: 'password' | 'key' | 'certificate' | 'agent' | 'gssapi';
   // Preferred SSH agent identity (SHA256 fingerprint, no prefix). When set
   // with authMethod 'agent', only the matching agent key is offered.
+  // authMethod 'gssapi' uses system OpenSSH + Kerberos (not the ssh2 stack).
   agentIdentityFingerprint?: string;
   agentForwarding?: boolean;
   x11Forwarding?: boolean;
+  /**
+   * Use system OpenSSH client (node-pty) instead of the built-in ssh2 stack.
+   * Required for GSSAPI and for post-quantum KEX preference below.
+   */
+  useSystemOpenSsh?: boolean;
+  /**
+   * Prefer hybrid post-quantum KEX algorithms supported by system OpenSSH
+   * (e.g. sntrup761x25519 / mlkem768x25519 when available). Implies system OpenSSH.
+   */
+  preferPostQuantumKex?: boolean;
   createdAt?: number; // Timestamp when host was created
   startupCommand?: string;
   startupCommandRunMode?: MultiLineRunMode;
@@ -211,6 +222,11 @@ export interface Host {
   sftpFollowTerminalCwd?: boolean; // Overrides global SFTP follow-terminal-directory setting
   // Managed source: if this host is managed by an external file (e.g., ~/.ssh/config)
   managedSourceId?: string; // Reference to ManagedSource.id
+  /**
+   * Stable id from the external inventory (API Bridge / CMDB / JSON file).
+   * Used to update the same vault host across syncs without relying on hostname alone.
+   */
+  managedExternalId?: string;
   // Host-level keyword highlighting (overrides/extends global settings)
   keywordHighlightRules?: KeywordHighlightRule[];
   keywordHighlightEnabled?: boolean;
@@ -320,6 +336,11 @@ export interface Snippet {
   trigger?: ScriptTrigger;
   /** Regex pattern when trigger is 'onOutput'. */
   triggerPattern?: string;
+  /**
+   * Side effects when an onOutput pattern matches.
+   * Omitted / empty → legacy behavior: run the script only.
+   */
+  triggerActions?: import("../triggerActions").TriggerAction[];
 }
 
 export interface HostOutputTrigger {

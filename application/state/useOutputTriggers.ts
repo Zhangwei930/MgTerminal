@@ -8,6 +8,10 @@ import {
 } from '@/domain/terminalOutputTriggerFilter.ts';
 import { magiesTerminalBridge } from '@/infrastructure/services/magiesTerminalBridge.ts';
 import { getActiveScriptRunForSession } from '@/application/state/scriptAutomationCoordinator.ts';
+import {
+  resolveTriggerActions,
+  triggerActionsIncludeRunScript,
+} from '@/domain/triggerActions.ts';
 
 const OUTPUT_TRIGGER_SCAN_DELAY_MS = 16;
 const OUTPUT_TRIGGER_SCAN_CHUNK_BYTES = 32 * 1024;
@@ -21,7 +25,15 @@ type OutputTriggerContext = {
   sessionId: string;
   hostId?: string;
   snippets: Snippet[];
-  onRunScript: (snippet: Snippet, sessionId: string) => void | Promise<void>;
+  /**
+   * Fired when an onOutput pattern matches. Should execute triggerActions
+   * (notify / sound / markTab / startSessionLog / runScript).
+   */
+  onTriggerMatch: (
+    snippet: Snippet,
+    sessionId: string,
+    meta: { matchedText?: string },
+  ) => void | Promise<void>;
 };
 
 type DeferredOutputTriggerEvent =
@@ -589,7 +601,7 @@ export function useOutputTriggers({
   sessionId,
   hostId,
   snippets,
-  onRunScript,
+  onTriggerMatch,
 }: OutputTriggerContext) {
   const launchingRef = useRef(false);
   const lastTriggerMatchEndRef = useRef(new Map<string, number>());
@@ -610,18 +622,19 @@ export function useOutputTriggers({
     }
 
     const scanWindow = scanBufferRef.current.append(scannableText);
-    if (isSessionScriptRunActive(sessionId) || launchingRef.current) {
-      return;
-    }
 
     for (const snippet of snippets) {
-      if (isSessionScriptRunActive(sessionId) || launchingRef.current) {
-        return;
-      }
       if (!isScriptSnippet(snippet) || snippet.trigger !== 'onOutput' || !snippet.triggerPattern || !snippet.id) {
         continue;
       }
       if (!snippetAppliesToOutputTrigger(snippet, hostId)) continue;
+
+      const actions = resolveTriggerActions(snippet);
+      const needsScript = triggerActionsIncludeRunScript(actions);
+      if (needsScript && (isSessionScriptRunActive(sessionId) || launchingRef.current)) {
+        continue;
+      }
+
       try {
         const matched = findMatchEndingAfter(scanWindow.text, snippet.triggerPattern, scanWindow.minEndOffset);
         if (!matched) {
@@ -633,21 +646,25 @@ export function useOutputTriggers({
           continue;
         }
         const matchedSnippetId = snippet.id;
-        launchingRef.current = true;
         lastTriggerMatchEndRef.current.set(matchedSnippetId, matchEnd);
-        void Promise.resolve(onRunScript(snippet, sessionId))
+        if (needsScript) {
+          launchingRef.current = true;
+        }
+        void Promise.resolve(onTriggerMatch(snippet, sessionId, { matchedText: matched.value }))
           .catch(() => {
             // Failed starts can retry on the next matching output chunk.
           })
           .finally(() => {
-            launchingRef.current = false;
+            if (needsScript) {
+              launchingRef.current = false;
+            }
           });
         return;
       } catch {
         // ignore invalid regex
       }
     }
-  }, [hasOutputTriggers, hostId, onRunScript, sessionId, snippets]);
+  }, [hasOutputTriggers, hostId, onTriggerMatch, sessionId, snippets]);
 
   const scanOutputRef = useRef(scanOutput);
   scanOutputRef.current = scanOutput;

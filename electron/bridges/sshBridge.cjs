@@ -989,7 +989,31 @@ function sendFinalStartFailureExit(event, options, err) {
   });
 }
 
+const { createStartGssapiSessionApi } = require("./sshBridge/gssapiSession.cjs");
+const gssapiSessionApi = createStartGssapiSessionApi({
+  get sessions() { return sessions; },
+  openTerminalOutputSession,
+  createPtyOutputBuffer,
+  sessionLogStreamManager,
+  trackSessionIdlePrompt,
+});
+const { startGssapiSshSession } = gssapiSessionApi;
+
 async function startSSHSessionWrapper(event, options) {
+  // System OpenSSH path: GSSAPI/Kerberos and/or post-quantum KEX preference.
+  // Built-in ssh2 has neither GSSAPI nor hybrid ML-KEM/sntrup KEX.
+  if (
+    options?.authMethod === "gssapi"
+    || options?.useSystemOpenSsh
+    || options?.preferPostQuantumKex
+  ) {
+    return await startGssapiSshSession(event, {
+      ...options,
+      useSystemOpenSsh: true,
+      preferPostQuantumKex: Boolean(options?.preferPostQuantumKex),
+    });
+  }
+
   let retryableEncryptedKeys = [];
   let loadedRetryableEncryptedKeys = false;
   let shouldSuppressInitialAuthExit = false;
@@ -1241,6 +1265,25 @@ function registerHandlers(ipcMain, options = {}) {
   ipcMain.handle("magiesTerminal:ssh:list-agent-identities", async () => {
     const { listAgentIdentities } = require("./sshAgentIdentities.cjs");
     return await listAgentIdentities();
+  });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-supported", async () => {
+    const { isPkcs11AgentLoadSupported } = require("./sshAgentPkcs11.cjs");
+    return { supported: isPkcs11AgentLoadSupported() };
+  });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-load", async (_event, payload) => {
+    const { managePkcs11Module } = require("./sshAgentPkcs11.cjs");
+    return await managePkcs11Module({
+      action: "add",
+      modulePath: payload?.modulePath,
+      pin: payload?.pin,
+    });
+  });
+  ipcMain.handle("magiesTerminal:ssh:pkcs11-unload", async (_event, payload) => {
+    const { managePkcs11Module } = require("./sshAgentPkcs11.cjs");
+    return await managePkcs11Module({
+      action: "remove",
+      modulePath: payload?.modulePath,
+    });
   });
   ipcMain.handle("magiesTerminal:ssh:get-default-keys", async () => {
     const sshDir = path.join(os.homedir(), ".ssh");

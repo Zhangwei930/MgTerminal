@@ -67,14 +67,42 @@ export interface ConnectionLog {
 // Session Logs Settings - for auto-saving terminal logs to local filesystem
 export type SessionLogFormat = 'txt' | 'raw' | 'html';
 
-// Managed Source - external file that manages a group of hosts (e.g., ~/.ssh/config)
-type ManagedSourceType = 'ssh_config';
+// Managed Source - external inventory that owns a host group.
+// - ssh_config: local OpenSSH config (pull + writeback of managed block)
+// - json_file / json_http: pull-only inventory (CMDB / API Bridge style)
+export type ManagedSourceType = 'ssh_config' | 'json_file' | 'json_http';
 
 export interface ManagedSource {
   id: string;
   type: ManagedSourceType;
+  /**
+   * Local filesystem path for ssh_config / json_file,
+   * or HTTPS/HTTP URL for json_http.
+   */
   filePath: string;
   groupName: string;
   lastSyncedAt: number;
   lastFileHash?: string;
+  /** Optional display name in the data-sources UI. */
+  label?: string;
+  /** How JSON inventory sync updates the vault (default: merge). */
+  syncMode?: 'merge' | 'replace_group';
+  /** When false, auto/manual sync skips this source. Default true. */
+  enabled?: boolean;
+  /**
+   * Optional pull interval for json_file / json_http sources (ms).
+   * Undefined or 0 = manual only. Min 60s when set.
+   */
+  autoSyncIntervalMs?: number;
+  /** Result of the last inventory pull (ok / unchanged / error). */
+  lastSyncStatus?: 'ok' | 'unchanged' | 'error';
+  /** Last pull error message when lastSyncStatus is error (truncated). */
+  lastSyncError?: string;
+  /**
+   * Optional HTTP auth header for json_http sources only.
+   * Allowed names: Authorization, X-Api-Key, X-Auth-Token, X-Access-Token.
+   */
+  httpAuthHeaderName?: string;
+  /** Header value (e.g. "Bearer …"). Stored locally with vault data; never exported in inventory. */
+  httpAuthHeaderValue?: string;
 }

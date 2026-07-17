@@ -9,6 +9,10 @@ const {
 
 let getSession = null;
 let outputChannel = null;
+/** @type {null | ((sessionId: string) => number[] | null)} */
+let getFollowWebContentsIds = null;
+/** @type {null | ((id: number) => any)} */
+let webContentsFromId = null;
 /** @type {Set<(sessionId: string, data: string) => void>} */
 const dataTaps = new Set();
 const emitPerfLogStateBySession = new Map();
@@ -16,6 +20,14 @@ const emitPerfLogStateBySession = new Map();
 function configureTerminalSessionDataEmitter(options = {}) {
   getSession = typeof options.getSession === "function" ? options.getSession : null;
   outputChannel = options.outputChannel || null;
+  getFollowWebContentsIds =
+    typeof options.getFollowWebContentsIds === "function"
+      ? options.getFollowWebContentsIds
+      : getFollowWebContentsIds;
+  webContentsFromId =
+    typeof options.webContentsFromId === "function"
+      ? options.webContentsFromId
+      : webContentsFromId;
 }
 
 function addTerminalDataTap(listener) {
@@ -93,8 +105,41 @@ function emitTerminalSessionData(contents, sessionId, data, options = {}) {
   if (emitPerfDetails) {
     logTerminalOutputPerf("backend-emit", emitPerfDetails);
   }
+  const payload = meta ? { sessionId, data, meta } : { sessionId, data };
+
+  // Local follow mode: fan-out the same backend stream to every peer window.
+  // Prefer explicit multi-cast over MessagePort single-subscriber path.
+  const followIds =
+    typeof getFollowWebContentsIds === "function"
+      ? getFollowWebContentsIds(sessionId)
+      : null;
+  if (Array.isArray(followIds) && followIds.length > 0 && typeof webContentsFromId === "function") {
+    const seen = new Set();
+    for (const id of followIds) {
+      if (!Number.isFinite(id) || seen.has(id)) continue;
+      seen.add(id);
+      try {
+        const target = webContentsFromId(id);
+        if (target && !target.isDestroyed?.()) {
+          target.send("magiesTerminal:data", payload);
+        }
+      } catch {
+        // Peer window may have closed between list and send.
+      }
+    }
+    // Ensure primary contents still receives if not in the follow list.
+    if (contents && !seen.has(contents.id)) {
+      try {
+        if (!contents.isDestroyed?.()) contents.send("magiesTerminal:data", payload);
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
+
   if (outputChannel?.send?.(sessionId, data, meta)) return;
-  contents?.send("magiesTerminal:data", meta ? { sessionId, data, meta } : { sessionId, data });
+  contents?.send("magiesTerminal:data", payload);
 }
 
 module.exports = {

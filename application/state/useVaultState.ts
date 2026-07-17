@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { migrateHostsFromLegacyLineTimestamps, normalizeDistroId, sanitizeHost } from "../../domain/host";
 import { sanitizeGroupConfig } from "../../domain/groupConfig";
+import { normalizeManagedSource } from "../../domain/hostDataSource";
 import { normalizeKnownHosts } from "../../domain/knownHosts";
 import { normalizeNoteGroups, normalizeVaultNotes } from "../../domain/notes";
 import {
@@ -21,6 +22,7 @@ import {
   INITIAL_HOSTS,
   INITIAL_SNIPPETS,
 } from "../../infrastructure/config/defaultData";
+import { pruneStoredLogBookmarks } from "./useLogBookmarks";
 import {
   STORAGE_KEY_CONNECTION_LOGS,
   STORAGE_KEY_CONNECTION_LOG_TERMINAL_DATA,
@@ -53,6 +55,11 @@ import {
 import { getNextVaultOrder, normalizeVaultOrder } from "../../domain/vaultOrder";
 import { loadSanitizedShellHistory } from "./shellHistoryPersistence";
 import { setVaultInitialized } from "./vaultInitStore";
+import {
+  isVaultPlatformUnlockRequired,
+  isVaultPlatformSessionUnlocked,
+  setVaultPlatformSessionUnlocked,
+} from "./vaultPlatformUnlockStore";
 import {
   decryptGroupConfigs,
   decryptHosts,
@@ -197,6 +204,8 @@ const writeConnectionLogTerminalDataMap = (
 
 export const useVaultState = () => {
   const [isInitialized, setIsInitialized] = useState(false);
+  /** When true, secret fields remain ciphertext until platform/PIN unlock. */
+  const [secretsLocked, setSecretsLocked] = useState(() => isVaultPlatformUnlockRequired());
   const [hosts, setHosts] = useState<Host[]>([]);
   const [keys, setKeys] = useState<SSHKey[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);
@@ -590,6 +599,7 @@ export const useVaultState = () => {
       delete map[id];
       connectionLogTerminalDataRef.current = map;
       persistConnectionLogState(updated, { pruneMainBlob: true });
+      pruneStoredLogBookmarks(updated.map((log) => log.id));
       return updated;
     });
   }, [persistConnectionLogState]);
@@ -598,6 +608,7 @@ export const useVaultState = () => {
     setConnectionLogs((prev) => {
       const saved = prev.filter((log) => log.saved);
       persistConnectionLogState(saved, { pruneMainBlob: true });
+      pruneStoredLogBookmarks(saved.map((log) => log.id));
       return saved;
     });
   }, [persistConnectionLogState]);
@@ -643,6 +654,9 @@ export const useVaultState = () => {
   useEffect(() => {
     const init = async () => {
       try {
+        const deferSecrets = isVaultPlatformUnlockRequired();
+        setSecretsLocked(deferSecrets);
+
         const savedHosts = localStorageAdapter.read<Host[]>(STORAGE_KEY_HOSTS);
 
         if (savedHosts) {
@@ -650,19 +664,23 @@ export const useVaultState = () => {
           // during decryption (storage event, user edit) advances the counter
           // and causes this stale result to be discarded.
           const ver = ++hostsWriteVersion.current;
-          const decrypted = await decryptHosts(savedHosts);
+          const nextHosts = deferSecrets
+            ? savedHosts
+            : await decryptHosts(savedHosts);
           if (ver === hostsWriteVersion.current) {
             const sanitized = normalizeVaultOrder(
               migrateHostsFromLegacyLineTimestamps(
-                decrypted.map(sanitizeHost),
+                nextHosts.map(sanitizeHost),
                 readLegacyLineTimestampsEnabled(),
               ),
             );
             setHosts(sanitized);
-            encryptHosts(sanitized).then((enc) => {
-              if (ver === hostsWriteVersion.current)
-                localStorageAdapter.write(STORAGE_KEY_HOSTS, enc);
-            });
+            if (!deferSecrets) {
+              encryptHosts(sanitized).then((enc) => {
+                if (ver === hostsWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_HOSTS, enc);
+              });
+            }
           }
         } else {
           updateHosts(INITIAL_HOSTS);
@@ -690,16 +708,20 @@ export const useVaultState = () => {
             migratedKeys.push(migrateKey(record as Partial<SSHKey>));
           }
 
-          // Decrypt sensitive fields (passphrase, privateKey)
+          // Decrypt sensitive fields (passphrase, privateKey) unless locked
           const keyVer = ++keysWriteVersion.current;
-          const decryptedKeys = await decryptKeys(migratedKeys);
+          const nextKeys = deferSecrets
+            ? migratedKeys
+            : await decryptKeys(migratedKeys);
           if (keyVer === keysWriteVersion.current) {
-            const orderedKeys = normalizeVaultOrder(decryptedKeys);
+            const orderedKeys = normalizeVaultOrder(nextKeys);
             setKeys(orderedKeys);
-            encryptKeys(orderedKeys).then((enc) => {
-              if (keyVer === keysWriteVersion.current)
-                localStorageAdapter.write(STORAGE_KEY_KEYS, enc);
-            });
+            if (!deferSecrets) {
+              encryptKeys(orderedKeys).then((enc) => {
+                if (keyVer === keysWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_KEYS, enc);
+              });
+            }
           }
           if (legacyKeys.length) {
             localStorageAdapter.write(STORAGE_KEY_LEGACY_KEYS, legacyKeys);
@@ -712,14 +734,18 @@ export const useVaultState = () => {
           localStorageAdapter.read<Identity[]>(STORAGE_KEY_IDENTITIES);
         if (savedIdentities) {
           const idVer = ++identitiesWriteVersion.current;
-          const decryptedIds = await decryptIdentities(savedIdentities);
+          const decryptedIds = deferSecrets
+            ? savedIdentities
+            : await decryptIdentities(savedIdentities);
           if (idVer === identitiesWriteVersion.current) {
             const orderedIdentities = normalizeVaultOrder(decryptedIds);
             setIdentities(orderedIdentities);
-            encryptIdentities(orderedIdentities).then((enc) => {
-              if (idVer === identitiesWriteVersion.current)
-                localStorageAdapter.write(STORAGE_KEY_IDENTITIES, enc);
-            });
+            if (!deferSecrets) {
+              encryptIdentities(orderedIdentities).then((enc) => {
+                if (idVer === identitiesWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_IDENTITIES, enc);
+              });
+            }
           }
         }
 
@@ -727,14 +753,18 @@ export const useVaultState = () => {
           localStorageAdapter.read<ProxyProfile[]>(STORAGE_KEY_PROXY_PROFILES);
         if (savedProxyProfiles) {
           const proxyVer = ++proxyProfilesWriteVersion.current;
-          const decryptedProfiles = await decryptProxyProfiles(savedProxyProfiles);
+          const decryptedProfiles = deferSecrets
+            ? savedProxyProfiles
+            : await decryptProxyProfiles(savedProxyProfiles);
           if (proxyVer === proxyProfilesWriteVersion.current) {
             const orderedProfiles = normalizeVaultOrder(decryptedProfiles);
             setProxyProfiles(orderedProfiles);
-            encryptProxyProfiles(orderedProfiles).then((enc) => {
-              if (proxyVer === proxyProfilesWriteVersion.current)
-                localStorageAdapter.write(STORAGE_KEY_PROXY_PROFILES, enc);
-            });
+            if (!deferSecrets) {
+              encryptProxyProfiles(orderedProfiles).then((enc) => {
+                if (proxyVer === proxyProfilesWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_PROXY_PROFILES, enc);
+              });
+            }
           }
         }
 
@@ -802,24 +832,34 @@ export const useVaultState = () => {
           setConnectionLogs(mergeTerminalDataIntoLogs(savedConnectionLogs, terminalDataMap));
         }
 
-        // Load managed sources
+        // Load managed sources (normalize for new JSON inventory fields)
         const savedManagedSources = localStorageAdapter.read<ManagedSource[]>(
           STORAGE_KEY_MANAGED_SOURCES,
         );
-        if (savedManagedSources) setManagedSources(savedManagedSources);
+        if (savedManagedSources) {
+          setManagedSources(
+            savedManagedSources
+              .map((entry) => normalizeManagedSource(entry))
+              .filter((entry): entry is ManagedSource => Boolean(entry)),
+          );
+        }
 
         // Load group configs
         const savedGroupConfigs = localStorageAdapter.read<GroupConfig[]>(STORAGE_KEY_GROUP_CONFIGS);
         if (savedGroupConfigs) {
           const gcVer = ++groupConfigsWriteVersion.current;
-          const decryptedGC = await decryptGroupConfigs(savedGroupConfigs);
+          const decryptedGC = deferSecrets
+            ? savedGroupConfigs
+            : await decryptGroupConfigs(savedGroupConfigs);
           if (gcVer === groupConfigsWriteVersion.current) {
             const sanitizedGC = normalizeVaultOrder(decryptedGC.map(sanitizeGroupConfig));
             setGroupConfigs(sanitizedGC);
-            encryptGroupConfigs(sanitizedGC).then((enc) => {
-              if (gcVer === groupConfigsWriteVersion.current)
-                localStorageAdapter.write(STORAGE_KEY_GROUP_CONFIGS, enc);
-            });
+            if (!deferSecrets) {
+              encryptGroupConfigs(sanitizedGC).then((enc) => {
+                if (gcVer === groupConfigsWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_GROUP_CONFIGS, enc);
+              });
+            }
           }
         }
       } finally {
@@ -830,6 +870,79 @@ export const useVaultState = () => {
 
     init();
   }, [updateHosts, updateSnippets]);
+
+  /**
+   * After platform/PIN unlock, decrypt secret fields currently held as ciphertext.
+   */
+  const unlockVaultSecrets = useCallback(async () => {
+    if (!isVaultPlatformSessionUnlocked() && isVaultPlatformUnlockRequired()) {
+      return false;
+    }
+    const hostVer = ++hostsWriteVersion.current;
+    const keyVer = ++keysWriteVersion.current;
+    const idVer = ++identitiesWriteVersion.current;
+    const proxyVer = ++proxyProfilesWriteVersion.current;
+    const gcVer = ++groupConfigsWriteVersion.current;
+
+    const [decHosts, decKeys, decIds, decProxy, decGC] = await Promise.all([
+      decryptHosts(hosts),
+      decryptKeys(keys),
+      decryptIdentities(identities),
+      decryptProxyProfiles(proxyProfiles),
+      decryptGroupConfigs(groupConfigs),
+    ]);
+
+    if (hostVer === hostsWriteVersion.current) {
+      const sanitized = normalizeVaultOrder(decHosts.map(sanitizeHost));
+      setHosts(sanitized);
+      encryptHosts(sanitized).then((enc) => {
+        if (hostVer === hostsWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_HOSTS, enc);
+      });
+    }
+    if (keyVer === keysWriteVersion.current) {
+      const ordered = normalizeVaultOrder(decKeys);
+      setKeys(ordered);
+      encryptKeys(ordered).then((enc) => {
+        if (keyVer === keysWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_KEYS, enc);
+      });
+    }
+    if (idVer === identitiesWriteVersion.current) {
+      const ordered = normalizeVaultOrder(decIds);
+      setIdentities(ordered);
+      encryptIdentities(ordered).then((enc) => {
+        if (idVer === identitiesWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_IDENTITIES, enc);
+      });
+    }
+    if (proxyVer === proxyProfilesWriteVersion.current) {
+      const ordered = normalizeVaultOrder(decProxy);
+      setProxyProfiles(ordered);
+      encryptProxyProfiles(ordered).then((enc) => {
+        if (proxyVer === proxyProfilesWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_PROXY_PROFILES, enc);
+      });
+    }
+    if (gcVer === groupConfigsWriteVersion.current) {
+      const sanitized = normalizeVaultOrder(decGC.map(sanitizeGroupConfig));
+      setGroupConfigs(sanitized);
+      encryptGroupConfigs(sanitized).then((enc) => {
+        if (gcVer === groupConfigsWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_GROUP_CONFIGS, enc);
+      });
+    }
+
+    setSecretsLocked(false);
+    return true;
+  }, [groupConfigs, hosts, identities, keys, proxyProfiles]);
+
+  const lockVaultSecrets = useCallback(() => {
+    // Session lock: require platform/PIN again. Plaintext remains until reload;
+    // cold start still gates decrypt when feature is enabled.
+    setVaultPlatformSessionUnlocked(false);
+    setSecretsLocked(true);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -958,7 +1071,9 @@ export const useVaultState = () => {
       }
 
       if (key === STORAGE_KEY_MANAGED_SOURCES) {
-        const next = safeParse<ManagedSource[]>(event.newValue) ?? [];
+        const next = (safeParse<ManagedSource[]>(event.newValue) ?? [])
+          .map((entry) => normalizeManagedSource(entry))
+          .filter((entry): entry is ManagedSource => Boolean(entry));
         setManagedSources(next);
         return;
       }
@@ -1087,6 +1202,9 @@ export const useVaultState = () => {
 
   return {
     isInitialized,
+    secretsLocked,
+    unlockVaultSecrets,
+    lockVaultSecrets,
     hosts,
     keys,
     identities,

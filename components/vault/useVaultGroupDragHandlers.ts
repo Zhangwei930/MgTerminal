@@ -125,10 +125,10 @@ export function useVaultGroupDragHandlers({
       const source = managedSources.find(s => s.groupName === groupPath);
       if (!source) return;
   
-      // Clear managedSourceId from hosts first
+      // Clear managed linkage from hosts first (keep local edits / credentials)
       const updatedHosts = hosts.map(h =>
         h.managedSourceId === source.id
-          ? { ...h, managedSourceId: undefined }
+          ? { ...h, managedSourceId: undefined, managedExternalId: undefined }
           : h
       );
       onUpdateHosts(updatedHosts);

@@ -38,6 +38,8 @@ export type HostDataSourcesDialogProps = {
     label?: string;
     syncMode?: "merge" | "replace_group";
     autoSyncIntervalMs?: number;
+    httpAuthHeaderName?: string;
+    httpAuthHeaderValue?: string;
     syncNow?: boolean;
   }) => Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }>;
   onSyncSource: (sourceId: string, options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome>;
@@ -110,6 +112,8 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const [label, setLabel] = useState("");
   const [syncMode, setSyncMode] = useState<"merge" | "replace_group">("merge");
   const [autoSyncIntervalMs, setAutoSyncIntervalMs] = useState(0);
+  const [httpAuthHeaderName, setHttpAuthHeaderName] = useState("Authorization");
+  const [httpAuthHeaderValue, setHttpAuthHeaderValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [pasting, setPasting] = useState(false);
@@ -131,6 +135,8 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     setLabel("");
     setSyncMode("merge");
     setAutoSyncIntervalMs(0);
+    setHttpAuthHeaderName("Authorization");
+    setHttpAuthHeaderValue("");
   }, []);
 
   const handlePickFile = useCallback(async () => {
@@ -140,9 +146,9 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
         t("vault.dataSources.pickFileTitle"),
         undefined,
         [
-          { name: "Inventory", extensions: ["json", "ini", "cfg", "inv", "inventory", "hosts"] },
+          { name: "Inventory", extensions: ["json", "ini", "yml", "yaml", "cfg", "inv", "inventory", "hosts"] },
           { name: "JSON", extensions: ["json"] },
-          { name: "Ansible INI", extensions: ["ini", "cfg", "inv", "inventory", "hosts"] },
+          { name: "Ansible", extensions: ["ini", "yml", "yaml", "cfg", "inv", "inventory", "hosts"] },
         ],
       );
       if (path) {
@@ -174,6 +180,8 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
         label: label.trim() || undefined,
         syncMode,
         autoSyncIntervalMs: autoSyncIntervalMs || undefined,
+        httpAuthHeaderName: sourceType === "json_http" ? httpAuthHeaderName : undefined,
+        httpAuthHeaderValue: sourceType === "json_http" ? httpAuthHeaderValue : undefined,
         syncNow: true,
       });
       if (outcome && !outcome.success) {
@@ -195,7 +203,19 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [autoSyncIntervalMs, filePath, groupName, label, onAddJsonSource, resetForm, sourceType, syncMode, t]);
+  }, [
+    autoSyncIntervalMs,
+    filePath,
+    groupName,
+    httpAuthHeaderName,
+    httpAuthHeaderValue,
+    label,
+    onAddJsonSource,
+    resetForm,
+    sourceType,
+    syncMode,
+    t,
+  ]);
 
   const handleSync = useCallback(
     async (sourceId: string) => {
@@ -598,7 +618,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                     placeholder={
                       sourceType === "json_http"
                         ? "https://cmdb.example.com/hosts.json"
-                        : "/path/to/hosts.json or inventory.ini"
+                        : "/path/to/hosts.json, inventory.ini, or inventory.yml"
                     }
                   />
                   {sourceType === "json_file" && (
@@ -608,6 +628,46 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                   )}
                 </div>
               </div>
+
+              {sourceType === "json_http" && (
+                <div className="space-y-2 rounded-xl border border-border/50 bg-muted/10 p-3">
+                  <Label>{t("vault.dataSources.field.httpAuth")}</Label>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    {t("vault.dataSources.field.httpAuthHint")}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="ds-auth-name" className="text-xs text-muted-foreground">
+                        {t("vault.dataSources.field.httpAuthName")}
+                      </Label>
+                      <select
+                        id="ds-auth-name"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        value={httpAuthHeaderName}
+                        onChange={(e) => setHttpAuthHeaderName(e.target.value)}
+                      >
+                        <option value="Authorization">Authorization</option>
+                        <option value="X-Api-Key">X-Api-Key</option>
+                        <option value="X-Auth-Token">X-Auth-Token</option>
+                        <option value="X-Access-Token">X-Access-Token</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="ds-auth-value" className="text-xs text-muted-foreground">
+                        {t("vault.dataSources.field.httpAuthValue")}
+                      </Label>
+                      <Input
+                        id="ds-auth-value"
+                        type="password"
+                        autoComplete="off"
+                        value={httpAuthHeaderValue}
+                        onChange={(e) => setHttpAuthHeaderValue(e.target.value)}
+                        placeholder="Bearer …"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">

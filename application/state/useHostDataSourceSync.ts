@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Host, ManagedSource } from "../../domain/models";
 import {
+  buildHttpInventoryHeaders,
   createJsonManagedSource,
   hashInventoryContent,
   isHttpInventoryUrl,
@@ -45,7 +46,10 @@ async function readLocalInventoryText(filePath: string): Promise<string> {
   return new TextDecoder().decode(buffer);
 }
 
-async function fetchHttpInventoryText(url: string): Promise<string> {
+async function fetchHttpInventoryText(
+  url: string,
+  source?: Pick<ManagedSource, "httpAuthHeaderName" | "httpAuthHeaderValue">,
+): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
   try {
@@ -54,7 +58,7 @@ async function fetchHttpInventoryText(url: string): Promise<string> {
       credentials: "omit",
       cache: "no-store",
       signal: controller.signal,
-      headers: { Accept: "application/json, text/plain, text/*, */*" },
+      headers: buildHttpInventoryHeaders(source || {}),
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
@@ -69,12 +73,14 @@ async function fetchHttpInventoryText(url: string): Promise<string> {
   }
 }
 
-export async function loadInventoryRawText(source: Pick<ManagedSource, "type" | "filePath">): Promise<string> {
+export async function loadInventoryRawText(
+  source: Pick<ManagedSource, "type" | "filePath" | "httpAuthHeaderName" | "httpAuthHeaderValue">,
+): Promise<string> {
   if (source.type === "json_file") {
     return readLocalInventoryText(source.filePath);
   }
   if (source.type === "json_http") {
-    return fetchHttpInventoryText(source.filePath);
+    return fetchHttpInventoryText(source.filePath, source);
   }
   throw new Error("Source is not a JSON inventory.");
 }
@@ -214,6 +220,8 @@ export function useHostDataSourceSync({
       label?: string;
       syncMode?: "merge" | "replace_group";
       autoSyncIntervalMs?: number;
+      httpAuthHeaderName?: string;
+      httpAuthHeaderValue?: string;
       syncNow?: boolean;
     }): Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }> => {
       const path = input.filePath.trim();
@@ -242,6 +250,8 @@ export function useHostDataSourceSync({
         label: input.label,
         syncMode: input.syncMode,
         autoSyncIntervalMs: input.autoSyncIntervalMs,
+        httpAuthHeaderName: input.httpAuthHeaderName,
+        httpAuthHeaderValue: input.httpAuthHeaderValue,
       });
 
       const nextSources = [...managedSourcesRef.current, source];

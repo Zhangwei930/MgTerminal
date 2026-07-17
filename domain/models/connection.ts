@@ -152,9 +152,10 @@ export interface Host {
   autoOpenSftpPanel?: boolean;
   password?: string;
   savePassword?: boolean; // Whether to save the password (default: true)
-  authMethod?: 'password' | 'key' | 'certificate' | 'agent';
+  authMethod?: 'password' | 'key' | 'certificate' | 'agent' | 'gssapi';
   // Preferred SSH agent identity (SHA256 fingerprint, no prefix). When set
   // with authMethod 'agent', only the matching agent key is offered.
+  // authMethod 'gssapi' uses system OpenSSH + Kerberos (not the ssh2 stack).
   agentIdentityFingerprint?: string;
   agentForwarding?: boolean;
   x11Forwarding?: boolean;

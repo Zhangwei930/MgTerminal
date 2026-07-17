@@ -108,8 +108,15 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 | Follow 协作审计导出 | 已实现 | 工具栏审计列表 + 文本/NDJSON 复制（主进程已有 ring） |
 | Follow 审计落盘 | 已实现 | userData `follow-audit-v1.json`；重启可查 |
 | Follow 审计清除 | 已实现 | 本机会话历史一键清空（内存+磁盘） |
-| 后量子 SSH（hybrid ML-KEM） | **阻塞** | ssh2 1.17 无 PQ KEX；需库升级或可选系统 OpenSSH 后端 |
-| GSSAPI / Kerberos | **未做** | 需 OpenSSH 传输路径或独立栈，不宜在 ssh2 内硬造 |
+| GSSAPI / Kerberos | 已实现 | 系统 OpenSSH + GSSAPIAuthentication（非 ssh2）；无跳板/应用代理 |
+| 后量子 SSH（hybrid ML-KEM） | **阻塞 / 延后** | ssh2 1.17 无 PQ KEX；待库支持或完整 system-OpenSSH 后端后再做 |
+
+### P1 收口说明
+
+- **产品 P1 主线已完成**（数据源、Hex、团队元数据分享、本地/LAN Follow、审计、设备解锁、PKCS#11、GSSAPI）。
+- **明确延后**：后量子 hybrid ML-KEM —— 不自研算法；等 `ssh2`/OpenSSH 混合 KEX 成熟后再接入。
+- **范围边界**：GSSAPI 依赖本机 Kerberos 票据与系统 `ssh`；不支持 jump chain 与 MagiesTerminal 内置代理（见主机设置提示）。
+- **团队 Vault 完整角色/云端**、**可移植 FIDO2 身份**、**WAN multiplayer** 属更深企业能力，不在本批 P1 必达范围（元数据分享 + 本机解锁已交付）。
 
 ---
 

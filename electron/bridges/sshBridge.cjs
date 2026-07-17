@@ -989,7 +989,22 @@ function sendFinalStartFailureExit(event, options, err) {
   });
 }
 
+const { createStartGssapiSessionApi } = require("./sshBridge/gssapiSession.cjs");
+const gssapiSessionApi = createStartGssapiSessionApi({
+  get sessions() { return sessions; },
+  openTerminalOutputSession,
+  createPtyOutputBuffer,
+  sessionLogStreamManager,
+  trackSessionIdlePrompt,
+});
+const { startGssapiSshSession } = gssapiSessionApi;
+
 async function startSSHSessionWrapper(event, options) {
+  // Enterprise domain auth: system OpenSSH GSSAPI (Kerberos). Not supported by ssh2.
+  if (options?.authMethod === "gssapi") {
+    return await startGssapiSshSession(event, options);
+  }
+
   let retryableEncryptedKeys = [];
   let loadedRetryableEncryptedKeys = false;
   let shouldSuppressInitialAuthExit = false;

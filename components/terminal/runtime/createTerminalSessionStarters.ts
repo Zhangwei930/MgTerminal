@@ -468,7 +468,7 @@ export const createTerminalSessionStarters = (ctx: TerminalSessionStartersContex
       const authMethod = resolvedAuth.authMethod;
       const allowsLocalIdentityFallback = !resolvedAuth.keyId;
       const targetReferenceKeyPath = key?.source === 'reference' ? key.filePath : undefined;
-      const targetIdentityFilePaths = authMethod === "password"
+      const targetIdentityFilePaths = authMethod === "password" || authMethod === "gssapi" || authMethod === "agent"
         ? undefined
         : targetReferenceKeyPath
           ? [targetReferenceKeyPath]
@@ -506,6 +506,7 @@ export const createTerminalSessionStarters = (ctx: TerminalSessionStartersContex
           passphrase: attempt.key
             ? (effectivePassphrase || sanitizeCredentialValue(attempt.key.passphrase))
             : undefined,
+          authMethod,
           agentForwarding: ctx.host.agentForwarding,
           agentIdentityFingerprint: ctx.host.agentIdentityFingerprint,
           x11Forwarding: ctx.host.x11Forwarding,
@@ -537,12 +538,20 @@ export const createTerminalSessionStarters = (ctx: TerminalSessionStartersContex
 
       let id: string;
       // Respect explicit auth method selection - don't use key if password auth was explicitly selected
-      const hasKeyMaterial = (!!sanitizeCredentialValue(key?.privateKey) || !!targetIdentityFilePaths?.length) && authMethod !== 'password';
+      const hasKeyMaterial = (!!sanitizeCredentialValue(key?.privateKey) || !!targetIdentityFilePaths?.length)
+        && authMethod !== "password"
+        && authMethod !== "gssapi"
+        && authMethod !== "agent";
       const hasPassword = !!effectivePassword;
 
       const needsCredentialReentry =
         (authMethod === "password" && hasEncryptedPrimaryPassword && !hasPassword) ||
-        (authMethod !== "password" && hasEncryptedPrimaryKey && !hasKeyMaterial && !hasPassword);
+        (authMethod !== "password"
+          && authMethod !== "gssapi"
+          && authMethod !== "agent"
+          && hasEncryptedPrimaryKey
+          && !hasKeyMaterial
+          && !hasPassword);
 
       if (needsCredentialReentry) {
         if (unsubscribeChainProgress) unsubscribeChainProgress();

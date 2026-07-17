@@ -913,6 +913,9 @@ export const ruVaultMessages: Messages = {
   'hostDetails.testConnection': 'Проверить подключение',
 
   'hostDetails.credential.agent': 'SSH-агент',
+  'hostDetails.credential.gssapi': 'GSSAPI / Kerberos',
+  'hostDetails.credential.gssapiHint':
+    'Использует системный OpenSSH с GSSAPIAuthentication (кеш Kerberos-билетов). Нужен действующий TGT (например, kinit). Jump-хосты и прокси MagiesTerminal на этом пути не поддерживаются.',
   'hostDetails.agent.loading': 'Чтение ключей агента…',
   'hostDetails.agent.unavailable': 'SSH-агент не найден. Запустите ssh-agent и повторите попытку.',
   'hostDetails.agent.empty': 'В SSH-агенте нет ключей. Добавьте ключ командой ssh-add.',

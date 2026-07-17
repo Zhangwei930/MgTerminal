@@ -1,7 +1,7 @@
 import type { Host, Identity, SSHKey } from "./models";
 import { sanitizeCredentialValue } from "./credentials";
 
-type HostAuthMethod = "password" | "key" | "certificate" | "agent";
+type HostAuthMethod = "password" | "key" | "certificate" | "agent" | "gssapi";
 
 type HostAuthOverride = {
   authMethod?: HostAuthMethod;
@@ -65,17 +65,19 @@ export const resolveHostAuth = (args: {
     host.authMethod
   ) as HostAuthMethod | undefined;
 
-  // Don't load key when password or agent auth is selected.
+  // Don't load key when password, agent, or GSSAPI auth is selected.
   // This ensures the user's auth method selection is strictly respected.
-  const keyId = selectedAuthMethod === "password" || selectedAuthMethod === "agent"
+  const keyId = selectedAuthMethod === "password"
+    || selectedAuthMethod === "agent"
+    || selectedAuthMethod === "gssapi"
     ? undefined
     : (override?.keyId || identity?.keyId || host.identityFileId || undefined);
 
 
   const key = keyId ? keys.find((k) => k.id === keyId) : undefined;
 
-  // Agent auth sends no stored secrets — the agent holds the keys.
-  const password = selectedAuthMethod === "agent"
+  // Agent / GSSAPI send no stored secrets — OS ticket cache or agent holds material.
+  const password = selectedAuthMethod === "agent" || selectedAuthMethod === "gssapi"
     ? undefined
     : override?.password ?? identity?.password ?? host.password;
 

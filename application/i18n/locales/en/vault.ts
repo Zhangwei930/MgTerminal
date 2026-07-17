@@ -907,6 +907,9 @@ export const enVaultMessages: Messages = {
   'hostDetails.testConnection': 'Test Connection',
 
   'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.credential.gssapi': 'GSSAPI / Kerberos',
+  'hostDetails.credential.gssapiHint':
+    'Uses the system OpenSSH client with GSSAPIAuthentication (Kerberos ticket cache). Requires a valid TGT (e.g. kinit). Jump hosts and MagiesTerminal proxies are not supported on this path.',
   'hostDetails.agent.loading': 'Reading agent identities...',
   'hostDetails.agent.unavailable': 'No SSH agent detected. Start ssh-agent (or enable your key manager\'s agent) and try again.',
   'hostDetails.agent.empty': 'The SSH agent holds no keys. Add one with ssh-add.',

@@ -111,7 +111,11 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
       const path = await bridge.selectFile(
         t("vault.dataSources.pickFileTitle"),
         undefined,
-        [{ name: "JSON", extensions: ["json"] }],
+        [
+          { name: "Inventory", extensions: ["json", "ini", "cfg", "inv", "inventory", "hosts"] },
+          { name: "JSON", extensions: ["json"] },
+          { name: "Ansible INI", extensions: ["ini", "cfg", "inv", "inventory", "hosts"] },
+        ],
       );
       if (path) {
         setFilePath(path);
@@ -359,7 +363,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                     placeholder={
                       sourceType === "json_http"
                         ? "https://cmdb.example.com/hosts.json"
-                        : "/path/to/hosts.json"
+                        : "/path/to/hosts.json or inventory.ini"
                     }
                   />
                   {sourceType === "json_file" && (

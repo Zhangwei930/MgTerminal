@@ -10,6 +10,7 @@ import {
   inventoryContainsSecrets,
   isHttpInventoryUrl,
   parseHostInventoryDocument,
+  parseInventoryDocument,
   syncHostsFromInventory,
 } from "./hostDataSource.ts";
 
@@ -41,6 +42,21 @@ test("parseHostInventoryDocument accepts clean inventory", () => {
   assert.equal(doc.version, 1);
   assert.equal(doc.hosts.length, 2);
   assert.equal(doc.hosts[0]?.id, "web-1");
+});
+
+test("parseInventoryDocument accepts MagiesTerminal JSON and Ansible INI", () => {
+  const jsonDoc = parseInventoryDocument(sampleJson);
+  assert.equal(jsonDoc.hosts.length, 2);
+
+  const ansibleDoc = parseInventoryDocument(`
+[app]
+api ansible_host=10.9.9.9 ansible_user=ops ansible_port=22
+`);
+  assert.equal(ansibleDoc.version, 1);
+  assert.equal(ansibleDoc.hosts.length, 1);
+  assert.equal(ansibleDoc.hosts[0]?.hostname, "10.9.9.9");
+  assert.equal(ansibleDoc.hosts[0]?.username, "ops");
+  assert.equal(ansibleDoc.hosts[0]?.group, "app");
 });
 
 test("parseHostInventoryDocument rejects secrets", () => {

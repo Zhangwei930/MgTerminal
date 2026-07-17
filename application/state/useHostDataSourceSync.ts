@@ -6,7 +6,7 @@ import {
   hashInventoryContent,
   isHttpInventoryUrl,
   isJsonManagedSourceType,
-  parseHostInventoryDocument,
+  parseInventoryDocument,
   syncHostsFromInventory,
   type HostDataSourceSyncStats,
 } from "../../domain/hostDataSource";
@@ -49,7 +49,7 @@ async function fetchHttpInventoryText(url: string): Promise<string> {
       credentials: "omit",
       cache: "no-store",
       signal: controller.signal,
-      headers: { Accept: "application/json, text/plain, */*" },
+      headers: { Accept: "application/json, text/plain, text/*, */*" },
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
@@ -119,7 +119,7 @@ export function useHostDataSourceSync({
           };
         }
 
-        const inventory = parseHostInventoryDocument(raw);
+        const inventory = parseInventoryDocument(raw);
         const result = syncHostsFromInventory({
           existingHosts: hostsRef.current,
           customGroups: customGroupsRef.current,

@@ -25,9 +25,34 @@ const {
   loadFirstIdentityFileForAuth,
   isPassphraseCancelledError,
 } = require("./sshAuthHelper.cjs");
+const {
+  createPortForwardChannelTracker,
+  formatSocketAddress,
+} = require("./portForwardChannelTracker.cjs");
 
 // Active port forwarding tunnels
 const portForwardingTunnels = new Map();
+
+function broadcastChannelSnapshot(channels) {
+  try {
+    const { BrowserWindow } = require("electron");
+    const payload = { channels };
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (win.isDestroyed()) continue;
+      try {
+        win.webContents.send("magiesTerminal:portforward:channels", payload);
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    // electron may be unavailable in unit tests
+  }
+}
+
+const channelTracker = createPortForwardChannelTracker({
+  onChange: broadcastChannelSnapshot,
+});
 
 // Shared terminal-session map (sshBridge/terminalBridge), injected via
 // registerHandlers so local/dynamic tunnels can piggyback on an existing
@@ -69,6 +94,7 @@ function cancelTunnel(tunnelId, tunnel, sendStatus, { deleteEntry = false } = {}
     try { tunnel.conn.end(); } catch { /* ignore */ }
   }
   sendStatus?.('inactive');
+  channelTracker.clearTunnel(tunnelId);
   if (deleteEntry) {
     portForwardingTunnels.delete(tunnelId);
   }
@@ -80,8 +106,18 @@ const { safeSend } = require("./ipcUtils.cjs");
  * Local forwarding server: accept local TCP clients and pipe each through a
  * forwardOut channel on the (possibly shared) SSH connection.
  */
-function createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort }) {
+function createLocalForwardServer({
+  conn,
+  bindAddress,
+  localPort,
+  remoteHost,
+  remotePort,
+  tunnelId,
+  ruleId,
+}) {
   return net.createServer((socket) => {
+    const source = formatSocketAddress(socket);
+    const destination = `${remoteHost || "?"}:${remotePort || "?"}`;
     conn.forwardOut(
       bindAddress,
       localPort,
@@ -92,6 +128,17 @@ function createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, re
           console.error(`[PortForward] Forward error:`, err.message);
           socket.end();
           return;
+        }
+        if (tunnelId) {
+          channelTracker.attach({
+            tunnelId,
+            ruleId,
+            type: "local",
+            source,
+            destination,
+            socket,
+            stream,
+          });
         }
         socket.pipe(stream).pipe(socket);
 
@@ -106,7 +153,7 @@ function createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, re
  * Dynamic forwarding server: minimal SOCKS5 endpoint whose CONNECT requests
  * are carried over forwardOut channels on the (possibly shared) SSH connection.
  */
-function createSocksProxyServer({ conn, bindAddress }) {
+function createSocksProxyServer({ conn, bindAddress, tunnelId, ruleId }) {
   return net.createServer((socket) => {
     // Simple SOCKS5 handshake
     socket.once('data', (data) => {
@@ -171,6 +218,18 @@ function createSocksProxyServer({ conn, bindAddress }) {
             reply.writeUInt16BE(0, 8);
             socket.write(reply);
 
+            if (tunnelId) {
+              channelTracker.attach({
+                tunnelId,
+                ruleId,
+                type: "dynamic",
+                source: formatSocketAddress(socket),
+                destination: `${targetHost}:${targetPort}`,
+                socket,
+                stream,
+              });
+            }
+
             socket.pipe(stream).pipe(socket);
 
             socket.on('error', () => stream.end());
@@ -223,6 +282,7 @@ function startTunnelOnSharedConnection({
       }
       releaseConnectionRef(tunnel);
       sendStatus('inactive');
+      channelTracker.clearTunnel(tunnelId);
       portForwardingTunnels.delete(tunnelId);
       if (!settled) {
         settled = true;
@@ -235,8 +295,10 @@ function startTunnelOnSharedConnection({
     };
 
     const server = type === 'local'
-      ? createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort })
-      : createSocksProxyServer({ conn, bindAddress });
+      ? createLocalForwardServer({
+        conn, bindAddress, localPort, remoteHost, remotePort, tunnelId, ruleId,
+      })
+      : createSocksProxyServer({ conn, bindAddress, tunnelId, ruleId });
 
     server.on('error', (err) => {
       console.error(`[PortForward] Server error (shared connection):`, err.message);
@@ -561,7 +623,9 @@ async function startPortForward(event, payload) {
 
       if (type === 'local') {
         // LOCAL FORWARDING: Listen on local port, forward to remote
-        const server = createLocalForwardServer({ conn, bindAddress, localPort, remoteHost, remotePort });
+        const server = createLocalForwardServer({
+          conn, bindAddress, localPort, remoteHost, remotePort, tunnelId, ruleId,
+        });
 
         server.on('error', (err) => {
           console.error(`[PortForward] Server error:`, err.message);
@@ -615,7 +679,22 @@ async function startPortForward(event, payload) {
         // Handle incoming connections from remote
         conn.on('tcp connection', (info, accept, rejectConn) => {
           const stream = accept();
+          const remoteSource = info
+            ? `${info.srcIP || "?"}:${info.srcPort || "?"}`
+            : "remote";
+          const destination = `${remoteHost || "127.0.0.1"}:${remotePort || "?"}`;
           const socket = net.connect(remotePort, remoteHost || '127.0.0.1', () => {
+            channelTracker.attach({
+              tunnelId,
+              ruleId,
+              type: "remote",
+              source: remoteSource,
+              destination,
+              // For remote forward, stream is the remote peer (source of inbound
+              // tunnel traffic) and socket is the local destination service.
+              socket: stream,
+              stream: socket,
+            });
             stream.pipe(socket).pipe(stream);
           });
 
@@ -631,7 +710,7 @@ async function startPortForward(event, payload) {
 
       } else if (type === 'dynamic') {
         // DYNAMIC FORWARDING (SOCKS5 Proxy)
-        const server = createSocksProxyServer({ conn, bindAddress });
+        const server = createSocksProxyServer({ conn, bindAddress, tunnelId, ruleId });
 
         server.on('error', (err) => {
           console.error(`[PortForward] SOCKS server error:`, err.message);
@@ -686,6 +765,7 @@ async function startPortForward(event, payload) {
           try { tunnel.pendingConn.end(); } catch { /* ignore */ }
         }
         sendStatus('inactive');
+        channelTracker.clearTunnel(tunnelId);
         portForwardingTunnels.delete(tunnelId);
       }
       // If the Promise was never settled (tunnel killed during
@@ -750,9 +830,17 @@ async function listPortForwards() {
       tunnelId,
       type: tunnel.type,
       status: tunnel.status || 'active',
+      ruleId: tunnel.ruleId,
     });
   }
   return list;
+}
+
+/**
+ * List live TCP channels across all tunnels (source / destination / traffic).
+ */
+async function listPortForwardChannels() {
+  return { channels: channelTracker.list() };
 }
 
 /**
@@ -768,6 +856,7 @@ function stopAllPortForwards() {
       console.warn(`[PortForward] Failed to stop tunnel ${tunnelId}:`, err.message);
     }
   }
+  channelTracker.clearAll();
   console.log('[PortForward] All tunnels stopped');
 }
 
@@ -805,6 +894,7 @@ function registerHandlers(ipcMain, deps) {
   ipcMain.handle("magiesTerminal:portforward:stop", stopPortForward);
   ipcMain.handle("magiesTerminal:portforward:status", getPortForwardStatus);
   ipcMain.handle("magiesTerminal:portforward:list", listPortForwards);
+  ipcMain.handle("magiesTerminal:portforward:listChannels", listPortForwardChannels);
   ipcMain.handle("magiesTerminal:portforward:stopAll", () => stopAllPortForwards());
   ipcMain.handle("magiesTerminal:portforward:stopByRuleId", stopPortForwardByRuleId);
 }
@@ -815,6 +905,7 @@ module.exports = {
   stopPortForward,
   getPortForwardStatus,
   listPortForwards,
+  listPortForwardChannels,
   stopAllPortForwards,
   stopPortForwardByRuleId,
 };

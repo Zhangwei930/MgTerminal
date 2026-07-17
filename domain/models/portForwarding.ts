@@ -2,6 +2,19 @@
 export type PortForwardingType = 'local' | 'remote' | 'dynamic';
 type PortForwardingStatus = 'inactive' | 'connecting' | 'active' | 'error';
 
+/** Live TCP channel on an active tunnel (source, destination, traffic). */
+export interface PortForwardChannel {
+  id: string;
+  tunnelId: string;
+  ruleId?: string;
+  type: PortForwardingType | string;
+  source: string;
+  destination: string;
+  bytesIn: number;
+  bytesOut: number;
+  openedAt: number;
+}
+
 export interface PortForwardingRule {
   id: string;
   label: string;

@@ -9,6 +9,7 @@ export {
 } from './utils';
 
 export { RuleCard } from './RuleCard';
+export { ActiveChannelsPanel } from './ActiveChannelsPanel';
 
 export { WizardContent } from './WizardContent';
 

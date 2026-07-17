@@ -756,11 +756,25 @@ function createPreloadApi(ctx) {
   listPortForwards: async () => {
     return ipcRenderer.invoke("magiesTerminal:portforward:list");
   },
+  listPortForwardChannels: async () => {
+    return ipcRenderer.invoke("magiesTerminal:portforward:listChannels");
+  },
   stopAllPortForwards: async () => {
     return ipcRenderer.invoke("magiesTerminal:portforward:stopAll");
   },
   stopPortForwardByRuleId: async (ruleId) => {
     return ipcRenderer.invoke("magiesTerminal:portforward:stopByRuleId", { ruleId });
+  },
+  onPortForwardChannels: (cb) => {
+    const handler = (_event, payload) => {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.warn("[preload] onPortForwardChannels callback failed:", err);
+      }
+    };
+    ipcRenderer.on("magiesTerminal:portforward:channels", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:portforward:channels", handler);
   },
   onPortForwardStatus: (tunnelId, cb) => {
     if (!portForwardStatusListeners.has(tunnelId)) {

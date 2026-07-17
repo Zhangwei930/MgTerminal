@@ -611,11 +611,13 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
   }, [hosts, t]);
 
   /**
-   * Team Vault first slice: share host inventory as metadata-only JSON
+   * Team Vault first slice: share host inventory as metadata-only JSON/INI
    * (same schema as Data Sources). Passwords / keys never leave the vault.
+   * delivery: download file, or copy body to clipboard for chat / paste.
    */
-  const downloadInventoryShare = useCallback((
+  const shareInventory = useCallback(async (
     kind: "json" | "ansible",
+    delivery: "download" | "clipboard" = "download",
   ) => {
     const selection = selectedHostIds.size > 0
       ? Array.from(selectedHostIds)
@@ -629,28 +631,52 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
       return;
     }
 
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    let body = "";
+    let mime = "application/json;charset=utf-8";
+    let filename = `hosts_inventory_${dateStamp}.json`;
+    let exportedCount = 0;
+    let skippedCount = 0;
+
     if (kind === "ansible") {
       const result = exportHostsToAnsibleInventoryIni(hosts, { hostIds: selection });
       if (result.exportedCount === 0) {
         toast.warning(t("vault.hosts.share.toast.noExportable"));
         return;
       }
-      const blob = new Blob([result.ini], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `hosts_inventory_${new Date().toISOString().slice(0, 10)}.ini`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      body = result.ini;
+      mime = "text/plain;charset=utf-8";
+      filename = `hosts_inventory_${dateStamp}.ini`;
+      exportedCount = result.exportedCount;
+      skippedCount = result.skippedCount;
+    } else {
+      const result = exportHostsToInventoryDocument(hosts, { hostIds: selection });
+      if (result.exportedCount === 0) {
+        toast.warning(t("vault.hosts.share.toast.noExportable"));
+        return;
+      }
+      body = result.json;
+      exportedCount = result.exportedCount;
+      skippedCount = result.skippedCount;
+    }
 
-      const baseMessage = selection
-        ? t("vault.hosts.share.toast.successAnsibleSelected", { count: result.exportedCount })
-        : t("vault.hosts.share.toast.successAnsible", { count: result.exportedCount });
-      if (result.skippedCount > 0) {
+    if (delivery === "clipboard") {
+      try {
+        await navigator.clipboard.writeText(body);
+      } catch {
+        toast.error(t("vault.hosts.share.toast.copyFailed"), t("vault.hosts.share.toast.title"));
+        return;
+      }
+      const baseMessage = kind === "ansible"
+        ? (selection
+          ? t("vault.hosts.share.toast.copiedAnsibleSelected", { count: exportedCount })
+          : t("vault.hosts.share.toast.copiedAnsible", { count: exportedCount }))
+        : (selection
+          ? t("vault.hosts.share.toast.copiedSelected", { count: exportedCount })
+          : t("vault.hosts.share.toast.copied", { count: exportedCount }));
+      if (skippedCount > 0) {
         toast.success(
-          `${baseMessage} ${t("vault.hosts.share.toast.skipped", { skipped: result.skippedCount })}`,
+          `${baseMessage} ${t("vault.hosts.share.toast.skipped", { skipped: skippedCount })}`,
           t("vault.hosts.share.toast.title"),
         );
       } else {
@@ -659,31 +685,26 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
       return;
     }
 
-    const result = exportHostsToInventoryDocument(hosts, {
-      hostIds: selection,
-    });
-
-    if (result.exportedCount === 0) {
-      toast.warning(t("vault.hosts.share.toast.noExportable"));
-      return;
-    }
-
-    const blob = new Blob([result.json], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([body], { type: mime });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `hosts_inventory_${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    const baseMessage = selection
-      ? t("vault.hosts.share.toast.successSelected", { count: result.exportedCount })
-      : t("vault.hosts.share.toast.success", { count: result.exportedCount });
-    if (result.skippedCount > 0) {
+    const baseMessage = kind === "ansible"
+      ? (selection
+        ? t("vault.hosts.share.toast.successAnsibleSelected", { count: exportedCount })
+        : t("vault.hosts.share.toast.successAnsible", { count: exportedCount }))
+      : (selection
+        ? t("vault.hosts.share.toast.successSelected", { count: exportedCount })
+        : t("vault.hosts.share.toast.success", { count: exportedCount }));
+    if (skippedCount > 0) {
       toast.success(
-        `${baseMessage} ${t("vault.hosts.share.toast.skipped", { skipped: result.skippedCount })}`,
+        `${baseMessage} ${t("vault.hosts.share.toast.skipped", { skipped: skippedCount })}`,
         t("vault.hosts.share.toast.title"),
       );
     } else {
@@ -692,12 +713,20 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
   }, [hosts, selectedHostIds, t]);
 
   const handleShareInventory = useCallback(() => {
-    downloadInventoryShare("json");
-  }, [downloadInventoryShare]);
+    void shareInventory("json", "download");
+  }, [shareInventory]);
 
   const handleShareInventoryAnsible = useCallback(() => {
-    downloadInventoryShare("ansible");
-  }, [downloadInventoryShare]);
+    void shareInventory("ansible", "download");
+  }, [shareInventory]);
+
+  const handleCopyInventoryJson = useCallback(() => {
+    void shareInventory("json", "clipboard");
+  }, [shareInventory]);
+
+  const handleCopyInventoryAnsible = useCallback(() => {
+    void shareInventory("ansible", "clipboard");
+  }, [shareInventory]);
 
   // Copy host credentials to clipboard
   const handleCopyCredentials = useCallback((host: Host) => {
@@ -1291,7 +1320,7 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
         managedGroupPaths={managedGroupPaths}
         onConfirmDelete={deleteGroupPath}
       />
-      <VaultViewLayout ctx={{ Activity, allGroupPaths, allTags, AppLogo, Array, Badge, BookMarked, Boolean, Button, CheckSquare, ChevronDown, cancelInlineGroupEdit, clearHostSelection, ClipboardCopy, Clock, cn, commitInlineGroupRename, connectionLogs, connectSelectedHosts, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, Copy, currentSection, customGroups, Database, deleteGroupPath, deleteGroupWithHosts, deleteSelectedHosts, deleteTargetPath, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, displayedGroups, displayedHosts, DistroAvatar, Download, Share2, Dropdown, DropdownContent, DropdownTrigger, Edit2, editingGroupPath, editingHost, editingHostGroupDefaults, FileCode, FileSymlink, FolderPlus, FolderTree, getDropTargetClasses, getEffectiveHostDistro, Globe, groupConfigs, GroupDetailsPanel, groupedDisplayHosts, handleConnectClick, handleCopyCredentials, handleDeleteTag, handleDuplicateHost, handleEditGroupConfig, handleEditHost, handleEditTag, handleExportHosts, handleShareInventory, handleShareInventoryAnsible, handleHostConnect, handleImportFileSelected, handleNewHost, handleProtocolSelect, handleQuickConnect, handleQuickConnectSaveHost, handleSaveGroupConfig, handleSearchKeyDown, handleUnmanageGroup, hasHostsSidePanel, HostDetailsPanel, hostListScrollRef, hosts, HostTreeView, hotkeyScheme, identities, ImportVaultDialog, Input, isDeleteGroupOpen, isGroupPanelOpen, isHostPanelOpen, isHostsSectionActive, isImportOpen, isMultiSelectMode, isNewFolderOpen, isQuickConnectOpen, isRenameGroupOpen, isSearchQuickConnect, isSerialModalOpen, Key, keyBindings, KeychainManager, keys, knownHosts, knownHostsManagerElement, Label, lastPinnedId, LayoutGrid, LazyConnectionLogsManager, LazyProtocolSelectDialog, List, managedGroupPaths, managedSources, moveGroup, moveHostToGroup, Network, newFolderName, newHostGroupPath, noteGroups, NotebookText, notes, NotesManager, onClearUnsavedConnectionLogs, onConnectSerial, onCreateLocalTerminal, onDeleteConnectionLog, onDeleteHost, onImportOrReuseKey, onOpenHostFromNote, onOpenLogView, onOpenSettings, onRunSnippet, onToggleConnectionLogSaved, onUpdateCustomGroups, onUpdateGroupConfigs, onUpdateHosts, onUpdateIdentities, onUpdateKeys, onUpdateNoteGroups, onUpdateNotes, onUpdateProxyProfiles, onUpdateSnippetPackages, onUpdateSnippets, openNoteId: pendingOpenNoteId, onOpenNoteIdHandled: () => setPendingOpenNoteId(null), openSnippetId: pendingOpenSnippetId, onOpenSnippetIdHandled: () => setPendingOpenSnippetId(null), Pin, pinnedHosts, pinnedRecentIds, Plug, Plus, PortForwarding, protocolSelectHost, proxyProfiles, ProxyProfilesManager, quickConnectTarget, quickConnectWarnings, QuickConnectWizard, recentHosts, renameGroupError, renameGroupName, renameTargetPath, reorderGroup, reorderHost, RippleButton, rootRef, sanitizeHost, search, Search, selectedGroupPath, selectedHostIds, selectedTags, SerialConnectModal, SerialHostDetailsPanel, sessionCount, Set, setCurrentSection, setDeleteGroupWithHosts, setDeleteTargetPath, setDragOverDropTarget, setEditingGroupPath, setEditingHost, setGroupDragOverDropTarget, setIsDataSourcesOpen, setIsDeleteGroupOpen, setIsGroupPanelOpen, setIsHostPanelOpen, setIsImportOpen, setIsMultiSelectMode, setIsNewFolderOpen, setIsQuickConnectOpen, setIsRenameGroupOpen, setIsSerialModalOpen, setLastPinnedId, setNewFolderName, setNewHostGroupPath, setProtocolSelectHost, setQuickConnectTarget, setQuickConnectWarnings, setRenameGroupError, setRenameGroupName, setRenameTargetPath, setSearch, setSelectedGroupPath, setSelectedHostIds, setSelectedTags, setSidebarCollapsed, setSidebarWidth, handleSidebarWidthCommit, setSortMode, setTargetParentPath, Settings, setViewMode, shellHistory, shouldHideEmptyRootHostsSection, showRecentHosts, sidebarCollapsed, sidebarWidth, snippetPackages, snippets, SnippetsManager, SortDropdown, sortMode, splitViewGridStyle, Square, Star, startInlineDeleteGroup, startInlineNewGroup, startInlineRenameGroup, submitNewFolder, submitRenameGroup, Suspense, t, TagFilterDropdown, targetParentPath, terminalFontSize, terminalSettings, TerminalSquare, terminalThemeId, toggleHostPinned, toggleHostSelection, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Trash2, treeExpandedState, treeViewGroupTree, treeViewHosts, Upload, upsertHostById, Usb, viewMode, visibleDisplayedHosts, X, Zap }} />
+      <VaultViewLayout ctx={{ Activity, allGroupPaths, allTags, AppLogo, Array, Badge, BookMarked, Boolean, Button, CheckSquare, ChevronDown, cancelInlineGroupEdit, clearHostSelection, ClipboardCopy, Clock, cn, commitInlineGroupRename, connectionLogs, connectSelectedHosts, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, Copy, currentSection, customGroups, Database, deleteGroupPath, deleteGroupWithHosts, deleteSelectedHosts, deleteTargetPath, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, displayedGroups, displayedHosts, DistroAvatar, Download, Share2, Dropdown, DropdownContent, DropdownTrigger, Edit2, editingGroupPath, editingHost, editingHostGroupDefaults, FileCode, FileSymlink, FolderPlus, FolderTree, getDropTargetClasses, getEffectiveHostDistro, Globe, groupConfigs, GroupDetailsPanel, groupedDisplayHosts, handleConnectClick, handleCopyCredentials, handleDeleteTag, handleDuplicateHost, handleEditGroupConfig, handleEditHost, handleEditTag, handleExportHosts, handleShareInventory, handleShareInventoryAnsible, handleCopyInventoryJson, handleCopyInventoryAnsible, handleHostConnect, handleImportFileSelected, handleNewHost, handleProtocolSelect, handleQuickConnect, handleQuickConnectSaveHost, handleSaveGroupConfig, handleSearchKeyDown, handleUnmanageGroup, hasHostsSidePanel, HostDetailsPanel, hostListScrollRef, hosts, HostTreeView, hotkeyScheme, identities, ImportVaultDialog, Input, isDeleteGroupOpen, isGroupPanelOpen, isHostPanelOpen, isHostsSectionActive, isImportOpen, isMultiSelectMode, isNewFolderOpen, isQuickConnectOpen, isRenameGroupOpen, isSearchQuickConnect, isSerialModalOpen, Key, keyBindings, KeychainManager, keys, knownHosts, knownHostsManagerElement, Label, lastPinnedId, LayoutGrid, LazyConnectionLogsManager, LazyProtocolSelectDialog, List, managedGroupPaths, managedSources, moveGroup, moveHostToGroup, Network, newFolderName, newHostGroupPath, noteGroups, NotebookText, notes, NotesManager, onClearUnsavedConnectionLogs, onConnectSerial, onCreateLocalTerminal, onDeleteConnectionLog, onDeleteHost, onImportOrReuseKey, onOpenHostFromNote, onOpenLogView, onOpenSettings, onRunSnippet, onToggleConnectionLogSaved, onUpdateCustomGroups, onUpdateGroupConfigs, onUpdateHosts, onUpdateIdentities, onUpdateKeys, onUpdateNoteGroups, onUpdateNotes, onUpdateProxyProfiles, onUpdateSnippetPackages, onUpdateSnippets, openNoteId: pendingOpenNoteId, onOpenNoteIdHandled: () => setPendingOpenNoteId(null), openSnippetId: pendingOpenSnippetId, onOpenSnippetIdHandled: () => setPendingOpenSnippetId(null), Pin, pinnedHosts, pinnedRecentIds, Plug, Plus, PortForwarding, protocolSelectHost, proxyProfiles, ProxyProfilesManager, quickConnectTarget, quickConnectWarnings, QuickConnectWizard, recentHosts, renameGroupError, renameGroupName, renameTargetPath, reorderGroup, reorderHost, RippleButton, rootRef, sanitizeHost, search, Search, selectedGroupPath, selectedHostIds, selectedTags, SerialConnectModal, SerialHostDetailsPanel, sessionCount, Set, setCurrentSection, setDeleteGroupWithHosts, setDeleteTargetPath, setDragOverDropTarget, setEditingGroupPath, setEditingHost, setGroupDragOverDropTarget, setIsDataSourcesOpen, setIsDeleteGroupOpen, setIsGroupPanelOpen, setIsHostPanelOpen, setIsImportOpen, setIsMultiSelectMode, setIsNewFolderOpen, setIsQuickConnectOpen, setIsRenameGroupOpen, setIsSerialModalOpen, setLastPinnedId, setNewFolderName, setNewHostGroupPath, setProtocolSelectHost, setQuickConnectTarget, setQuickConnectWarnings, setRenameGroupError, setRenameGroupName, setRenameTargetPath, setSearch, setSelectedGroupPath, setSelectedHostIds, setSelectedTags, setSidebarCollapsed, setSidebarWidth, handleSidebarWidthCommit, setSortMode, setTargetParentPath, Settings, setViewMode, shellHistory, shouldHideEmptyRootHostsSection, showRecentHosts, sidebarCollapsed, sidebarWidth, snippetPackages, snippets, SnippetsManager, SortDropdown, sortMode, splitViewGridStyle, Square, Star, startInlineDeleteGroup, startInlineNewGroup, startInlineRenameGroup, submitNewFolder, submitRenameGroup, Suspense, t, TagFilterDropdown, targetParentPath, terminalFontSize, terminalSettings, TerminalSquare, terminalThemeId, toggleHostPinned, toggleHostSelection, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Trash2, treeExpandedState, treeViewGroupTree, treeViewHosts, Upload, upsertHostById, Usb, viewMode, visibleDisplayedHosts, X, Zap }} />
       <HostDataSourcesDialog
         open={isDataSourcesOpen}
         onOpenChange={setIsDataSourcesOpen}

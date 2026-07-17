@@ -99,6 +99,13 @@ export const ruVaultMessages: Messages = {
   'vault.import.sshConfig.noFilePathDesc': 'Не удалось определить путь к файлу. Для управляемой синхронизации нужен доступ к файловой системе.',
 
   // Host data sources (JSON inventory / API Bridge style)
+  'vault.hosts.share': 'Поделиться инвентарём',
+  'vault.hosts.share.toast.title': 'Инвентарь экспортирован',
+  'vault.hosts.share.toast.noHosts': 'Нет хостов для экспорта.',
+  'vault.hosts.share.toast.noExportable': 'Нет подходящих хостов (последовательные порты нельзя отдать как инвентарь).',
+  'vault.hosts.share.toast.success': 'Экспортировано хостов: {count} (только метаданные JSON). Импорт через «Источники данных» — учётные данные остаются локально.',
+  'vault.hosts.share.toast.successSelected': 'Экспортировано выбранных хостов: {count} (только метаданные JSON).',
+  'vault.hosts.share.toast.skipped': 'Пропущено неподдерживаемых: {skipped}.',
   'vault.hosts.dataSources': 'Источники данных',
   'vault.dataSources.title': 'Источники хостов',
   'vault.dataSources.desc':

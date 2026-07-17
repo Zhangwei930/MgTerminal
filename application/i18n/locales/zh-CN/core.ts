@@ -588,6 +588,13 @@ export const zhCNCoreMessages: Messages = {
   'vault.import.sshConfig.noFilePathDesc': '无法确定文件路径。托管同步需要访问文件系统。',
 
   // Host data sources (JSON inventory / API Bridge style)
+  'vault.hosts.share': '分享清单',
+  'vault.hosts.share.toast.title': '清单已分享',
+  'vault.hosts.share.toast.noHosts': '没有可分享的主机。',
+  'vault.hosts.share.toast.noExportable': '没有可分享的主机（串口主机无法以清单形式分享）。',
+  'vault.hosts.share.toast.success': '已导出 {count} 台主机为仅元数据的清单 JSON。请通过「数据源」导入 — 凭据仍留在本地。',
+  'vault.hosts.share.toast.successSelected': '已导出选中的 {count} 台主机为仅元数据的清单 JSON。',
+  'vault.hosts.share.toast.skipped': '已跳过 {skipped} 台不支持的主机。',
   'vault.hosts.dataSources': '数据源',
   'vault.dataSources.title': '主机数据源',
   'vault.dataSources.desc':

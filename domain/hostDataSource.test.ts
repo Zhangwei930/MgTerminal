@@ -4,7 +4,10 @@ import assert from "node:assert/strict";
 import type { Host } from "./models.ts";
 import {
   createJsonManagedSource,
+  exportHostsToInventoryDocument,
   hashInventoryContent,
+  hostToInventoryItem,
+  inventoryContainsSecrets,
   isHttpInventoryUrl,
   parseHostInventoryDocument,
   syncHostsFromInventory,
@@ -132,4 +135,76 @@ test("hash and url helpers", () => {
   assert.notEqual(hashInventoryContent("a"), hashInventoryContent("b"));
   assert.equal(isHttpInventoryUrl("https://example.com/x.json"), true);
   assert.equal(isHttpInventoryUrl("/tmp/x.json"), false);
+});
+
+test("exportHostsToInventoryDocument strips secrets and is re-importable", () => {
+  const hosts: Host[] = [
+    {
+      id: "h1",
+      label: "prod-web",
+      hostname: "10.0.0.5",
+      port: 22,
+      username: "deploy",
+      password: "super-secret",
+      tags: ["prod"],
+      group: "app",
+      os: "linux",
+      protocol: "ssh",
+      authMethod: "password",
+      privateKey: "-----BEGIN PRIVATE KEY-----",
+    } as Host,
+    {
+      id: "serial-1",
+      label: "console",
+      hostname: "/dev/ttyUSB0",
+      port: 0,
+      username: "",
+      tags: [],
+      protocol: "serial",
+    } as Host,
+  ];
+
+  const result = exportHostsToInventoryDocument(hosts, { now: 1234 });
+  assert.equal(result.exportedCount, 1);
+  assert.equal(result.skippedCount, 1);
+  assert.equal(result.document.exportedAt, 1234);
+  assert.equal(result.document.source, "magies-terminal");
+  assert.equal(result.document.hosts[0]?.id, "h1");
+  assert.equal(result.document.hosts[0]?.hostname, "10.0.0.5");
+  assert.equal(result.document.hosts[0]?.authMethod, "password");
+  assert.equal((result.document.hosts[0] as { password?: string }).password, undefined);
+  assert.equal(inventoryContainsSecrets(result.document), false);
+
+  // Round-trip: teammate imports via data source parser
+  const parsed = parseHostInventoryDocument(result.json);
+  assert.equal(parsed.hosts.length, 1);
+  assert.equal(parsed.hosts[0]?.label, "prod-web");
+});
+
+test("export respects host id selection and managedExternalId", () => {
+  const hosts: Host[] = [
+    {
+      id: "local-1",
+      managedExternalId: "cmdb-99",
+      label: "a",
+      hostname: "1.1.1.1",
+      port: 22,
+      username: "u",
+      tags: [],
+      protocol: "ssh",
+    },
+    {
+      id: "local-2",
+      label: "b",
+      hostname: "2.2.2.2",
+      port: 22,
+      username: "u",
+      tags: [],
+      protocol: "ssh",
+    },
+  ];
+  const result = exportHostsToInventoryDocument(hosts, { hostIds: ["local-1"] });
+  assert.equal(result.exportedCount, 1);
+  assert.equal(result.document.hosts[0]?.id, "cmdb-99");
+  assert.equal(hostToInventoryItem(hosts[1]!)?.id, "local-2");
 });

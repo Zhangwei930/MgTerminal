@@ -33,6 +33,20 @@ export type HostInventoryDocument = {
   hosts: HostInventoryItem[];
 };
 
+/** Team-share package: same inventory schema + optional provenance metadata. */
+export type HostInventoryShareDocument = HostInventoryDocument & {
+  exportedAt?: number;
+  /** Producer id for humans (not a trust boundary). */
+  source?: string;
+};
+
+export type HostInventoryExportResult = {
+  document: HostInventoryShareDocument;
+  json: string;
+  exportedCount: number;
+  skippedCount: number;
+};
+
 export type HostDataSourceSyncMode = "merge" | "replace_group";
 
 export type HostDataSourceSyncStats = {
@@ -406,5 +420,139 @@ export function isHttpInventoryUrl(value: string): boolean {
     return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
+  }
+}
+
+/**
+ * Map a vault host to a shareable inventory item.
+ * Never includes passwords, private keys, identityIds, or other secrets.
+ * Returns null for hosts that cannot be represented (e.g. serial).
+ */
+export function hostToInventoryItem(host: Host): HostInventoryItem | null {
+  const protocol = host.protocol === "telnet"
+    ? "telnet"
+    : (!host.protocol || host.protocol === "ssh" || host.protocol === "mosh" || host.protocol === "et")
+      ? "ssh"
+      : null;
+  if (!protocol) return null;
+
+  const hostname = (host.hostname || "").trim();
+  if (!hostname) return null;
+
+  const isTelnet = protocol === "telnet";
+  const port = isTelnet
+    ? (host.telnetPort ?? host.port ?? 23)
+    : (host.port ?? 22);
+  const username = isTelnet
+    ? (host.telnetUsername ?? host.username ?? "")
+    : (host.username ?? "");
+
+  const id = (host.managedExternalId || host.id || "").trim();
+  if (!id) return null;
+
+  const label = (host.label || hostname).trim().slice(0, 120) || hostname;
+  const tags = Array.isArray(host.tags)
+    ? Array.from(new Set(host.tags.map((tag) => String(tag).trim()).filter(Boolean)))
+    : [];
+  const group = typeof host.group === "string" && host.group.trim()
+    ? host.group.trim().replace(/\\/g, "/")
+    : undefined;
+
+  const authMethod = host.authMethod === "password"
+    || host.authMethod === "key"
+    || host.authMethod === "certificate"
+    || host.authMethod === "agent"
+    ? host.authMethod
+    : undefined;
+
+  const os = host.os === "windows" || host.os === "macos" || host.os === "linux"
+    ? host.os
+    : undefined;
+  const deviceType = host.deviceType === "network" ? "network" : "general";
+
+  return {
+    id,
+    label,
+    hostname,
+    port: port >= 1 && port <= 65535 ? port : undefined,
+    username: username || undefined,
+    group,
+    tags: tags.length ? tags : undefined,
+    protocol,
+    os,
+    deviceType,
+    authMethod,
+    // notes / identityId / password / keys intentionally omitted — local only
+  };
+}
+
+/**
+ * Build a team-safe inventory JSON package from vault hosts.
+ * Opt-in share path: metadata only, credentials stay local.
+ */
+export function exportHostsToInventoryDocument(
+  hosts: Host[],
+  options?: {
+    hostIds?: Iterable<string>;
+    now?: number;
+    pretty?: boolean;
+    source?: string;
+  },
+): HostInventoryExportResult {
+  const idFilter = options?.hostIds
+    ? new Set(Array.from(options.hostIds))
+    : null;
+  const selected = idFilter
+    ? hosts.filter((host) => idFilter.has(host.id))
+    : hosts;
+
+  const items: HostInventoryItem[] = [];
+  let skippedCount = 0;
+  const seen = new Set<string>();
+
+  for (const host of selected) {
+    const item = hostToInventoryItem(host);
+    if (!item) {
+      skippedCount += 1;
+      continue;
+    }
+    // Dedupe by external id so share packages stay valid for re-import.
+    if (seen.has(item.id)) {
+      skippedCount += 1;
+      continue;
+    }
+    seen.add(item.id);
+    items.push(item);
+  }
+
+  const document: HostInventoryShareDocument = {
+    version: 1,
+    exportedAt: options?.now ?? Date.now(),
+    source: options?.source || "magies-terminal",
+    hosts: items,
+  };
+
+  // Defense in depth: re-parse to guarantee no secrets slipped in.
+  const pretty = options?.pretty !== false;
+  const json = pretty
+    ? `${JSON.stringify(document, null, 2)}\n`
+    : JSON.stringify(document);
+  parseHostInventoryDocument(json);
+
+  return {
+    document,
+    json,
+    exportedCount: items.length,
+    skippedCount,
+  };
+}
+
+/** True if a plain object tree contains any forbidden secret keys. */
+export function inventoryContainsSecrets(value: unknown): boolean {
+  try {
+    assertNoSecrets(value, "root");
+    return false;
+  } catch {
+    return true;
   }
 }

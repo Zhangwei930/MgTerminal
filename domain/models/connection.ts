@@ -211,6 +211,11 @@ export interface Host {
   sftpFollowTerminalCwd?: boolean; // Overrides global SFTP follow-terminal-directory setting
   // Managed source: if this host is managed by an external file (e.g., ~/.ssh/config)
   managedSourceId?: string; // Reference to ManagedSource.id
+  /**
+   * Stable id from the external inventory (API Bridge / CMDB / JSON file).
+   * Used to update the same vault host across syncs without relying on hostname alone.
+   */
+  managedExternalId?: string;
   // Host-level keyword highlighting (overrides/extends global settings)
   keywordHighlightRules?: KeywordHighlightRule[];
   keywordHighlightEnabled?: boolean;

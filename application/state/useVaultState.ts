@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { migrateHostsFromLegacyLineTimestamps, normalizeDistroId, sanitizeHost } from "../../domain/host";
 import { sanitizeGroupConfig } from "../../domain/groupConfig";
+import { normalizeManagedSource } from "../../domain/hostDataSource";
 import { normalizeKnownHosts } from "../../domain/knownHosts";
 import { normalizeNoteGroups, normalizeVaultNotes } from "../../domain/notes";
 import {
@@ -805,11 +806,17 @@ export const useVaultState = () => {
           setConnectionLogs(mergeTerminalDataIntoLogs(savedConnectionLogs, terminalDataMap));
         }
 
-        // Load managed sources
+        // Load managed sources (normalize for new JSON inventory fields)
         const savedManagedSources = localStorageAdapter.read<ManagedSource[]>(
           STORAGE_KEY_MANAGED_SOURCES,
         );
-        if (savedManagedSources) setManagedSources(savedManagedSources);
+        if (savedManagedSources) {
+          setManagedSources(
+            savedManagedSources
+              .map((entry) => normalizeManagedSource(entry))
+              .filter((entry): entry is ManagedSource => Boolean(entry)),
+          );
+        }
 
         // Load group configs
         const savedGroupConfigs = localStorageAdapter.read<GroupConfig[]>(STORAGE_KEY_GROUP_CONFIGS);
@@ -961,7 +968,9 @@ export const useVaultState = () => {
       }
 
       if (key === STORAGE_KEY_MANAGED_SOURCES) {
-        const next = safeParse<ManagedSource[]>(event.newValue) ?? [];
+        const next = (safeParse<ManagedSource[]>(event.newValue) ?? [])
+          .map((entry) => normalizeManagedSource(entry))
+          .filter((entry): entry is ManagedSource => Boolean(entry));
         setManagedSources(next);
         return;
       }

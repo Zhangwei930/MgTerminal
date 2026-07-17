@@ -67,14 +67,26 @@ export interface ConnectionLog {
 // Session Logs Settings - for auto-saving terminal logs to local filesystem
 export type SessionLogFormat = 'txt' | 'raw' | 'html';
 
-// Managed Source - external file that manages a group of hosts (e.g., ~/.ssh/config)
-type ManagedSourceType = 'ssh_config';
+// Managed Source - external inventory that owns a host group.
+// - ssh_config: local OpenSSH config (pull + writeback of managed block)
+// - json_file / json_http: pull-only inventory (CMDB / API Bridge style)
+export type ManagedSourceType = 'ssh_config' | 'json_file' | 'json_http';
 
 export interface ManagedSource {
   id: string;
   type: ManagedSourceType;
+  /**
+   * Local filesystem path for ssh_config / json_file,
+   * or HTTPS/HTTP URL for json_http.
+   */
   filePath: string;
   groupName: string;
   lastSyncedAt: number;
   lastFileHash?: string;
+  /** Optional display name in the data-sources UI. */
+  label?: string;
+  /** How JSON inventory sync updates the vault (default: merge). */
+  syncMode?: 'merge' | 'replace_group';
+  /** When false, auto/manual sync skips this source. Default true. */
+  enabled?: boolean;
 }

@@ -106,4 +106,114 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 2. **P0 优先序**：Xshell 式操作安全与终端成熟度（广播精度、安全粘贴、触发器动作、隧道可视）→ Termius 式工作区模板与日志复盘。
 3. **P1 再谈团队 / 企业**：数据源同步、协作、Passkey、企业认证与后量子，按真实客户需求驱动。
 4. **P2 按需**：移动端、RDP、冷门仿真与集中合规，不抢主线带宽。
+
+---
+
+## P0 可执行 PR 计划
+
+每个 PR 尽量可独立合并；默认行为保持不变，新能力 opt-in。
+
+```text
+PR1  精确广播目标
+ │
+ ├─► PR2  安全粘贴 / 发送节流          （可与 PR1 并行）
+ │
+ ├─► PR3  触发器动作扩展               （可与 PR1/PR2 并行）
+ │
+ ├─► PR4  隧道活动通道视图             （可与 PR1–3 并行）
+ │
+ └─► PR5  日志书签与备注  ──► PR6  Workspace 模板
+```
+
+### PR1 — 精确广播目标
+
+**目标：** 在「整个 workspace 广播」之外，支持更细的目标集，降低批量误操作。
+
+| 项 | 内容 |
+| --- | --- |
+| 范围 | scope: `workspace`（默认，兼容现状）/ `selected` / `group` / `window`；可选 `excludeSessionIds` |
+| Domain | 新增纯函数：`resolveBroadcastTargets({ scope, workspaceId, sessions, selectedIds, excludeIds, windowSessionIds })` |
+| State | `useSessionState`：从 `Set<workspaceId>` 升级为 per-workspace `BroadcastConfig`（或并行 map，默认 scope=workspace） |
+| 写入路径 | `TerminalLayer.handleBroadcastInput`：只写 `resolveBroadcastTargets` 结果，不再硬编码「同 workspace 全员」 |
+| UI | 广播按钮旁 popover / 模式指示（toolbar 或 compose bar）：当前目标数、切换 scope、勾选/排除会话 |
+| 快捷键 | `⌘/Ctrl+B` 仍切换开关；长按或二次操作打开目标选择（可后置） |
+| 验收 | 默认行为与现网一致；exclude 后被排除会话收不到输入；断开/不可写会话跳过；单测覆盖 domain 解析 |
+
+**主要触点：**
+
+- `application/state/useSessionState.ts`（`toggleBroadcast` / `isBroadcastEnabled`）
+- `components/TerminalLayer.tsx`（`handleBroadcastInput`）
+- `components/terminalLayer/TerminalLayerSupport.tsx`（toolbar 广播 UI）
+- `domain/` 新文件 + 测试
+
+### PR2 — 安全粘贴与发送节流
+
+**目标：** 粘贴 / 广播大段文本时可控、可确认，适合生产机。
+
+| 项 | 内容 |
+| --- | --- |
+| 设置 | charDelayMs、lineDelayMs、waitForPrompt、confirmDangerousPaste（设置页 Terminal behavior） |
+| 粘贴路径 | `terminalUserPaste` / `createXTermRuntime` paste；与 snippet `lineDelay` / prompt detector 对齐 |
+| 危险检测 | 复用或扩展 `commandBlocklist` 模式；多行含 `rm -rf`、`mkfs`、`dd`、强制 push 等时弹确认 |
+| 广播 | `handleBroadcastInput` 尊重同一套 delay / confirm，避免只保护单会话粘贴 |
+| 验收 | 关闭设置时零行为变化；开启后延时可测；取消确认不发送 |
+
+### PR3 — 更强的触发器动作
+
+**目标：** `onOutput` 命中后不止跑脚本。
+
+| 动作 | 说明 |
+| --- | --- |
+| `runSnippet` | 现状：已有 scriptId / snippet 执行 |
+| `notify` | 桌面通知（Electron notification） |
+| `sound` | 系统 / 内置提示音 |
+| `markTab` | 会话标签着色 / badge |
+| `startSessionLog` | 自动打开该会话日志记录 |
+
+**模型：** 在 `HostOutputTrigger` / Snippet 触发配置上增加 `actions: TriggerAction[]`，保持旧字段兼容。
+
+### PR4 — 隧道活动通道视图
+
+**目标：** 诊断端口转发时能看到「谁连进来 / 转到哪 / 流量」。
+
+| 层 | 内容 |
+| --- | --- |
+| Main | ssh2 转发连接建立/关闭时上报 channel 事件；累计 bytesIn/bytesOut |
+| Preload / types | `listActiveTunnels` / `onTunnelChannel` |
+| UI | Port Forwarding 页或侧栏：规则 → 活动连接表（local/remote addr、时长、字节） |
+| 验收 | 无活动时为空表；连接进出列表更新；停止规则后通道清零 |
+
+### PR5 — 日志书签与备注
+
+**目标：** 在已有保存/回放上增加「定位 + 备注 + 检索」。
+
+| 项 | 内容 |
+| --- | --- |
+| 模型 | `LogBookmark { logId, offsetOrLine, label, note, createdAt }` |
+| 存储 | 随 connection log 或独立 index（localStorageAdapter + storageKeys） |
+| UI | 回放视图加书签栏；列表支持搜索 label/note |
+| 验收 | 书签跳转正确；删除日志时清理孤儿书签 |
+
+### PR6 — Workspace 模板
+
+**目标：** 可命名复用的「主机 + 分屏 + cwd + 启动命令」配方（**不是**进程复活）。
+
+| 与 session restore 的边界 | 模板 | Restore |
+| --- | --- | --- |
+| 触发 | 用户主动应用模板 | 启动时可选恢复上次布局 |
+| 连接 | 应用时新建并连接 | 断连占位，用户手动重连 |
+| 命名 | 用户命名、可编辑库 | 隐式上次状态 |
+| 内容 | hosts、split tree、可选 cwd/startup | tab 序 + 布局元数据 |
+
+依赖 PR5 不强；可在 PR1 之后任意时刻做，建议在日志书签之后以免并行 UI 过重。
+
+---
+
+## 建议开工顺序（工程）
+
+1. **本周：** PR1 精确广播（domain 优先 + 默认兼容）  
+2. **并行候选：** PR2 安全粘贴、PR4 隧道通道（后端与 UI 边界清晰）  
+3. **随后：** PR3 触发器动作 → PR5 日志书签 → PR6 模板  
+
+下一刀代码建议从 **PR1 domain `resolveBroadcastTargets` + 单测** 起，再接线 `handleBroadcastInput` 与最小 UI。
 )

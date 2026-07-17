@@ -99,6 +99,7 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 | 设备解锁（Touch ID / PIN） | 已实现 | PR #21 — 非可移植 FIDO2 身份 |
 | PKCS#11 → ssh-agent | 已实现 | PR #22 — macOS/Linux，`ssh-add -s` |
 | LAN Follow 邀请 | 已实现 | PR #23 — 局域网 TCP NDJSON |
+| Follow 协作审计导出 | 已实现 | 工具栏审计列表 + 文本/NDJSON 复制（主进程已有 ring） |
 | 后量子 SSH（hybrid ML-KEM） | **阻塞** | ssh2 1.17 无 PQ KEX；需库升级或可选系统 OpenSSH 后端 |
 | GSSAPI / Kerberos | **未做** | 需 OpenSSH 传输路径或独立栈，不宜在 ssh2 内硬造 |
 

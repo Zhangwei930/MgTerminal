@@ -217,6 +217,7 @@ function createLocalVault(deps = {}) {
  *   fs?: typeof fs,
  *   crypto?: typeof crypto,
  *   preferLocalVault?: boolean,
+ *   vaultUnlockGate?: { assertUnlocked: () => void },
  * }} [options]
  */
 function registerHandlers(ipcMain, electronModule, options = {}) {
@@ -225,6 +226,7 @@ function registerHandlers(ipcMain, electronModule, options = {}) {
   const resetMacSafeStorageKeychain =
     options.resetMacSafeStorageKeychain ?? defaultResetMacSafeStorageKeychain;
   const preferLocalVault = Boolean(options.preferLocalVault);
+  const vaultUnlockGate = options.vaultUnlockGate || null;
 
   const resolveUserDataPath = () => {
     if (options.userDataPath) return options.userDataPath;
@@ -417,6 +419,10 @@ function registerHandlers(ipcMain, electronModule, options = {}) {
   });
 
   ipcMain.handle("magiesTerminal:credentials:decrypt", (_event, value) => {
+    // Device-unlock boundary: while the vault is locked, no renderer (or
+    // DevTools/peer window) may decrypt secrets, regardless of any renderer-side
+    // unlock flag. assertUnlocked throws ERR_VAULT_LOCKED when locked.
+    vaultUnlockGate?.assertUnlocked?.();
     if (typeof value !== "string" || value.length === 0) {
       return value ?? "";
     }

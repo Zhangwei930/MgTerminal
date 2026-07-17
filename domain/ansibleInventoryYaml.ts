@@ -138,9 +138,13 @@ function collectGroup(
   // Store group vars for later merge when we only have alias under children with empty body.
   if (isPlainObject(body.vars)) {
     assertNoSecretsDeep(body.vars, `group ${groupName}.vars`);
-    // Apply as soft defaults to hosts already in this group path
+    // Apply as soft defaults to hosts in this group (host-specific vars win).
+    // `all` is the implicit parent of every host, so its vars apply globally —
+    // it is deliberately excluded from group paths (see `path` above), which is
+    // why membership can't be inferred from hostGroups for it.
+    const appliesToEveryHost = groupName === "all";
     for (const [alias, groups] of hostGroups) {
-      if ([...groups].some((g) => g === groupName || path.includes(g))) {
+      if (appliesToEveryHost || [...groups].some((g) => g === groupName || path.includes(g))) {
         const existing = hostVars.get(alias) || {};
         hostVars.set(alias, { ...(body.vars as object), ...existing });
       }

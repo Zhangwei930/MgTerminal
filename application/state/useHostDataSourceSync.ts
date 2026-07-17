@@ -18,7 +18,53 @@ import {
 } from "../../domain/hostDataSource";
 import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
 
-const MAX_INVENTORY_BYTES = 5 * 1024 * 1024;
+export const MAX_INVENTORY_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Read a fetch Response body without pulling more than `maxBytes` into memory.
+ * `response.text()` buffers the entire body first, so a hostile inventory
+ * server could force an arbitrarily large allocation before the size check.
+ * This rejects up front on an oversized Content-Length and otherwise streams,
+ * aborting as soon as the accumulated bytes exceed the cap.
+ */
+export async function readCappedResponseText(
+  response: Pick<Response, "headers" | "body" | "text">,
+  maxBytes: number,
+): Promise<string> {
+  const declaredLength = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new Error("Inventory payload exceeds 5MB limit.");
+  }
+
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    // No stream available (older runtimes / mocks): fall back to text() but
+    // still enforce the cap on the fully-read result.
+    const text = await response.text();
+    if (text.length > maxBytes) {
+      throw new Error("Inventory payload exceeds 5MB limit.");
+    }
+    return text;
+  }
+
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new Error("Inventory payload exceeds 5MB limit.");
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  }
+  text += decoder.decode();
+  return text;
+}
 /** Background poll frequency; actual source cadence is per-source autoSyncIntervalMs. */
 const AUTO_SYNC_TICK_MS = 30_000;
 
@@ -65,11 +111,7 @@ async function fetchHttpInventoryText(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText || ""}`.trim());
     }
-    const text = await response.text();
-    if (text.length > MAX_INVENTORY_BYTES) {
-      throw new Error("Inventory payload exceeds 5MB limit.");
-    }
-    return text;
+    return await readCappedResponseText(response, MAX_INVENTORY_BYTES);
   } finally {
     clearTimeout(timer);
   }

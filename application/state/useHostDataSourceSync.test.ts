@@ -49,3 +49,53 @@ test("sync path used after successful load", () => {
   assert.equal(result.hosts[0]?.group, "cmdb/prod");
   assert.equal(result.hosts[0]?.managedExternalId, "h1");
 });
+
+import { readCappedResponseText, MAX_INVENTORY_BYTES } from "./useHostDataSourceSync.ts";
+
+function fakeResponse({ contentLength, chunks, text }: {
+  contentLength?: string;
+  chunks?: Uint8Array[];
+  text?: string;
+}): Pick<Response, "headers" | "body" | "text"> {
+  return {
+    headers: { get: (name: string) => (name.toLowerCase() === "content-length" ? contentLength ?? null : null) } as Headers,
+    body: chunks
+      ? ({
+          getReader() {
+            let i = 0;
+            return {
+              read: async () =>
+                i < chunks.length ? { done: false, value: chunks[i++] } : { done: true, value: undefined },
+              cancel: async () => {},
+            };
+          },
+        } as unknown as ReadableStream<Uint8Array>)
+      : null,
+    text: async () => text ?? "",
+  } as Pick<Response, "headers" | "body" | "text">;
+}
+
+test("rejects up front when Content-Length exceeds the cap", async () => {
+  const response = fakeResponse({ contentLength: String(MAX_INVENTORY_BYTES + 1), text: "" });
+  await assert.rejects(
+    () => readCappedResponseText(response, MAX_INVENTORY_BYTES),
+    /exceeds 5MB/,
+  );
+});
+
+test("aborts streaming once accumulated bytes exceed the cap", async () => {
+  const big = new Uint8Array(700);
+  const chunks = [big, big]; // 1400 bytes > cap of 1000, no Content-Length
+  const response = fakeResponse({ chunks });
+  await assert.rejects(
+    () => readCappedResponseText(response, 1000),
+    /exceeds 5MB/,
+  );
+});
+
+test("returns text for a within-limit streamed body", async () => {
+  const chunks = [new TextEncoder().encode("{\"version\":1}")];
+  const response = fakeResponse({ chunks });
+  const text = await readCappedResponseText(response, MAX_INVENTORY_BYTES);
+  assert.equal(text, "{\"version\":1}");
+});

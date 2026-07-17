@@ -90,3 +90,102 @@ test("LAN invite accepts hello and relays granted input", async () => {
   lan.stopInvite("sess-lan");
   follow.__resetForTests();
 });
+
+function connectRaw(port) {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect({ host: "127.0.0.1", port }, () => resolve(socket));
+    socket.on("error", reject);
+  });
+}
+
+function nextMessage(socket) {
+  return new Promise((resolve, reject) => {
+    let buf = "";
+    const timer = setTimeout(() => reject(new Error("no message")), 3000);
+    socket.setEncoding("utf8");
+    const onData = (chunk) => {
+      buf += chunk;
+      const idx = buf.indexOf("\n");
+      if (idx >= 0) {
+        clearTimeout(timer);
+        socket.removeListener("data", onData);
+        try {
+          resolve(JSON.parse(buf.slice(0, idx)));
+        } catch (err) {
+          reject(err);
+        }
+      }
+    };
+    socket.on("data", onData);
+    socket.on("close", () => {
+      clearTimeout(timer);
+      if (!buf) reject(new Error("closed"));
+    });
+  });
+}
+
+async function createBasicInvite(sessionId) {
+  follow.__resetForTests();
+  lan.stopAll();
+  lan.configure({ writeToSessionNow: () => {} });
+  follow.startFollow(sessionId, 200, "Host");
+  const created = await lan.createInvite({ sessionId, hostLabel: "x", webContentsId: 200 });
+  return created.invite;
+}
+
+test("unauthenticated socket is dropped after the auth timeout", async () => {
+  lan.configure({ limits: { authTimeoutMs: 150 } });
+  const invite = await createBasicInvite("sess-timeout");
+  try {
+    const socket = await connectRaw(invite.port);
+    const msg = await nextMessage(socket);
+    assert.equal(msg.error, "auth_timeout");
+    socket.destroy();
+  } finally {
+    lan.configure({ limits: { authTimeoutMs: 10_000 } });
+    lan.stopInvite("sess-timeout");
+    follow.__resetForTests();
+  }
+});
+
+test("oversized pre-auth frame is rejected without buffering unbounded data", async () => {
+  lan.configure({ limits: { maxLineBytes: 1024 } });
+  const invite = await createBasicInvite("sess-frame");
+  try {
+    const socket = await connectRaw(invite.port);
+    const msgPromise = nextMessage(socket);
+    socket.write("x".repeat(5000)); // no newline
+    const msg = await msgPromise;
+    assert.equal(msg.error, "frame_too_large");
+    socket.destroy();
+  } finally {
+    lan.configure({ limits: { maxLineBytes: 64 * 1024 } });
+    lan.stopInvite("sess-frame");
+    follow.__resetForTests();
+  }
+});
+
+test("connections beyond the peer limit are refused", async () => {
+  lan.configure({ limits: { maxPeers: 1 } });
+  const invite = await createBasicInvite("sess-peers");
+  const sockets = [];
+  try {
+    // First peer authenticates and takes the only slot.
+    const first = await connectRaw(invite.port);
+    sockets.push(first);
+    first.write(`${JSON.stringify({ type: "hello", token: invite.token, displayName: "A" })}\n`);
+    const welcome = await nextMessage(first);
+    assert.equal(welcome.type, "welcome");
+
+    const second = await connectRaw(invite.port);
+    sockets.push(second);
+    second.write(`${JSON.stringify({ type: "hello", token: invite.token, displayName: "B" })}\n`);
+    const rejected = await nextMessage(second);
+    assert.equal(rejected.error, "too_many_peers");
+  } finally {
+    for (const s of sockets) s.destroy();
+    lan.configure({ limits: { maxPeers: 8 } });
+    lan.stopInvite("sess-peers");
+    follow.__resetForTests();
+  }
+});

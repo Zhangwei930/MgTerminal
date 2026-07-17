@@ -83,3 +83,40 @@ test("line delay uses writeToSession chunks instead of term.paste", async () => 
   assert.deepEqual(term.pasted, []);
   assert.deepEqual(writes, ["one\n", "two\n"]);
 });
+
+test("wait-for-prompt timeout withholds remaining lines", async () => {
+  const term = makeTerm();
+  const writes: string[] = [];
+  const result = await performSafeTerminalPaste({
+    text: "first\nsecond\nthird\n",
+    term: term as never,
+    sessionId: "s1",
+    settings: { pasteWaitForPrompt: true },
+    waitForPromptTimeoutMs: 60,
+    isAtPrompt: () => false, // shell never returns to a prompt
+    terminalBackend: {
+      writeToSession: (_id, data) => writes.push(data),
+    },
+  });
+  assert.equal(result, "timed-out");
+  // Only the first line is sent; the rest are withheld from the running program.
+  assert.deepEqual(writes, ["first\n"]);
+});
+
+test("wait-for-prompt sends all lines once the prompt returns", async () => {
+  const term = makeTerm();
+  const writes: string[] = [];
+  const result = await performSafeTerminalPaste({
+    text: "a\nb\n",
+    term: term as never,
+    sessionId: "s1",
+    settings: { pasteWaitForPrompt: true },
+    waitForPromptTimeoutMs: 500,
+    isAtPrompt: () => true,
+    terminalBackend: {
+      writeToSession: (_id, data) => writes.push(data),
+    },
+  });
+  assert.equal(result, "pasted");
+  assert.deepEqual(writes, ["a\n", "b\n"]);
+});

@@ -73,3 +73,33 @@ all:
   assert.equal(doc.hosts[0]?.id, "app");
   assert.equal(doc.skippedLocal, 1);
 });
+
+test("all.vars applies as defaults to hosts in child groups", () => {
+  const doc = parseAnsibleInventoryYaml(`
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_port: 2022
+  children:
+    web:
+      hosts:
+        web1:
+          ansible_host: 10.0.0.30
+    db:
+      hosts:
+        db1:
+          ansible_host: 10.0.0.31
+          ansible_user: postgres
+`);
+  const web1 = doc.hosts.find((h) => h.id === "web1");
+  assert.ok(web1);
+  // Inherited from all.vars
+  assert.equal(web1.username, "ubuntu");
+  assert.equal(web1.port, 2022);
+
+  const db1 = doc.hosts.find((h) => h.id === "db1");
+  assert.ok(db1);
+  // Host-specific var wins over all.vars default
+  assert.equal(db1.username, "postgres");
+  assert.equal(db1.port, 2022);
+});

@@ -50,3 +50,20 @@ test("buildSystemOpenSshArgs prefers hybrid PQ KEX when requested", () => {
   assert.ok(args.includes("/tmp/id_ed25519"));
   assert.equal(args[args.length - 1], "alice@pq.example.com");
 });
+
+test("buildSystemOpenSshArgs rejects option-like hostname and username", () => {
+  assert.throws(
+    () => buildSystemOpenSshArgs({ hostname: "-oProxyCommand=touch${IFS}/tmp/x" }),
+    /hostname/i,
+  );
+  assert.throws(
+    () => buildSystemOpenSshArgs({ hostname: "host.example", username: "-oProxyCommand=evil" }),
+    /username/i,
+  );
+});
+
+test("buildSystemOpenSshArgs terminates option parsing before the target", () => {
+  const args = buildSystemOpenSshArgs({ hostname: "host.example", username: "alice" });
+  assert.equal(args[args.length - 2], "--");
+  assert.equal(args[args.length - 1], "alice@host.example");
+});

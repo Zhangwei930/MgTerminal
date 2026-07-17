@@ -71,7 +71,16 @@ function buildSystemOpenSshArgs(options = {}) {
   if (!hostname) {
     throw new Error("System OpenSSH requires a hostname.");
   }
+  // Reject option-like values: OpenSSH would otherwise treat a leading "-"
+  // target/user as a flag (e.g. -oProxyCommand=...), turning a tampered
+  // CMDB/inventory hostname into code execution.
+  if (hostname.startsWith("-")) {
+    throw new Error("System OpenSSH hostname must not start with '-'.");
+  }
   const username = String(options.username || "").trim();
+  if (username.startsWith("-")) {
+    throw new Error("System OpenSSH username must not start with '-'.");
+  }
   const port = Number(options.port) > 0 ? Math.trunc(Number(options.port)) : 22;
   const gssapi = options.authMethod === "gssapi";
   const preferPq = Boolean(options.preferPostQuantumKex);
@@ -118,7 +127,8 @@ function buildSystemOpenSshArgs(options = {}) {
   }
 
   const target = username ? `${username}@${hostname}` : hostname;
-  args.push(target);
+  // "--" ends option parsing so the target can never be read as a flag.
+  args.push("--", target);
   return args;
 }
 

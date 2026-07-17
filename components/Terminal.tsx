@@ -414,6 +414,11 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     sampleLine?: string;
   }) => {
     return new Promise<boolean>((resolve) => {
+      // A second dangerous paste arriving while the first dialog is still open
+      // would otherwise overwrite the pending resolver, leaving the first
+      // paste's Promise unsettled forever. Cancel the earlier one first.
+      const previous = dangerousPasteResolverRef.current;
+      if (previous) previous(false);
       dangerousPasteResolverRef.current = resolve;
       setDangerousPasteDialog({
         sampleLine: info.sampleLine,

@@ -231,11 +231,30 @@ function createBridgeRegistrar(context) {
     sessionLogsBridge.registerHandlers(ipcMain, { terminalWorkerManager });
     compressUploadBridge.registerHandlers(ipcMain, { terminalWorkerManager });
     globalShortcutBridge.registerHandlers(ipcMain);
-    credentialBridge.registerHandlers(ipcMain, electronModule);
-
     // Opt-in platform unlock (Touch ID / user presence) for vault secrets
     const { createPlatformAuthBridge } = require("../bridges/platformAuthBridge.cjs");
-    createPlatformAuthBridge({ electronModule, console }).register(ipcMain);
+    const platformAuthBridge = createPlatformAuthBridge({ electronModule, console });
+
+    // Main-process authority for the device-unlock boundary. credentialBridge
+    // consults this before decrypting so a locked vault can never be read by a
+    // renderer/DevTools/peer window that flips only the renderer's unlock flag.
+    const { createVaultUnlockGate, registerHandlers: registerVaultUnlockHandlers } =
+      require("../bridges/vaultUnlockGate.cjs");
+    let vaultUnlockUserDataPath;
+    try {
+      vaultUnlockUserDataPath = electronModule?.app?.getPath?.("userData");
+    } catch {
+      vaultUnlockUserDataPath = undefined;
+    }
+    const vaultUnlockGate = createVaultUnlockGate({
+      userDataPath: vaultUnlockUserDataPath,
+      platformPrompt: (reason) => platformAuthBridge.prompt(reason),
+    });
+    registerVaultUnlockHandlers(ipcMain, vaultUnlockGate);
+
+    credentialBridge.registerHandlers(ipcMain, electronModule, { vaultUnlockGate });
+
+    platformAuthBridge.register(ipcMain);
     autoUpdateBridge.init(deps);
     autoUpdateBridge.registerHandlers(ipcMain);
     aiBridge.registerHandlers(ipcMain);

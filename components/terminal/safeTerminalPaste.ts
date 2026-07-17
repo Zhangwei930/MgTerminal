@@ -39,6 +39,8 @@ export type SafeTerminalPasteOptions = {
   }) => Promise<boolean>;
   /** Optional prompt probe for wait-for-prompt pacing (defaults to detectPrompt). */
   isAtPrompt?: () => boolean;
+  /** Override the wait-for-prompt timeout (ms). Defaults to PASTE_WAIT_FOR_PROMPT_TIMEOUT_MS. */
+  waitForPromptTimeoutMs?: number;
 };
 
 /**
@@ -47,7 +49,7 @@ export type SafeTerminalPasteOptions = {
  */
 export async function performSafeTerminalPaste(
   options: SafeTerminalPasteOptions,
-): Promise<"pasted" | "cancelled" | "empty"> {
+): Promise<"pasted" | "cancelled" | "empty" | "timed-out"> {
   const text = options.text;
   if (!text) return "empty";
 
@@ -75,11 +77,12 @@ export async function performSafeTerminalPaste(
     return "pasted";
   }
 
-  await sendThrottledPaste({
+  const completed = await sendThrottledPaste({
     text,
     sessionId: options.sessionId,
     settings,
     terminalBackend: options.terminalBackend,
+    waitForPromptTimeoutMs: options.waitForPromptTimeoutMs ?? PASTE_WAIT_FOR_PROMPT_TIMEOUT_MS,
     onChunk: (chunk) => {
       // Fan out each chunk so broadcast peers stay in lockstep.
       options.onPasteData?.(chunk);
@@ -99,7 +102,10 @@ export async function performSafeTerminalPaste(
     options.term.scrollToBottom?.();
   }
   options.term.focus?.();
-  return "pasted";
+  // A wait-for-prompt timeout means the shell never returned to a prompt; the
+  // remaining lines were withheld rather than pushed into the running program's
+  // stdin. Report the paste as incomplete so the caller can surface it.
+  return completed ? "pasted" : "timed-out";
 }
 
 async function sendThrottledPaste(params: {
@@ -109,7 +115,8 @@ async function sendThrottledPaste(params: {
   terminalBackend: SafeTerminalPasteOptions["terminalBackend"];
   onChunk?: (chunk: string) => void;
   isAtPrompt: () => boolean;
-}): Promise<void> {
+  waitForPromptTimeoutMs: number;
+}): Promise<boolean> {
   const { text, sessionId, settings, terminalBackend, onChunk, isAtPrompt } = params;
   const lines = splitPasteIntoLineChunks(text);
 
@@ -129,11 +136,17 @@ async function sendThrottledPaste(params: {
     if (index >= lines.length - 1) break;
 
     if (settings.pasteWaitForPrompt) {
-      await waitUntilPrompt(isAtPrompt, PASTE_WAIT_FOR_PROMPT_TIMEOUT_MS);
+      const reachedPrompt = await waitUntilPrompt(isAtPrompt, params.waitForPromptTimeoutMs);
+      if (!reachedPrompt) {
+        // The shell did not return to a prompt within the window. Stop here
+        // rather than sending the next line into whatever is still running.
+        return false;
+      }
     } else if (settings.pasteLineDelayMs > 0) {
       await sleepMs(settings.pasteLineDelayMs);
     }
   }
+  return true;
 }
 
 async function waitUntilPrompt(

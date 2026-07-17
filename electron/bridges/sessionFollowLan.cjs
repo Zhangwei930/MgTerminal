@@ -16,9 +16,22 @@ const invites = new Map(); // sessionId -> invite runtime
 const remoteSockets = new Map(); // peerId -> { socket, sessionId }
 let dataTapInstalled = false;
 let writeToSessionNow = null;
+let addDataTap = addTerminalDataTap;
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const INVITE_TTL_MS = 30 * 60 * 1000;
+
+// Abuse limits for the token-gated relay. An unauthenticated peer must not be
+// able to exhaust host memory before proving the token, so cap the pre-newline
+// buffer, the time allowed to authenticate, the number of concurrent sockets,
+// and how far a slow reader may fall behind before it is dropped.
+const DEFAULT_LIMITS = {
+  maxLineBytes: 64 * 1024,
+  authTimeoutMs: 10_000,
+  maxPeers: 8,
+  maxSocketBacklogBytes: 8 * 1024 * 1024,
+};
+let limits = { ...DEFAULT_LIMITS };
 
 function generateToken() {
   return crypto.randomBytes(16).toString("hex");
@@ -97,13 +110,20 @@ function sendJson(socket, obj) {
 function ensureDataTap() {
   if (dataTapInstalled) return;
   dataTapInstalled = true;
-  addTerminalDataTap((sessionId, data) => {
+  addDataTap((sessionId, data) => {
     const invite = invites.get(sessionId);
     if (!invite || !invite.peerIds.size) return;
     const msg = `${JSON.stringify({ type: "data", data })}\n`;
-    for (const peerId of invite.peerIds) {
+    for (const peerId of [...invite.peerIds]) {
       const entry = remoteSockets.get(peerId);
       if (!entry?.socket || entry.socket.destroyed) continue;
+      // Drop peers that cannot keep up rather than letting the host's outbound
+      // buffer grow without bound (terminal output can burst faster than a slow
+      // LAN reader drains it).
+      if (entry.socket.writableLength > limits.maxSocketBacklogBytes) {
+        detachPeer(peerId);
+        continue;
+      }
       try {
         entry.socket.write(msg);
       } catch {
@@ -173,9 +193,31 @@ function attachClient(socket, invite) {
   let peerId = null;
   let authed = false;
 
+  // Force a decision within the auth window; an idle unauthenticated socket
+  // must not hold a connection slot indefinitely.
+  const authTimer = setTimeout(() => {
+    if (!authed) {
+      try {
+        sendJson(socket, { type: "error", error: "auth_timeout" });
+      } catch {
+        // ignore
+      }
+      socket.destroy();
+    }
+  }, limits.authTimeoutMs);
+  if (typeof authTimer.unref === "function") authTimer.unref();
+  socket.once("close", () => clearTimeout(authTimer));
+
   socket.setEncoding("utf8");
   socket.on("data", (chunk) => {
     buffer += chunk;
+    // Cap the un-delimited buffer. A peer that never sends a newline (before or
+    // after auth) cannot grow host memory past one frame.
+    if (buffer.length > limits.maxLineBytes && buffer.indexOf("\n") < 0) {
+      sendJson(socket, { type: "error", error: "frame_too_large" });
+      socket.destroy();
+      return;
+    }
     let idx;
     while ((idx = buffer.indexOf("\n")) >= 0) {
       const line = buffer.slice(0, idx).trim();
@@ -200,6 +242,12 @@ function attachClient(socket, invite) {
           socket.destroy();
           return;
         }
+        if (invite.peerIds.size >= limits.maxPeers) {
+          sendJson(socket, { type: "error", error: "too_many_peers" });
+          socket.destroy();
+          return;
+        }
+        clearTimeout(authTimer);
         peerId = `lan-${crypto.randomBytes(6).toString("hex")}`;
         const joined = follow.joinFollowRemote(
           invite.sessionId,
@@ -269,6 +317,18 @@ function createInvite({ sessionId, hostLabel, webContentsId, displayName }) {
         socket.destroy();
         return;
       }
+      // Bound concurrent sockets (authed peers + in-flight handshakes) so a
+      // flood of half-open connections cannot pin memory. Allow a small margin
+      // over maxPeers for handshakes in progress.
+      if (invite.liveSockets >= limits.maxPeers * 2) {
+        sendJson(socket, { type: "error", error: "too_many_connections" });
+        socket.destroy();
+        return;
+      }
+      invite.liveSockets += 1;
+      socket.once("close", () => {
+        invite.liveSockets = Math.max(0, invite.liveSockets - 1);
+      });
       attachClient(socket, invite);
     });
 
@@ -298,6 +358,7 @@ function createInvite({ sessionId, hostLabel, webContentsId, displayName }) {
         hosts: lanIps.length ? lanIps : ["127.0.0.1"],
         server,
         peerIds: new Set(),
+        liveSockets: 0,
         payload,
       };
       invites.set(sessionId, invite);
@@ -359,8 +420,16 @@ function stopAll() {
   for (const sessionId of [...invites.keys()]) stopInvite(sessionId);
 }
 
-function configure({ writeToSessionNow: writer } = {}) {
+function configure({ writeToSessionNow: writer, addDataTap: tapInstaller, limits: limitOverrides } = {}) {
   if (typeof writer === "function") writeToSessionNow = writer;
+  // Worker mode taps terminal output via terminalWorkerManager instead of the
+  // in-process emitter; the tap is installed lazily so a late configure wins.
+  if (typeof tapInstaller === "function" && !dataTapInstalled) {
+    addDataTap = tapInstaller;
+  }
+  if (limitOverrides && typeof limitOverrides === "object") {
+    limits = { ...limits, ...limitOverrides };
+  }
 }
 
 follow.onStateChange((sessionId) => {
@@ -411,6 +480,12 @@ function connectAsViewer({ shareString, displayName, webContentsId, electronModu
     socket.setEncoding("utf8");
     socket.on("data", (chunk) => {
       buffer += chunk;
+      // Guard against a malicious host streaming an unbounded line at the
+      // viewer. Data frames are chunked well under this ceiling.
+      if (buffer.length > limits.maxSocketBacklogBytes && buffer.indexOf("\n") < 0) {
+        fail("frame_too_large");
+        return;
+      }
       let idx;
       while ((idx = buffer.indexOf("\n")) >= 0) {
         const line = buffer.slice(0, idx);

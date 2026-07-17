@@ -313,3 +313,30 @@ test('local vault round-trip is stable across re-registration (survives app rest
     'persist-me',
   );
 });
+
+test('decrypt is refused while the vault unlock gate is locked', () => {
+  const dir = tempUserData();
+  let locked = true;
+  const gate = {
+    assertUnlocked() {
+      if (locked) {
+        const err = new Error('locked');
+        err.code = 'ERR_VAULT_LOCKED';
+        throw err;
+      }
+    },
+  };
+  const handlers = registerCredentialHandlers(
+    { isEncryptionAvailable: () => false, encryptString: () => { throw new Error('down'); } },
+    { platform: 'darwin', userDataPath: dir, vaultUnlockGate: gate },
+  );
+
+  const encrypted = handlers.get('magiesTerminal:credentials:encrypt')(null, 'secret');
+  assert.throws(
+    () => handlers.get('magiesTerminal:credentials:decrypt')(null, encrypted),
+    (error) => error?.code === 'ERR_VAULT_LOCKED',
+  );
+
+  locked = false;
+  assert.equal(handlers.get('magiesTerminal:credentials:decrypt')(null, encrypted), 'secret');
+});

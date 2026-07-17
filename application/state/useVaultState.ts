@@ -59,6 +59,7 @@ import {
   isVaultPlatformUnlockRequired,
   isVaultPlatformSessionUnlocked,
   setVaultPlatformSessionUnlocked,
+  syncVaultUnlockConfigToMain,
 } from "./vaultPlatformUnlockStore";
 import {
   decryptGroupConfigs,
@@ -656,6 +657,9 @@ export const useVaultState = () => {
       try {
         const deferSecrets = isVaultPlatformUnlockRequired();
         setSecretsLocked(deferSecrets);
+        // Migrate any pre-existing renderer-only unlock config to the main
+        // process so the decrypt boundary starts enforcing for this session.
+        void syncVaultUnlockConfigToMain();
 
         const savedHosts = localStorageAdapter.read<Host[]>(STORAGE_KEY_HOSTS);
 
@@ -938,9 +942,12 @@ export const useVaultState = () => {
   }, [groupConfigs, hosts, identities, keys, proxyProfiles]);
 
   const lockVaultSecrets = useCallback(() => {
-    // Session lock: require platform/PIN again. Plaintext remains until reload;
-    // cold start still gates decrypt when feature is enabled.
+    // Session lock: require platform/PIN again. Plaintext already in renderer
+    // memory remains until reload, but re-locking the main-process gate blocks
+    // any *new* decryption (peer windows, deferred loads) until the user proves
+    // presence again.
     setVaultPlatformSessionUnlocked(false);
+    void magiesTerminalBridge.get()?.vaultLock?.();
     setSecretsLocked(true);
   }, []);
 

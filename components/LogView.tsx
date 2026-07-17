@@ -264,7 +264,15 @@ const LogViewComponent: React.FC<LogViewProps> = ({
       const line = Math.max(0, buffer.baseY + buffer.viewportY);
       const data = log.terminalData || "";
       const offset = terminalDataLineToOffset(data, line);
-      const label = labelFromTerminalDataLine(data, line);
+      // `line` is an xterm display-buffer index, which counts auto-wrapped rows
+      // and reflects cursor movement from progress bars / full-screen apps. The
+      // jump target (scrollToLine) uses that same index, so derive the label
+      // from the rendered buffer row rather than the raw \n-split data — the two
+      // diverge under wrapping/ANSI and produced mismatched labels.
+      const displayLabel = buffer.getLine(line)?.translateToString(true)?.trim();
+      const label = displayLabel && displayLabel.length > 0
+        ? displayLabel.slice(0, 80)
+        : labelFromTerminalDataLine(data, line);
       addBookmark({ line, offset, label });
     }, [addBookmark, log.terminalData]);
 

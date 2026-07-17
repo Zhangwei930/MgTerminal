@@ -35,6 +35,9 @@ function createFakeWorkerManager() {
     send(channel, payload, options) {
       sends.push({ channel, payload, options });
     },
+    hasOpenSession: () => false,
+    getSessionWebContentsId: () => undefined,
+    addOutputTap: () => () => {},
   };
 }
 

@@ -6,10 +6,10 @@
  */
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { getAvailableAgentSocket } = require("./sshAuthHelper.cjs");
+const tempDirBridge = require("./tempDirBridge.cjs");
 
 function isPkcs11AgentLoadSupported(platform = process.platform) {
   return platform === "darwin" || platform === "linux";
@@ -54,10 +54,15 @@ async function resolveSshAddPath() {
 }
 
 function writeAskpassArtifacts(pin) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "magies-pkcs11-askpass-"));
+  const dir = fs.mkdtempSync(path.join(tempDirBridge.getTempDir(), "magies-pkcs11-askpass-"));
   const scriptPath = path.join(dir, "askpass.sh");
-  // Single-shot: print PIN to stdout for ssh-add PKCS#11 prompts.
-  const script = `#!/bin/sh\nprintf '%s\\n' ${JSON.stringify(String(pin ?? ""))}\n`;
+  const pinPath = path.join(dir, "pin");
+  // The PIN goes into its own file so the shell never parses it — embedding
+  // it in the script (even quoted) lets $(...) / backticks execute.
+  fs.writeFileSync(pinPath, `${String(pin ?? "")}\n`, { mode: 0o600 });
+  // Single-shot: print PIN to stdout for ssh-add PKCS#11 prompts. The pin
+  // path comes from mkdtemp; single quotes keep any special chars inert.
+  const script = `#!/bin/sh\nexec cat '${pinPath.replace(/'/g, "'\\''")}'\n`;
   fs.writeFileSync(scriptPath, script, { mode: 0o700 });
   return {
     dir,

@@ -692,6 +692,9 @@ function createTerminalWorkerManager(options = {}) {
         && !closedSessions.has(sessionId),
       );
     },
+    getSessionWebContentsId(sessionId) {
+      return sessionWebContentsIds.get(sessionId);
+    },
     addOutputTap(listener) {
       if (typeof listener !== "function") return () => {};
       outputTaps.add(listener);

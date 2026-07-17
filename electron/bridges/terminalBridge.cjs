@@ -1405,66 +1405,18 @@ function registerWorkerSend(ipcMain, terminalWorkerManager, channel) {
   });
 }
 
-function registerHandlers(ipcMain, options = {}) {
-  const terminalWorkerManager = options.terminalWorkerManager || null;
-  if (terminalWorkerManager) {
-    [
-      "magiesTerminal:local:start",
-      "magiesTerminal:telnet:start",
-      "magiesTerminal:mosh:start",
-      "magiesTerminal:et:start",
-      "magiesTerminal:serial:start",
-      "magiesTerminal:serial:list",
-      "magiesTerminal:serial:ymodem-send",
-      "magiesTerminal:serial:ymodem-receive",
-      "magiesTerminal:local:defaultShell",
-      "magiesTerminal:local:validatePath",
-      "magiesTerminal:shells:discover",
-      "magiesTerminal:terminal:setEncoding",
-    ].forEach((channel) => registerWorkerHandle(ipcMain, terminalWorkerManager, channel));
-    ipcMain.on("magiesTerminal:write", (event, payload) => {
-      // Session log streams started in the main process (manual/script logs)
-      // sanitize sudo-autofill markers and programmatic command echoes based
-      // on the *input* that produced them. In worker mode the real write
-      // handler runs in the utilityProcess, so mirror the rewrite
-      // registrations into the main-process stream manager before
-      // forwarding. Both calls are no-ops without an active main-process
-      // stream for the session.
-      sessionLogStreamManager.registerSudoAutofillInput(payload?.sessionId, payload?.data);
-      sessionLogStreamManager.registerProgrammaticCommandLogRewrite(payload?.sessionId, payload?.logRewrite);
-      terminalWorkerManager.send("magiesTerminal:write", payload, {
-        webContentsId: event?.sender?.id,
-      });
-    });
-    [
-      "magiesTerminal:interrupt",
-      "magiesTerminal:resize",
-      "magiesTerminal:flow",
-      "magiesTerminal:flow:ack",
-      "magiesTerminal:close",
-    ].forEach((channel) => registerWorkerSend(ipcMain, terminalWorkerManager, channel));
-    return;
-  }
-  ipcMain.handle("magiesTerminal:local:start", startLocalSession);
-  ipcMain.handle("magiesTerminal:telnet:start", startTelnetSession);
-  ipcMain.handle("magiesTerminal:mosh:start", startMoshSession);
-  ipcMain.handle("magiesTerminal:et:start", startEtSession);
-  ipcMain.handle("magiesTerminal:serial:start", startSerialSession);
-  ipcMain.handle("magiesTerminal:serial:list", listSerialPorts);
-  ipcMain.handle("magiesTerminal:serial:ymodem-send", sendSerialYmodem);
-  ipcMain.handle("magiesTerminal:serial:ymodem-receive", receiveSerialYmodem);
-  ipcMain.handle("magiesTerminal:local:defaultShell", getDefaultShell);
-  ipcMain.handle("magiesTerminal:local:validatePath", validatePath);
-  ipcMain.handle("magiesTerminal:shells:discover", () => discoverShells());
-  ipcMain.handle("magiesTerminal:terminal:setEncoding", setSessionEncoding);
-  ipcMain.on("magiesTerminal:write", writeToSession);
-  ipcMain.on("magiesTerminal:interrupt", interruptSession);
-  ipcMain.on("magiesTerminal:resize", resizeSession);
-  ipcMain.on("magiesTerminal:flow", setSessionFlowPaused);
-  ipcMain.on("magiesTerminal:flow:ack", ackSessionFlow);
-  ipcMain.on("magiesTerminal:close", closeSession);
-
-  // Local follow mode (watch / single control lock) + LAN invite relay
+/**
+ * Register local follow (watch / single control lock) + LAN invite IPC.
+ * Runs in the main process in both runtime modes; the deps abstract over
+ * whether terminal sessions live in-process or in the terminal worker.
+ */
+function registerFollowHandlers(ipcMain, deps) {
+  const {
+    sessionExists,
+    getSessionOwnerWebContentsId,
+    lanWriteToSession,
+    addFollowDataTap,
+  } = deps;
   const sessionFollowManager = require("./sessionFollowManager.cjs");
   const sessionFollowLan = require("./sessionFollowLan.cjs");
   // Persist collaboration audit under userData so history survives restarts.
@@ -1476,7 +1428,10 @@ function registerHandlers(ipcMain, options = {}) {
   } catch {
     // non-Electron / tests
   }
-  sessionFollowLan.configure({ writeToSessionNow });
+  sessionFollowLan.configure({
+    writeToSessionNow: lanWriteToSession,
+    addDataTap: addFollowDataTap,
+  });
   const resolveDisplayName = () => {
     try {
       return require("os").userInfo().username || "User";
@@ -1484,13 +1439,26 @@ function registerHandlers(ipcMain, options = {}) {
       return "User";
     }
   };
+  // Only the window that owns the terminal session may host a follow room or
+  // publish a LAN invite for it; any renderer knowing a sessionId must not be
+  // able to hijack another window's terminal stream.
+  const checkOwnedSession = (event, sessionId) => {
+    if (!sessionId || !sessionExists(sessionId)) {
+      return { ok: false, error: "Session not found." };
+    }
+    const ownerId = getSessionOwnerWebContentsId(sessionId);
+    if (Number.isFinite(ownerId) && ownerId !== event.sender.id) {
+      return { ok: false, error: "Session belongs to another window." };
+    }
+    return { ok: true };
+  };
   ipcMain.handle("magiesTerminal:follow:start", (event, payload) => {
-    const sessionId = payload?.sessionId;
-    if (!sessionId || !sessions.get(sessionId)) {
-      return { success: false, error: "Session not found." };
+    const owned = checkOwnedSession(event, payload?.sessionId);
+    if (!owned.ok) {
+      return { success: false, error: owned.error };
     }
     return sessionFollowManager.startFollow(
-      sessionId,
+      payload.sessionId,
       event.sender.id,
       payload?.displayName || resolveDisplayName(),
     );
@@ -1500,12 +1468,12 @@ function registerHandlers(ipcMain, options = {}) {
     return sessionFollowManager.stopFollow(payload?.sessionId, event.sender.id);
   });
   ipcMain.handle("magiesTerminal:follow:lanCreateInvite", async (event, payload) => {
-    const sessionId = payload?.sessionId;
-    if (!sessionId || !sessions.get(sessionId)) {
-      return { success: false, error: "Session not found." };
+    const owned = checkOwnedSession(event, payload?.sessionId);
+    if (!owned.ok) {
+      return { success: false, error: owned.error };
     }
     return sessionFollowLan.createInvite({
-      sessionId,
+      sessionId: payload.sessionId,
       hostLabel: payload?.hostLabel,
       webContentsId: event.sender.id,
       displayName: payload?.displayName || resolveDisplayName(),
@@ -1539,7 +1507,7 @@ function registerHandlers(ipcMain, options = {}) {
   });
   ipcMain.handle("magiesTerminal:follow:join", (event, payload) => {
     const sessionId = payload?.sessionId;
-    if (!sessionId || !sessions.get(sessionId)) {
+    if (!sessionId || !sessionExists(sessionId)) {
       return { success: false, error: "Session not found." };
     }
     return sessionFollowManager.joinFollow(
@@ -1595,6 +1563,127 @@ function registerHandlers(ipcMain, options = {}) {
       }
     });
   }
+}
+
+function registerHandlers(ipcMain, options = {}) {
+  const terminalWorkerManager = options.terminalWorkerManager || null;
+  if (terminalWorkerManager) {
+    [
+      "magiesTerminal:local:start",
+      "magiesTerminal:telnet:start",
+      "magiesTerminal:mosh:start",
+      "magiesTerminal:et:start",
+      "magiesTerminal:serial:start",
+      "magiesTerminal:serial:list",
+      "magiesTerminal:serial:ymodem-send",
+      "magiesTerminal:serial:ymodem-receive",
+      "magiesTerminal:local:defaultShell",
+      "magiesTerminal:local:validatePath",
+      "magiesTerminal:shells:discover",
+      "magiesTerminal:terminal:setEncoding",
+    ].forEach((channel) => registerWorkerHandle(ipcMain, terminalWorkerManager, channel));
+    const sessionFollowManager = require("./sessionFollowManager.cjs");
+    ipcMain.on("magiesTerminal:write", (event, payload) => {
+      // Local follow mode: only the controller peer may write non-automated
+      // input. The follow room lives in the main process, so gate here
+      // before forwarding to the worker (which has no room state).
+      const senderId = event?.sender?.id;
+      if (Number.isFinite(senderId)) {
+        const gate = sessionFollowManager.shouldBlockWrite(payload?.sessionId, senderId, {
+          automated: Boolean(payload?.automated),
+        });
+        if (gate.blocked) {
+          try {
+            event.sender.send("magiesTerminal:follow:inputDenied", {
+              sessionId: payload?.sessionId,
+              reason: gate.reason || "not_controller",
+            });
+          } catch {
+            // ignore
+          }
+          return;
+        }
+      }
+      // Session log streams started in the main process (manual/script logs)
+      // sanitize sudo-autofill markers and programmatic command echoes based
+      // on the *input* that produced them. In worker mode the real write
+      // handler runs in the utilityProcess, so mirror the rewrite
+      // registrations into the main-process stream manager before
+      // forwarding. Both calls are no-ops without an active main-process
+      // stream for the session.
+      sessionLogStreamManager.registerSudoAutofillInput(payload?.sessionId, payload?.data);
+      sessionLogStreamManager.registerProgrammaticCommandLogRewrite(payload?.sessionId, payload?.logRewrite);
+      terminalWorkerManager.send("magiesTerminal:write", payload, {
+        webContentsId: event?.sender?.id,
+      });
+    });
+    [
+      "magiesTerminal:interrupt",
+      "magiesTerminal:resize",
+      "magiesTerminal:flow",
+      "magiesTerminal:flow:ack",
+      "magiesTerminal:close",
+    ].forEach((channel) => registerWorkerSend(ipcMain, terminalWorkerManager, channel));
+
+    // Follow rooms live in the main process even though sessions run in the
+    // worker: fan worker output out to viewer windows (the owner window
+    // already receives it via its own output channel/port).
+    terminalWorkerManager.addOutputTap((sessionId, data) => {
+      const followIds = sessionFollowManager.getWebContentsIds(sessionId);
+      if (!Array.isArray(followIds) || followIds.length === 0) return;
+      const ownerId = terminalWorkerManager.getSessionWebContentsId(sessionId);
+      const seen = new Set();
+      for (const id of followIds) {
+        if (!Number.isFinite(id) || id === ownerId || seen.has(id)) continue;
+        seen.add(id);
+        try {
+          const wc = electronModule?.webContents?.fromId?.(id);
+          if (wc && !wc.isDestroyed?.()) {
+            wc.send("magiesTerminal:data", { sessionId, data });
+          }
+        } catch {
+          // Peer window may have closed between list and send.
+        }
+      }
+    });
+    registerFollowHandlers(ipcMain, {
+      sessionExists: (sessionId) => terminalWorkerManager.hasOpenSession(sessionId),
+      getSessionOwnerWebContentsId: (sessionId) =>
+        terminalWorkerManager.getSessionWebContentsId(sessionId),
+      lanWriteToSession: (payload, data) => {
+        sessionLogStreamManager.registerSudoAutofillInput(payload?.sessionId, data);
+        terminalWorkerManager.send("magiesTerminal:write", { ...payload, data }, {});
+      },
+      addFollowDataTap: (listener) => terminalWorkerManager.addOutputTap(listener),
+    });
+    return;
+  }
+  ipcMain.handle("magiesTerminal:local:start", startLocalSession);
+  ipcMain.handle("magiesTerminal:telnet:start", startTelnetSession);
+  ipcMain.handle("magiesTerminal:mosh:start", startMoshSession);
+  ipcMain.handle("magiesTerminal:et:start", startEtSession);
+  ipcMain.handle("magiesTerminal:serial:start", startSerialSession);
+  ipcMain.handle("magiesTerminal:serial:list", listSerialPorts);
+  ipcMain.handle("magiesTerminal:serial:ymodem-send", sendSerialYmodem);
+  ipcMain.handle("magiesTerminal:serial:ymodem-receive", receiveSerialYmodem);
+  ipcMain.handle("magiesTerminal:local:defaultShell", getDefaultShell);
+  ipcMain.handle("magiesTerminal:local:validatePath", validatePath);
+  ipcMain.handle("magiesTerminal:shells:discover", () => discoverShells());
+  ipcMain.handle("magiesTerminal:terminal:setEncoding", setSessionEncoding);
+  ipcMain.on("magiesTerminal:write", writeToSession);
+  ipcMain.on("magiesTerminal:interrupt", interruptSession);
+  ipcMain.on("magiesTerminal:resize", resizeSession);
+  ipcMain.on("magiesTerminal:flow", setSessionFlowPaused);
+  ipcMain.on("magiesTerminal:flow:ack", ackSessionFlow);
+  ipcMain.on("magiesTerminal:close", closeSession);
+
+  // Local follow mode (watch / single control lock) + LAN invite relay
+  registerFollowHandlers(ipcMain, {
+    sessionExists: (sessionId) => Boolean(sessions.get(sessionId)),
+    getSessionOwnerWebContentsId: (sessionId) => sessions.get(sessionId)?.webContentsId,
+    lanWriteToSession: writeToSessionNow,
+    addFollowDataTap: undefined, // default in-process terminal data tap
+  });
 }
 
 /**

@@ -799,7 +799,7 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                     checked={vaultUnlockEnabled}
                     onChange={(checked) => {
                       if (!checked) {
-                        disableVaultPlatformUnlock();
+                        void disableVaultPlatformUnlock();
                         setVaultUnlockEnabled(false);
                         setVaultUnlockPin("");
                         setVaultUnlockPinConfirm("");

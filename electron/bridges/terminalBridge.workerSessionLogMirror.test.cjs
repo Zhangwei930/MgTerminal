@@ -26,6 +26,9 @@ function registerWorkerHandlers(sent) {
         send(channel, payload, options) {
           sent.push([channel, payload, options]);
         },
+        hasOpenSession: () => false,
+        getSessionWebContentsId: () => undefined,
+        addOutputTap: () => () => {},
       },
     },
   );

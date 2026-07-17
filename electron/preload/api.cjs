@@ -1134,6 +1134,16 @@ function createPreloadApi(ctx) {
   platformAuthStatus: () => ipcRenderer.invoke("magiesTerminal:platformAuth:status"),
   platformAuthPrompt: (payload) => ipcRenderer.invoke("magiesTerminal:platformAuth:prompt", payload),
 
+  // Main-process device-unlock boundary for vault secrets
+  vaultUnlockStatus: () => ipcRenderer.invoke("magiesTerminal:vault:unlockStatus"),
+  vaultUnlockWithPin: (pin) => ipcRenderer.invoke("magiesTerminal:vault:unlockWithPin", pin),
+  vaultUnlockWithPlatform: (payload) =>
+    ipcRenderer.invoke("magiesTerminal:vault:unlockWithPlatform", payload),
+  vaultLock: () => ipcRenderer.invoke("magiesTerminal:vault:lock"),
+  vaultConfigureUnlock: (input) => ipcRenderer.invoke("magiesTerminal:vault:configureUnlock", input),
+  vaultAdoptLegacyUnlockConfig: (legacy) =>
+    ipcRenderer.invoke("magiesTerminal:vault:adoptLegacyUnlockConfig", legacy),
+
   // Credential encryption (safeStorage + local vault fallback)
   credentialsAvailable: () => ipcRenderer.invoke("magiesTerminal:credentials:available"),
   credentialsStatus: () => ipcRenderer.invoke("magiesTerminal:credentials:status"),

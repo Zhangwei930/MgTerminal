@@ -6,9 +6,9 @@ import {
   type VaultPlatformUnlockConfig,
 } from "../domain/vaultPlatformUnlock";
 import {
-  markVaultUnlockedByPlatform,
   readVaultPlatformUnlockConfig,
   tryUnlockVaultWithPin,
+  unlockVaultWithPlatform,
 } from "../application/state/vaultPlatformUnlockStore";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { Button } from "./ui/button";
@@ -48,18 +48,13 @@ export const PlatformVaultUnlockOverlay: React.FC<PlatformVaultUnlockOverlayProp
     setBusy(true);
     setError(null);
     try {
-      const result = await magiesTerminalBridge.get()?.platformAuthPrompt?.({
-        reason: t("vault.unlock.platformReason"),
-      });
-      if (!result?.success) {
-        setError(
-          result?.error === "cancelled"
-            ? t("vault.unlock.cancelled")
-            : t("vault.unlock.platformFailed"),
-        );
+      // The Touch ID prompt runs in the main process and, on success, unlocks
+      // the main-process vault gate atomically — the renderer cannot bypass it.
+      const ok = await unlockVaultWithPlatform(t("vault.unlock.platformReason"));
+      if (!ok) {
+        setError(t("vault.unlock.platformFailed"));
         return;
       }
-      markVaultUnlockedByPlatform();
       await finishUnlock();
     } finally {
       setBusy(false);

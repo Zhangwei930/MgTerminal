@@ -320,6 +320,11 @@ export interface Snippet {
   trigger?: ScriptTrigger;
   /** Regex pattern when trigger is 'onOutput'. */
   triggerPattern?: string;
+  /**
+   * Side effects when an onOutput pattern matches.
+   * Omitted / empty → legacy behavior: run the script only.
+   */
+  triggerActions?: import("../triggerActions").TriggerAction[];
 }
 
 export interface HostOutputTrigger {

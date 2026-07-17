@@ -97,6 +97,8 @@ import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBr
 import { ScriptExecutionOverlay } from "./terminal/ScriptExecutionOverlay";
 import { isScriptSnippet } from "@/domain/snippetScript.ts";
 import { useOutputTriggers } from "@/application/state/useOutputTriggers.ts";
+import { executeTriggerActions } from "../application/state/triggerActionEffects";
+import { resolveTriggerActions } from "../domain/triggerActions";
 import { TerminalComposeBar } from "./terminal/TerminalComposeBar";
 import { TerminalContextMenu } from "./terminal/TerminalContextMenu";
 import { TerminalSearchBar } from "./terminal/TerminalSearchBar";
@@ -331,20 +333,6 @@ const TerminalComponent: React.FC<TerminalProps> = ({
     }
     setActiveScriptRun(undefined);
   }, [activeScriptRun]);
-  const outputTriggers = useOutputTriggers({
-    sessionId,
-    hostId: host.id,
-    snippets,
-    onRunScript: (snippet, sid) => runAutomationScript({ snippet, sessionId: sid }).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(message.includes('Observer mode') ? t('scripts.observer.blocked') : message);
-      throw err;
-    }),
-  });
-  const appendOutputTriggerOutputRef = useRef(outputTriggers.appendOutput);
-  appendOutputTriggerOutputRef.current = outputTriggers.appendOutput;
-  const noteOutputTriggerUserInputRef = useRef(outputTriggers.noteUserInput);
-  noteOutputTriggerUserInputRef.current = outputTriggers.noteUserInput;
   const availableFonts = useAvailableFonts();
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
@@ -643,6 +631,42 @@ const TerminalComponent: React.FC<TerminalProps> = ({
   const [isCancelling, setIsCancelling] = useState(false);
   const [showSFTP, setShowSFTP] = useState(false);
   const [isSessionLogging, setIsSessionLogging] = useState(false);
+  const outputTriggers = useOutputTriggers({
+    sessionId,
+    hostId: host.id,
+    snippets,
+    onTriggerMatch: async (snippet, sid, meta) => {
+      const actions = resolveTriggerActions(snippet);
+      await executeTriggerActions(actions, {
+        sessionId: sid,
+        snippet,
+        matchedText: meta.matchedText,
+        startSessionLog: async (logSessionId) => {
+          try {
+            const result = await startManualSessionLog({
+              sessionId: logSessionId,
+              sessionName: sessionDisplayName || host.label || host.hostname,
+            });
+            if (result?.success || result?.started) {
+              setIsSessionLogging(true);
+            }
+          } catch {
+            // ignore log start failures
+          }
+        },
+        runScript: (scriptSnippet, scriptSessionId) =>
+          runAutomationScript({ snippet: scriptSnippet, sessionId: scriptSessionId }).catch((err) => {
+            const message = err instanceof Error ? err.message : String(err);
+            toast.error(message.includes('Observer mode') ? t('scripts.observer.blocked') : message);
+            throw err;
+          }),
+      });
+    },
+  });
+  const appendOutputTriggerOutputRef = useRef(outputTriggers.appendOutput);
+  appendOutputTriggerOutputRef.current = outputTriggers.appendOutput;
+  const noteOutputTriggerUserInputRef = useRef(outputTriggers.noteUserInput);
+  noteOutputTriggerUserInputRef.current = outputTriggers.noteUserInput;
   const [progressValue, setProgressValue] = useState(15);
   const [hasSelection, setHasSelection] = useState(false);
   const [selectionOverlayPosition, setSelectionOverlayPosition] = useState<{ left: number; top: number } | null>(null);

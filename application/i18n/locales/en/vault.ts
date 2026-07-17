@@ -803,6 +803,15 @@ export const enVaultMessages: Messages = {
   'logView.customizeAppearance': 'Customize appearance',
   'logView.appearance': 'Appearance',
   'logView.readOnly': 'Read-only',
+  'logView.bookmarks.title': 'Bookmarks',
+  'logView.bookmarks.add': 'Bookmark current position',
+  'logView.bookmarks.search': 'Search bookmarks…',
+  'logView.bookmarks.empty': 'No bookmarks yet. Scroll the log and click + to mark a position.',
+  'logView.bookmarks.noMatch': 'No bookmarks match your search.',
+  'logView.bookmarks.notePlaceholder': 'Add a note…',
+  'logView.bookmarks.addNote': 'Add note',
+  'logView.bookmarks.remove': 'Remove bookmark',
+  'logView.bookmarks.count': '{count} bookmarks',
   'logView.export': 'Export',
 
 

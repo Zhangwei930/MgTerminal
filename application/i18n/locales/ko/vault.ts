@@ -803,6 +803,15 @@ export const koVaultMessages: Messages = {
   'logView.customizeAppearance': '모양 사용자 지정',
   'logView.appearance': '모양',
   'logView.readOnly': '읽기 전용',
+  'logView.bookmarks.title': '북마크',
+  'logView.bookmarks.add': '현재 위치 북마크',
+  'logView.bookmarks.search': '북마크 검색…',
+  'logView.bookmarks.empty': '북마크가 없습니다. 스크롤 후 + 를 누르세요.',
+  'logView.bookmarks.noMatch': '일치하는 북마크가 없습니다.',
+  'logView.bookmarks.notePlaceholder': '메모 추가…',
+  'logView.bookmarks.addNote': '메모 추가',
+  'logView.bookmarks.remove': '북마크 삭제',
+  'logView.bookmarks.count': '북마크 {count}개',
   'logView.export': '내보내기',
 
 

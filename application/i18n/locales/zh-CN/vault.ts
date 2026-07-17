@@ -312,6 +312,15 @@ export const zhCNVaultMessages: Messages = {
   'logView.customizeAppearance': '自定义外观',
   'logView.appearance': '外观',
   'logView.readOnly': '只读',
+  'logView.bookmarks.title': '书签',
+  'logView.bookmarks.add': '将当前位置加入书签',
+  'logView.bookmarks.search': '搜索书签…',
+  'logView.bookmarks.empty': '还没有书签。滚动日志后点 + 标记位置。',
+  'logView.bookmarks.noMatch': '没有匹配的书签。',
+  'logView.bookmarks.notePlaceholder': '添加备注…',
+  'logView.bookmarks.addNote': '添加备注',
+  'logView.bookmarks.remove': '删除书签',
+  'logView.bookmarks.count': '{count} 个书签',
   'logView.export': '导出',
 
   // Terminal toolbar / search / context menu / auth

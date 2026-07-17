@@ -820,6 +820,15 @@ export const frVaultMessages: Messages = {
   'logView.customizeAppearance': 'Personnaliser l’apparence',
   'logView.appearance': 'Apparence',
   'logView.readOnly': 'Lecture seule',
+  'logView.bookmarks.title': 'Signets',
+  'logView.bookmarks.add': 'Marquer la position actuelle',
+  'logView.bookmarks.search': 'Rechercher des signets…',
+  'logView.bookmarks.empty': 'Aucun signet. Faites défiler et cliquez sur +.',
+  'logView.bookmarks.noMatch': 'Aucun résultat.',
+  'logView.bookmarks.notePlaceholder': 'Ajouter une note…',
+  'logView.bookmarks.addNote': 'Ajouter une note',
+  'logView.bookmarks.remove': 'Supprimer le signet',
+  'logView.bookmarks.count': '{count} signets',
   'logView.export': 'Exporter',
 
 

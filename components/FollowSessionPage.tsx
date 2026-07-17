@@ -4,7 +4,7 @@ import "@xterm/xterm/css/xterm.css";
 import { Eye, Hand, Loader2 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { I18nProvider, useI18n } from "../application/i18n/I18nProvider";
-import { magiesTerminalBridge } from "../infrastructure/services/magiesTerminalBridge";
+import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import type { SessionFollowPublicState } from "../domain/sessionFollow";
 import { Button } from "./ui/button";
 import { toast } from "./ui/toast";

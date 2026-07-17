@@ -8,7 +8,7 @@ import { Check, KeyRound, Loader2, Usb } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../application/i18n/I18nProvider";
 import { useApplicationBackend } from "../../application/state/useApplicationBackend";
-import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
+import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

@@ -199,8 +199,11 @@ export function labelFromTerminalDataLine(terminalData: string, line: number): s
   const lines = terminalData.split(/\r\n|\n|\r/);
   const raw = lines[Math.max(0, Math.min(line, lines.length - 1))] || "";
   const stripped = raw
+    // eslint-disable-next-line no-control-regex -- intentional CSI / OSC / C0 strip for bookmark labels
     .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "")
+    // eslint-disable-next-line no-control-regex -- intentional CSI / OSC / C0 strip for bookmark labels
     .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?/g, "")
+    // eslint-disable-next-line no-control-regex -- intentional CSI / OSC / C0 strip for bookmark labels
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "")
     .trim();
   if (!stripped) return `Line ${line + 1}`;

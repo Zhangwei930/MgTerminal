@@ -10,7 +10,7 @@ import {
   readVaultPlatformUnlockConfig,
   tryUnlockVaultWithPin,
 } from "../application/state/vaultPlatformUnlockStore";
-import { magiesTerminalBridge } from "../infrastructure/services/magiesTerminalBridge";
+import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "../lib/utils";

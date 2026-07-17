@@ -6,7 +6,7 @@ import {
   isJsonManagedSourceType,
 } from "../../domain/hostDataSource";
 import type { ManagedSource } from "../../domain/models";
-import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
+import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import {

@@ -13,7 +13,7 @@ import { resolveHostIconAppearance } from "../domain/hostIcon";
 import { cn } from "../lib/utils";
 import { listBookmarksForLog, normalizeLogBookmarkStore } from "../domain/logBookmarks";
 import { STORAGE_KEY_LOG_BOOKMARKS } from "../infrastructure/config/storageKeys";
-import { localStorageAdapter } from "../infrastructure/persistence/localStorageAdapter";
+import { localStorageAdapter } from "@/infrastructure/persistence/localStorageAdapter";
 import { ConnectionLog, Host } from "../types";
 import { DistroAvatar } from "./DistroAvatar";
 import { ScrollArea } from "./ui/scroll-area";

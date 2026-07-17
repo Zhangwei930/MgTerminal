@@ -2,7 +2,7 @@ import { Copy, Eye, Hand, Network, Users } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../application/i18n/I18nProvider";
 import type { SessionFollowPublicState } from "../../domain/sessionFollow";
-import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
+import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

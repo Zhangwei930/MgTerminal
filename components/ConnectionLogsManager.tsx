@@ -79,10 +79,16 @@ interface LogItemProps {
 const LogItem = memo<LogItemProps>(({ log, onToggleSaved, onDelete, onClick }) => {
     const { t, resolvedLocale } = useI18n();
     const bookmarkCount = useMemo(() => {
-      const store = normalizeLogBookmarkStore(
-        localStorageAdapter.read(STORAGE_KEY_LOG_BOOKMARKS) ?? {},
-      );
-      return listBookmarksForLog(store, log.id).length;
+      // Node/jsdom unit tests may not define localStorage.
+      try {
+        if (typeof localStorage === "undefined") return 0;
+        const store = normalizeLogBookmarkStore(
+          localStorageAdapter.read(STORAGE_KEY_LOG_BOOKMARKS) ?? {},
+        );
+        return listBookmarksForLog(store, log.id).length;
+      } catch {
+        return 0;
+      }
     }, [log.id]);
     const isLocal = log.protocol === "local" || log.hostname === "localhost";
     const isSerial = log.protocol === "serial";

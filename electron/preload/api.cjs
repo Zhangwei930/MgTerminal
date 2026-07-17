@@ -1101,6 +1101,10 @@ function createPreloadApi(ctx) {
     return ipcRenderer.invoke("magiesTerminal:clipboard:readImage");
   },
 
+  // Platform user-presence auth (Touch ID) for opt-in vault unlock
+  platformAuthStatus: () => ipcRenderer.invoke("magiesTerminal:platformAuth:status"),
+  platformAuthPrompt: (payload) => ipcRenderer.invoke("magiesTerminal:platformAuth:prompt", payload),
+
   // Credential encryption (safeStorage + local vault fallback)
   credentialsAvailable: () => ipcRenderer.invoke("magiesTerminal:credentials:available"),
   credentialsStatus: () => ipcRenderer.invoke("magiesTerminal:credentials:status"),

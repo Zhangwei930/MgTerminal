@@ -9,14 +9,21 @@ import {
   runStoredVaultCredentialSelfTest,
   type CredentialSelfTestResult,
 } from "../../../application/credentialSelfTest";
+import {
+  disableVaultPlatformUnlock,
+  enableVaultPlatformUnlockWithPin,
+  readVaultPlatformUnlockConfig,
+} from "../../../application/state/vaultPlatformUnlockStore";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import type { UpdateState } from '../../../application/state/useUpdateCheck';
 import { SessionLogFormat, keyEventToString } from "../../../domain/models";
 import type { HttpNetworkProxyMode, HttpNetworkProxySettings } from "../../../domain/httpNetworkProxy";
 import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { Toggle, Select, SettingRow, SectionHeader, SettingCard, SettingsTabContent } from "../settings-ui";
 import { cn } from "../../../lib/utils";
+import { toast } from "../../ui/toast";
 
 interface CrashLogFile {
   fileName: string;
@@ -171,6 +178,12 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   const [isRunningCredentialSelfTest, setIsRunningCredentialSelfTest] = useState(false);
   const [credentialSelfTestResult, setCredentialSelfTestResult] =
     useState<CredentialSelfTestResult | null>(null);
+  const [vaultUnlockEnabled, setVaultUnlockEnabled] = useState(
+    () => readVaultPlatformUnlockConfig().enabled === true,
+  );
+  const [vaultUnlockSetupOpen, setVaultUnlockSetupOpen] = useState(false);
+  const [vaultUnlockPin, setVaultUnlockPin] = useState("");
+  const [vaultUnlockPinConfirm, setVaultUnlockPinConfirm] = useState("");
   const [crashLogs, setCrashLogs] = useState<CrashLogFile[]>([]);
   const [isLoadingCrashLogs, setIsLoadingCrashLogs] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -773,6 +786,91 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                   {t("settings.system.credentials.repair.hint")}
                 </p>
               )}
+
+              <div className="border-t border-border/50 pt-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{t("settings.system.vaultUnlock.title")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("settings.system.vaultUnlock.desc")}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={vaultUnlockEnabled}
+                    onChange={(checked) => {
+                      if (!checked) {
+                        disableVaultPlatformUnlock();
+                        setVaultUnlockEnabled(false);
+                        setVaultUnlockPin("");
+                        setVaultUnlockPinConfirm("");
+                        toast.success(t("settings.system.vaultUnlock.disabledToast"));
+                        return;
+                      }
+                      setVaultUnlockSetupOpen(true);
+                    }}
+                  />
+                </div>
+                {vaultUnlockSetupOpen && (
+                  <div className="space-y-2 rounded-lg border border-border/50 p-3">
+                    <p className="text-xs text-muted-foreground">{t("settings.system.vaultUnlock.setupHint")}</p>
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      placeholder={t("settings.system.vaultUnlock.pinPlaceholder")}
+                      value={vaultUnlockPin}
+                      onChange={(e) => setVaultUnlockPin(e.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      placeholder={t("settings.system.vaultUnlock.pinConfirmPlaceholder")}
+                      value={vaultUnlockPinConfirm}
+                      onChange={(e) => setVaultUnlockPinConfirm(e.target.value)}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setVaultUnlockSetupOpen(false);
+                          setVaultUnlockPin("");
+                          setVaultUnlockPinConfirm("");
+                        }}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          void (async () => {
+                            if (vaultUnlockPin !== vaultUnlockPinConfirm) {
+                              toast.error(t("settings.system.vaultUnlock.pinMismatch"));
+                              return;
+                            }
+                            try {
+                              await enableVaultPlatformUnlockWithPin(vaultUnlockPin);
+                              setVaultUnlockEnabled(true);
+                              setVaultUnlockSetupOpen(false);
+                              setVaultUnlockPin("");
+                              setVaultUnlockPinConfirm("");
+                              toast.success(t("settings.system.vaultUnlock.enabledToast"));
+                            } catch {
+                              toast.error(t("settings.system.vaultUnlock.pinInvalid"));
+                            }
+                          })();
+                        }}
+                      >
+                        {t("settings.system.vaultUnlock.enable")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {vaultUnlockEnabled && !vaultUnlockSetupOpen && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.system.vaultUnlock.enabledHint")}
+                  </p>
+                )}
+              </div>
 
               {credentialRepairMessage && (
                 <p

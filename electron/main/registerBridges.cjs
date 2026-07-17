@@ -232,6 +232,10 @@ function createBridgeRegistrar(context) {
     compressUploadBridge.registerHandlers(ipcMain, { terminalWorkerManager });
     globalShortcutBridge.registerHandlers(ipcMain);
     credentialBridge.registerHandlers(ipcMain, electronModule);
+
+    // Opt-in platform unlock (Touch ID / user presence) for vault secrets
+    const { createPlatformAuthBridge } = require("../bridges/platformAuthBridge.cjs");
+    createPlatformAuthBridge({ electronModule, console }).register(ipcMain);
     autoUpdateBridge.init(deps);
     autoUpdateBridge.registerHandlers(ipcMain);
     aiBridge.registerHandlers(ipcMain);

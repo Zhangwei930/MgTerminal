@@ -232,6 +232,11 @@ export const useCloudSync = (): CloudSyncHook => {
 
     void (async () => {
       try {
+        // Respect opt-in platform vault unlock: don't silently pull master key
+        // from safeStorage while device secrets are still gated.
+        const { isVaultPlatformUnlockRequired } = await import('./vaultPlatformUnlockStore');
+        if (isVaultPlatformUnlockRequired()) return;
+
         const bridge = magiesTerminalBridge.get();
         const password = await bridge?.cloudSyncGetSessionPassword?.();
         if (!password) return;

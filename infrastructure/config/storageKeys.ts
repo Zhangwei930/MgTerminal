@@ -150,6 +150,9 @@ export const STORAGE_KEY_LEGACY_KEYS = 'magiesTerminal_legacy_keys_v1';
 // Managed Sources - external files that manage groups of hosts (e.g., ~/.ssh/config)
 export const STORAGE_KEY_MANAGED_SOURCES = 'magiesTerminal_managed_sources_v1';
 
+/** Opt-in platform unlock before vault secrets are decrypted into memory. */
+export const STORAGE_KEY_VAULT_PLATFORM_UNLOCK = 'magiesTerminal_vault_platform_unlock_v1';
+
 // Global Toggle Window Settings (Quake Mode)
 export const STORAGE_KEY_TOGGLE_WINDOW_HOTKEY = 'magiesTerminal_toggle_window_hotkey_v1';
 export const STORAGE_KEY_CLOSE_TO_TRAY = 'magiesTerminal_close_to_tray_v1';

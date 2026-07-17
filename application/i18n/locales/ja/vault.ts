@@ -803,6 +803,15 @@ export const jaVaultMessages: Messages = {
   'logView.customizeAppearance': '外観をカスタマイズ',
   'logView.appearance': '外観',
   'logView.readOnly': '読み取り専用',
+  'logView.bookmarks.title': 'ブックマーク',
+  'logView.bookmarks.add': '現在位置をブックマーク',
+  'logView.bookmarks.search': 'ブックマークを検索…',
+  'logView.bookmarks.empty': 'ブックマークはまだありません。スクロールして + を押します。',
+  'logView.bookmarks.noMatch': '一致するブックマークがありません。',
+  'logView.bookmarks.notePlaceholder': 'メモを追加…',
+  'logView.bookmarks.addNote': 'メモを追加',
+  'logView.bookmarks.remove': 'ブックマークを削除',
+  'logView.bookmarks.count': '{count} 件のブックマーク',
   'logView.export': 'エクスポート',
 
 

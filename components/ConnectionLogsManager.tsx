@@ -11,6 +11,9 @@ import React, { memo, useCallback, useMemo, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
 import { resolveHostIconAppearance } from "../domain/hostIcon";
 import { cn } from "../lib/utils";
+import { listBookmarksForLog, normalizeLogBookmarkStore } from "../domain/logBookmarks";
+import { STORAGE_KEY_LOG_BOOKMARKS } from "../infrastructure/config/storageKeys";
+import { localStorageAdapter } from "../infrastructure/persistence/localStorageAdapter";
 import { ConnectionLog, Host } from "../types";
 import { DistroAvatar } from "./DistroAvatar";
 import { ScrollArea } from "./ui/scroll-area";
@@ -75,6 +78,12 @@ interface LogItemProps {
 
 const LogItem = memo<LogItemProps>(({ log, onToggleSaved, onDelete, onClick }) => {
     const { t, resolvedLocale } = useI18n();
+    const bookmarkCount = useMemo(() => {
+      const store = normalizeLogBookmarkStore(
+        localStorageAdapter.read(STORAGE_KEY_LOG_BOOKMARKS) ?? {},
+      );
+      return listBookmarksForLog(store, log.id).length;
+    }, [log.id]);
     const isLocal = log.protocol === "local" || log.hostname === "localhost";
     const isSerial = log.protocol === "serial";
     const customHostIcon = resolveHostIconAppearance({
@@ -150,6 +159,15 @@ const LogItem = memo<LogItemProps>(({ log, onToggleSaved, onDelete, onClick }) =
 
             {/* Saved column */}
             <div className="flex items-center gap-2 shrink-0">
+                {bookmarkCount > 0 ? (
+                    <span
+                        className="inline-flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        title={t("logView.bookmarks.count", { count: bookmarkCount })}
+                    >
+                        <Bookmark size={11} />
+                        {bookmarkCount}
+                    </span>
+                ) : null}
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button

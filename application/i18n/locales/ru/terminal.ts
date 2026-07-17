@@ -21,6 +21,15 @@ export const ruTerminalMessages: Messages = {
   'logView.customizeAppearance': 'Настроить внешний вид',
   'logView.appearance': 'Внешний вид',
   'logView.readOnly': 'Только чтение',
+  'logView.bookmarks.title': 'Закладки',
+  'logView.bookmarks.add': 'Закладка на текущую позицию',
+  'logView.bookmarks.search': 'Поиск закладок…',
+  'logView.bookmarks.empty': 'Закладок пока нет. Прокрутите и нажмите +.',
+  'logView.bookmarks.noMatch': 'Нет совпадений.',
+  'logView.bookmarks.notePlaceholder': 'Добавить заметку…',
+  'logView.bookmarks.addNote': 'Добавить заметку',
+  'logView.bookmarks.remove': 'Удалить закладку',
+  'logView.bookmarks.count': '{count} закладок',
   'logView.export': 'Экспорт',
 
   // Terminal toolbar / search / context menu / auth

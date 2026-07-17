@@ -796,6 +796,15 @@ export const ptVaultMessages: Messages = {
   'logView.customizeAppearance': 'Personalizar aparência',
   'logView.appearance': 'Aparência',
   'logView.readOnly': 'Somente leitura',
+  'logView.bookmarks.title': 'Marcadores',
+  'logView.bookmarks.add': 'Marcar posição atual',
+  'logView.bookmarks.search': 'Pesquisar marcadores…',
+  'logView.bookmarks.empty': 'Ainda sem marcadores. Role e clique em +.',
+  'logView.bookmarks.noMatch': 'Nenhum resultado.',
+  'logView.bookmarks.notePlaceholder': 'Adicionar nota…',
+  'logView.bookmarks.addNote': 'Adicionar nota',
+  'logView.bookmarks.remove': 'Remover marcador',
+  'logView.bookmarks.count': '{count} marcadores',
   'logView.export': 'Exportar',
 
 

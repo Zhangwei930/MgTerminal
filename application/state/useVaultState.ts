@@ -21,6 +21,7 @@ import {
   INITIAL_HOSTS,
   INITIAL_SNIPPETS,
 } from "../../infrastructure/config/defaultData";
+import { pruneStoredLogBookmarks } from "./useLogBookmarks";
 import {
   STORAGE_KEY_CONNECTION_LOGS,
   STORAGE_KEY_CONNECTION_LOG_TERMINAL_DATA,
@@ -590,6 +591,7 @@ export const useVaultState = () => {
       delete map[id];
       connectionLogTerminalDataRef.current = map;
       persistConnectionLogState(updated, { pruneMainBlob: true });
+      pruneStoredLogBookmarks(updated.map((log) => log.id));
       return updated;
     });
   }, [persistConnectionLogState]);
@@ -598,6 +600,7 @@ export const useVaultState = () => {
     setConnectionLogs((prev) => {
       const saved = prev.filter((log) => log.saved);
       persistConnectionLogState(saved, { pruneMainBlob: true });
+      pruneStoredLogBookmarks(saved.map((log) => log.id));
       return saved;
     });
   }, [persistConnectionLogState]);

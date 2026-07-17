@@ -5,11 +5,18 @@ import "@xterm/xterm/css/xterm.css";
 import { FileText, Download, Palette, X } from "lucide-react";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
+import { useLogBookmarks } from "../application/state/useLogBookmarks";
+import {
+  labelFromTerminalDataLine,
+  terminalDataLineToOffset,
+  type LogBookmark,
+} from "../domain/logBookmarks";
 import { cn } from "../lib/utils";
 import { ConnectionLog, TerminalTheme } from "../types";
 import { TERMINAL_THEMES } from "../infrastructure/config/terminalThemes";
 import { useCustomThemes } from "../application/state/customThemeStore";
 import { Button } from "./ui/button";
+import { LogBookmarkPanel } from "./log/LogBookmarkPanel";
 import ThemeCustomizeModal from "./terminal/ThemeCustomizeModal";
 
 interface LogViewProps {
@@ -34,6 +41,12 @@ const LogViewComponent: React.FC<LogViewProps> = ({
     const termRef = useRef<XTerm | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const [isReady, setIsReady] = useState(false);
+    const {
+      bookmarks,
+      addBookmark,
+      updateBookmark,
+      removeBookmark,
+    } = useLogBookmarks(log.id);
     const [themeModalOpen, setThemeModalOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [previewTheme, setPreviewTheme] = useState<TerminalTheme | null>(null);
@@ -244,6 +257,31 @@ const LogViewComponent: React.FC<LogViewProps> = ({
 
     const isLocal = log.protocol === "local" || log.hostname === "localhost";
 
+    const handleAddBookmark = useCallback(() => {
+      const term = termRef.current;
+      if (!term) return;
+      const buffer = term.buffer.active;
+      const line = Math.max(0, buffer.baseY + buffer.viewportY);
+      const data = log.terminalData || "";
+      const offset = terminalDataLineToOffset(data, line);
+      const label = labelFromTerminalDataLine(data, line);
+      addBookmark({ line, offset, label });
+    }, [addBookmark, log.terminalData]);
+
+    const handleJumpBookmark = useCallback((bookmark: LogBookmark) => {
+      const term = termRef.current;
+      if (!term) return;
+      try {
+        term.scrollToLine(Math.max(0, bookmark.line));
+      } catch {
+        // ignore scroll errors
+      }
+    }, []);
+
+    const handleUpdateBookmarkNote = useCallback((bookmarkId: string, note: string) => {
+      updateBookmark(bookmarkId, { note });
+    }, [updateBookmark]);
+
     return (
         <div className="h-full w-full flex flex-col bg-background">
             {/* Header */}
@@ -303,12 +341,22 @@ const LogViewComponent: React.FC<LogViewProps> = ({
                 </div>
             </div>
 
-            {/* Terminal container */}
-            <div
-                className="flex-1 overflow-hidden p-2"
-                style={{ backgroundColor: currentTheme?.colors?.background || '#000000' }}
-            >
-                <div ref={containerRef} className="h-full w-full" />
+            {/* Terminal + bookmark side panel */}
+            <div className="flex-1 min-h-0 flex">
+              <div
+                  className="flex-1 overflow-hidden p-2 min-w-0"
+                  style={{ backgroundColor: currentTheme?.colors?.background || '#000000' }}
+              >
+                  <div ref={containerRef} className="h-full w-full" />
+              </div>
+              <LogBookmarkPanel
+                bookmarks={bookmarks}
+                onAdd={handleAddBookmark}
+                onJump={handleJumpBookmark}
+                onUpdateNote={handleUpdateBookmarkNote}
+                onRemove={removeBookmark}
+                canAdd={Boolean(log.terminalData) && isReady}
+              />
             </div>
 
             {/* Theme Customize Modal */}
@@ -329,10 +377,13 @@ const LogViewComponent: React.FC<LogViewProps> = ({
 
 // Memoization comparison
 const logViewAreEqual = (prev: LogViewProps, next: LogViewProps): boolean => {
+    // Bookmarks are owned by an internal hook/store subscription, so identity
+    // equality on log metadata is enough for memoization here.
     return (
         prev.log.id === next.log.id &&
         prev.log.themeId === next.log.themeId &&
         prev.log.fontSize === next.log.fontSize &&
+        prev.log.terminalData === next.log.terminalData &&
         prev.isVisible === next.isVisible &&
         prev.defaultFontSize === next.defaultFontSize &&
         prev.defaultTerminalTheme.id === next.defaultTerminalTheme.id

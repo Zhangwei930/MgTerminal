@@ -35,6 +35,8 @@ export const STORAGE_KEY_SHELL_HISTORY = 'magiesTerminal_shell_history_v1';
 export const STORAGE_KEY_CONNECTION_LOGS = 'magiesTerminal_connection_logs_v1';
 /** Side store for unsaved connection-log terminal replay buffers (main blob omits them for perf). */
 export const STORAGE_KEY_CONNECTION_LOG_TERMINAL_DATA = 'magiesTerminal_connection_log_terminal_data_v1';
+/** Bookmarks / notes for connection log replay positions, keyed by log id. */
+export const STORAGE_KEY_LOG_BOOKMARKS = 'magiesTerminal_log_bookmarks_v1';
 export const STORAGE_KEY_SESSION_RESTORE = 'magiesTerminal_session_restore_v1';
 export const STORAGE_KEY_RESTORE_PREVIOUS_SESSION = 'magiesTerminal_restore_previous_session_v1';
 export const STORAGE_KEY_RESTORE_TERMINAL_CWD = 'magiesTerminal_restore_terminal_cwd_v1';

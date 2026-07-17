@@ -803,6 +803,15 @@ export const deVaultMessages: Messages = {
   'logView.customizeAppearance': 'Erscheinungsbild anpassen',
   'logView.appearance': 'Erscheinungsbild',
   'logView.readOnly': 'Schreibgeschützt',
+  'logView.bookmarks.title': 'Lesezeichen',
+  'logView.bookmarks.add': 'Aktuelle Position speichern',
+  'logView.bookmarks.search': 'Lesezeichen suchen…',
+  'logView.bookmarks.empty': 'Noch keine Lesezeichen. Scrollen und + klicken.',
+  'logView.bookmarks.noMatch': 'Keine Treffer.',
+  'logView.bookmarks.notePlaceholder': 'Notiz hinzufügen…',
+  'logView.bookmarks.addNote': 'Notiz hinzufügen',
+  'logView.bookmarks.remove': 'Lesezeichen entfernen',
+  'logView.bookmarks.count': '{count} Lesezeichen',
   'logView.export': 'Exportieren',
 
 

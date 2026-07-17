@@ -330,8 +330,28 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
               </>
             )}
 
+            {/* GSSAPI / Kerberos via system OpenSSH */}
+            {!selectedIdentity && form.authMethod === "gssapi" && (
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden p-2 rounded-md bg-secondary/50 border border-border/60">
+                <Shield size={14} className="text-primary shrink-0" />
+                <span className="text-sm min-w-0 flex-1 truncate">
+                  {t("hostDetails.credential.gssapi")}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => {
+                    update("authMethod", "password");
+                  }}
+                >
+                  <X size={12} />
+                </Button>
+              </div>
+            )}
+
             {/* Save Password toggle - shown when password is entered */}
-            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && form.password && (
+            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && form.authMethod !== "gssapi" && form.password && (
               <div className="flex items-center justify-between py-1">
                 <span className="text-xs text-muted-foreground">
                   {t("hostDetails.password.save")}
@@ -487,10 +507,35 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
                           {t("hostDetails.credential.agent")}
                         </span>
                       </button>
+
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary/80 transition-colors text-left"
+                        onClick={() => {
+                          update("identityFileId", undefined);
+                          update("identityFilePaths", undefined);
+                          update("password", undefined);
+                          update("authMethod", "gssapi");
+                          setPendingReferenceKeyPath(null);
+                          setSelectedCredentialType(null);
+                          setCredentialPopoverOpen(false);
+                        }}
+                      >
+                        <Shield size={16} className="text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {t("hostDetails.credential.gssapi")}
+                        </span>
+                      </button>
                     </div>
                   </PopoverContent>
                 </Popover>
               )}
+
+            {!selectedIdentity && !form.identityId && form.authMethod === "gssapi" && (
+              <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground leading-snug">
+                {t("hostDetails.credential.gssapiHint")}
+              </div>
+            )}
 
             {/* Key selection combobox - appears after selecting "Key" type */}
             {!selectedIdentity &&

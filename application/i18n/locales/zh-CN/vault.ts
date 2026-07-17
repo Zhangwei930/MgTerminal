@@ -851,6 +851,9 @@ export const zhCNVaultMessages: Messages = {
   'hostDetails.testConnection': '测试连接',
 
   'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.credential.gssapi': 'GSSAPI / Kerberos',
+  'hostDetails.credential.gssapiHint':
+    '通过系统 OpenSSH 客户端使用 GSSAPIAuthentication（Kerberos 票据缓存）。需先取得有效 TGT（如 kinit）。此路径暂不支持跳板主机与 MagiesTerminal 代理。',
   'hostDetails.agent.loading': '正在读取 Agent 中的身份…',
   'hostDetails.agent.unavailable': '未检测到 SSH Agent。请先启动 ssh-agent(或启用密钥管理器的 Agent)后重试。',
   'hostDetails.agent.empty': 'SSH Agent 中没有密钥,可用 ssh-add 添加。',

@@ -33,6 +33,7 @@ interface ConnectionLogsManagerProps {
 // (values come from the bridge's auth handler ids).
 export const formatLogAuthMethod = (method: string): string => {
     if (method === "publickey" || method === "publickey-user") return "key";
+    if (method === "gssapi") return "gssapi/kerberos";
     if (method.startsWith("publickey-default-")) return `key (${method.slice("publickey-default-".length)})`;
     if (method.startsWith("publickey-encrypted-")) return `key (${method.slice("publickey-encrypted-".length)})`;
     return method;

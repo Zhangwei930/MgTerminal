@@ -194,3 +194,22 @@ test("resolveHostAuth: identity with agent auth method resolves to agent", () =>
   assert.equal(resolved.authMethod, "agent");
   assert.equal(resolved.username, "ops");
 });
+
+test("resolveHostAuth: authMethod 'gssapi' yields no key or password", () => {
+  const host = {
+    id: "h1",
+    label: "krb-host",
+    hostname: "dc.example.com",
+    username: "alice",
+    tags: [],
+    os: "linux",
+    authMethod: "gssapi",
+    password: "stale-password",
+    identityFileId: "key-1",
+  } as unknown as Host;
+  const resolved = resolveHostAuth({ host, keys: [referenceKey], identities: [] });
+  assert.equal(resolved.authMethod, "gssapi");
+  assert.equal(resolved.key, undefined);
+  assert.equal(resolved.keyId, undefined);
+  assert.equal(resolved.password, undefined);
+});

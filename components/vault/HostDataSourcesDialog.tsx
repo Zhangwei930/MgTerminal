@@ -1,11 +1,13 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Database, FileJson, Globe, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { ClipboardPaste, Database, FileJson, Globe, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useI18n } from "../../application/i18n/I18nProvider";
+import { looksLikeAnsibleInventoryIni } from "../../domain/ansibleInventory";
 import {
   HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS,
   isHttpInventoryUrl,
   isJsonManagedSourceType,
   normalizeAutoSyncIntervalMs,
+  parseInventoryDocument,
 } from "../../domain/hostDataSource";
 import type { ManagedSource } from "../../domain/models";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
@@ -110,6 +112,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const [autoSyncIntervalMs, setAutoSyncIntervalMs] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [pasting, setPasting] = useState(false);
 
   const jsonSources = useMemo(
     () => managedSources.filter((source) => isJsonManagedSourceType(source.type)),
@@ -207,6 +210,69 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     [onSyncSource, t],
   );
 
+  const handlePasteInventory = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.writeLocalFile || !bridge?.getTempDirPath) {
+      toast.error(t("vault.dataSources.toast.pasteUnavailable"));
+      return;
+    }
+    setPasting(true);
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) {
+        toast.error(t("vault.dataSources.toast.pasteEmpty"));
+        return;
+      }
+      // Validate before writing so we fail fast with a clear message.
+      parseInventoryDocument(text);
+
+      const tempDir = await bridge.getTempDirPath();
+      if (!tempDir) {
+        toast.error(t("vault.dataSources.toast.pasteUnavailable"));
+        return;
+      }
+      const ext = looksLikeAnsibleInventoryIni(text) && !text.trimStart().startsWith("{")
+        ? "ini"
+        : "json";
+      const stamp = Date.now().toString(36);
+      const sep = tempDir.includes("\\") && !tempDir.includes("/") ? "\\" : "/";
+      const base = tempDir.endsWith("/") || tempDir.endsWith("\\")
+        ? tempDir.slice(0, -1)
+        : tempDir;
+      const filePath = `${base}${sep}inventory-paste-${stamp}.${ext}`;
+      const bytes = new TextEncoder().encode(text);
+      await bridge.writeLocalFile(
+        filePath,
+        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+      );
+
+      const { outcome } = await onAddJsonSource({
+        type: "json_file",
+        filePath,
+        groupName: "Clipboard",
+        label: t("vault.dataSources.pasteLabel"),
+        syncMode: "merge",
+        syncNow: true,
+      });
+      if (outcome && !outcome.success) {
+        toast.error(
+          outcome.error || t("common.unknownError"),
+          t("vault.dataSources.toast.syncFailedTitle"),
+        );
+      } else if (outcome) {
+        const formatted = formatSyncOutcome(t, outcome);
+        toast.success(formatted.message, t("vault.dataSources.toast.pasteTitle"));
+      } else {
+        toast.success(t("vault.dataSources.toast.pasteAdded"), t("vault.dataSources.toast.pasteTitle"));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("common.unknownError");
+      toast.error(message, t("vault.dataSources.toast.pasteFailedTitle"));
+    } finally {
+      setPasting(false);
+    }
+  }, [onAddJsonSource, t]);
+
   const handleSyncAll = useCallback(async () => {
     if (!onSyncAllSources) return;
     setSyncingAll(true);
@@ -280,7 +346,20 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                 <div className="text-sm text-muted-foreground">
                   {t("vault.dataSources.count", { count: jsonSources.length })}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pasting || submitting || Boolean(syncingSourceId)}
+                    onClick={() => void handlePasteInventory()}
+                  >
+                    {pasting ? (
+                      <Loader2 size={14} className="mr-2 animate-spin" />
+                    ) : (
+                      <ClipboardPaste size={14} className="mr-2" />
+                    )}
+                    {t("vault.dataSources.paste")}
+                  </Button>
                   {jsonSources.length > 0 && onSyncAllSources && (
                     <Button
                       size="sm"

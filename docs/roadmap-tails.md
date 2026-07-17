@@ -95,6 +95,7 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 | Ansible inventory INI | 已实现 | 复用数据源管线；自动识别 INI / JSON |
 | Ansible inventory 导出 | 已实现 | 团队分享 INI（仅元数据，与 JSON 对称） |
 | 清单分享到剪贴板 | 已实现 | JSON / Ansible INI 复制，无凭据 |
+| 剪贴板粘贴导入清单 | 已实现 | 校验 → 临时文件 → 数据源同步 |
 | 数据源定时自动同步 | 已实现 | per-source 间隔；默认关闭；hash 跳过 |
 | 数据源同步状态 / 全部同步 | 已实现 | lastSyncStatus/error + Sync all |
 | 数据源启用开关 | 已实现 | enabled=false 跳过手动/自动/Sync all |

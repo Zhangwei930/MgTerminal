@@ -79,9 +79,8 @@ interface LogItemProps {
 const LogItem = memo<LogItemProps>(({ log, onToggleSaved, onDelete, onClick }) => {
     const { t, resolvedLocale } = useI18n();
     const bookmarkCount = useMemo(() => {
-      // Node/jsdom unit tests may not define localStorage.
+      // Node unit tests may not define localStorage; adapter throws — treat as 0.
       try {
-        if (typeof localStorage === "undefined") return 0;
         const store = normalizeLogBookmarkStore(
           localStorageAdapter.read(STORAGE_KEY_LOG_BOOKMARKS) ?? {},
         );

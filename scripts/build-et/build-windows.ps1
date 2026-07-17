@@ -79,7 +79,7 @@ try {
     -GNinja `
     -DCMAKE_BUILD_TYPE=RelWithDebInfo `
     -DDISABLE_TELEMETRY=ON `
-    -DVCPKG_TARGET_TRIPLET=$triplet
+    "-DVCPKG_TARGET_TRIPLET=$triplet"
   if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
   cmake --build $buildDir --target et

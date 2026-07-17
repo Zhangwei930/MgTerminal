@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
 import { HostNotesIndicator } from "../host/HostNotesIndicator";
+import { ProductEmptyState } from "../ui/ProductEmptyState";
 import { VaultEntityIcon, vaultPrimaryIconClass } from "./VaultEntityIcon";
 import {
   clearVaultDropIndicator,
@@ -28,7 +29,7 @@ const isRelatedTargetInside = (
 };
 
 export function VaultHostListSection({ ctx }: { ctx: VaultHostListSectionContext }) {
-  const { Badge, Boolean, Button, cancelInlineGroupEdit, CheckSquare, ClipboardCopy, Clock, cn, commitInlineGroupRename, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, Copy, displayedGroups, displayedHosts, DistroAvatar, Edit2, FileSymlink, FolderPlus, FolderTree, getDropTargetClasses, getEffectiveHostDistro, groupConfigs, groupedDisplayHosts, handleCopyCredentials, handleDuplicateHost, handleEditGroupConfig, handleEditHost, handleHostConnect, handleUnmanageGroup, hasHostsSidePanel, hostListScrollRef, HostTreeView, isHostsSectionActive, isMultiSelectMode, lastPinnedId, LayoutGrid, managedGroupPaths, moveGroup, moveHostToGroup, onDeleteHost, Pin, pinnedHosts, pinnedRecentIds, Plug, recentHosts, reorderGroup, reorderHost, sanitizeHost, selectedGroupPath, selectedHostIds, sessionCount, setDeleteTargetPath, setDragOverDropTarget, setGroupDragOverDropTarget, setIsDeleteGroupOpen, setIsNewFolderOpen, setLastPinnedId, setNewFolderName, setSelectedGroupPath, setTargetParentPath, shouldHideEmptyRootHostsSection, showRecentHosts, sortMode, splitViewGridStyle, Square, Star, startInlineDeleteGroup, startInlineNewGroup, startInlineRenameGroup, t, toggleHostPinned, toggleHostSelection, Trash2, treeExpandedState, treeViewGroupTree, treeViewHosts, viewMode, visibleDisplayedHosts } = ctx;
+  const { Badge, Boolean, Button, cancelInlineGroupEdit, CheckSquare, ClipboardCopy, Clock, cn, commitInlineGroupRename, ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, Copy, displayedGroups, displayedHosts, DistroAvatar, Edit2, FileSymlink, FolderPlus, FolderTree, getDropTargetClasses, getEffectiveHostDistro, groupConfigs, groupedDisplayHosts, handleCopyCredentials, handleDuplicateHost, handleEditGroupConfig, handleEditHost, handleHostConnect, handleNewHost, handleUnmanageGroup, hasHostsSidePanel, hostListScrollRef, HostTreeView, isHostsSectionActive, isMultiSelectMode, lastPinnedId, LayoutGrid, managedGroupPaths, moveGroup, moveHostToGroup, onDeleteHost, Pin, pinnedHosts, pinnedRecentIds, Plug, recentHosts, reorderGroup, reorderHost, sanitizeHost, selectedGroupPath, selectedHostIds, sessionCount, setDeleteTargetPath, setDragOverDropTarget, setGroupDragOverDropTarget, setIsDeleteGroupOpen, setIsImportOpen, setIsNewFolderOpen, setLastPinnedId, setNewFolderName, setSelectedGroupPath, setTargetParentPath, shouldHideEmptyRootHostsSection, showRecentHosts, sortMode, splitViewGridStyle, Square, Star, startInlineDeleteGroup, startInlineNewGroup, startInlineRenameGroup, t, toggleHostPinned, toggleHostSelection, Trash2, treeExpandedState, treeViewGroupTree, treeViewHosts, viewMode, visibleDisplayedHosts } = ctx;
   const [draggingHostId, setDraggingHostId] = React.useState<string | null>(null);
   const draggingHostIdRef = React.useRef<string | null>(null);
   const lastPreviewReorderRef = React.useRef<string | null>(null);
@@ -796,17 +797,28 @@ export function VaultHostListSection({ ctx }: { ctx: VaultHostListSectionContext
                           </div>
                         ))}
                         {groupedDisplayHosts.length === 0 && (
-                          <div className="col-span-full flex flex-col items-center justify-center py-24 text-muted-foreground">
-                            <div className="h-16 w-16 rounded-2xl bg-secondary/80 flex items-center justify-center mb-4">
-                              <LayoutGrid size={32} className="opacity-60" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-2">
-                              {t('vault.hosts.empty.title')}
-                            </h3>
-                            <p className="text-sm text-center max-w-sm">
-                              {t('vault.hosts.empty.desc')}
-                            </p>
-                          </div>
+                          <ProductEmptyState
+                            icon={<LayoutGrid size={32} className="opacity-60" />}
+                            title={t("vault.hosts.empty.title")}
+                            description={t("vault.hosts.empty.desc")}
+                            actions={[
+                              ...(handleNewHost
+                                ? [{ label: t("vault.hosts.newHost"), onClick: () => handleNewHost() }]
+                                : []),
+                              ...(setIsImportOpen
+                                ? [{
+                                    label: t("vault.hosts.import"),
+                                    onClick: () => setIsImportOpen(true),
+                                    variant: "secondary" as const,
+                                  }]
+                                : []),
+                            ]}
+                            hints={[
+                              t("vault.hosts.empty.hint.import"),
+                              t("vault.hosts.empty.hint.connect"),
+                              t("vault.hosts.empty.hint.sftp"),
+                            ]}
+                          />
                         )}
                     </div>
                   ) : (
@@ -932,17 +944,28 @@ export function VaultHostListSection({ ctx }: { ctx: VaultHostListSectionContext
                           );
                       })}
                       {displayedHosts.length === 0 && (
-                        <div className="col-span-full flex flex-col items-center justify-center py-24 text-muted-foreground">
-                          <div className="h-16 w-16 rounded-2xl bg-secondary/80 flex items-center justify-center mb-4">
-                            <LayoutGrid size={32} className="opacity-60" />
-                          </div>
-                          <h3 className="text-lg font-semibold text-foreground mb-2">
-                            {t('vault.hosts.empty.title')}
-                          </h3>
-                          <p className="text-sm text-center max-w-sm">
-                            {t('vault.hosts.empty.desc')}
-                          </p>
-                        </div>
+                        <ProductEmptyState
+                          icon={<LayoutGrid size={32} className="opacity-60" />}
+                          title={t("vault.hosts.empty.title")}
+                          description={t("vault.hosts.empty.desc")}
+                          actions={[
+                            ...(handleNewHost
+                              ? [{ label: t("vault.hosts.newHost"), onClick: () => handleNewHost() }]
+                              : []),
+                            ...(setIsImportOpen
+                              ? [{
+                                  label: t("vault.hosts.import"),
+                                  onClick: () => setIsImportOpen(true),
+                                  variant: "secondary" as const,
+                                }]
+                              : []),
+                          ]}
+                          hints={[
+                            t("vault.hosts.empty.hint.import"),
+                            t("vault.hosts.empty.hint.connect"),
+                            t("vault.hosts.empty.hint.sftp"),
+                          ]}
+                        />
                       )}
                     </div>
                   )}

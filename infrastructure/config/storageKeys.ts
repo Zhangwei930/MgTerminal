@@ -123,6 +123,11 @@ export const STORAGE_KEY_SFTP_TRANSFER_CHILD_NAME_WIDTH = 'magiesTerminal_sftp_t
 /** Incomplete SFTP file transfer queue (resume/retry after restart). */
 export const STORAGE_KEY_SFTP_TRANSFER_QUEUE = 'magiesTerminal_sftp_transfer_queue_v1';
 
+/** First-launch onboarding wizard completed. */
+export const STORAGE_KEY_ONBOARDING_COMPLETE = 'magiesTerminal_onboarding_complete_v1';
+/** First successful connection tip already shown. */
+export const STORAGE_KEY_FIRST_CONNECTION_TIPS_SHOWN = 'magiesTerminal_first_connection_tips_shown_v1';
+
 // Editor Settings
 export const STORAGE_KEY_EDITOR_WORD_WRAP = 'magiesTerminal_editor_word_wrap_v1';
 

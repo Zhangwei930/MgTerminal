@@ -1,9 +1,12 @@
 import {
+  Activity,
   Folder,
+  FolderInput,
   FolderLock,
   LayoutGrid,
   Plus,
   Search,
+  Settings,
   Terminal,
   TerminalSquare,
 } from "lucide-react";
@@ -11,11 +14,15 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { useI18n } from "../application/i18n/I18nProvider";
 import { Host, TerminalSession, TerminalSettings, Workspace } from "../types";
 import { KeyBinding } from "../domain/models";
+import {
+  filterCommandPaletteActions,
+  type CommandPaletteActionId,
+} from "../domain/onboarding";
 import { matchesSearchQuery } from "../lib/searchMatcher";
 import { buildQuickSwitcherShells, useDiscoveredShells, getShellIconPath, isMonochromeShellIcon } from "../lib/useDiscoveredShells";
 
 type QuickSwitcherItem = {
-  type: "host" | "tab" | "workspace" | "action" | "shell";
+  type: "host" | "tab" | "workspace" | "action" | "shell" | "command";
   id: string;
   data?: Host | TerminalSession | Workspace;
 };
@@ -71,6 +78,8 @@ interface QuickSwitcherProps {
   onClose: () => void;
   onCreateLocalTerminal?: (shell?: { command: string; args?: string[]; name?: string; icon?: string }) => void;
   onCreateWorkspace?: () => void;
+  /** Command palette actions (settings / new host / import / health). */
+  onCommandAction?: (actionId: CommandPaletteActionId) => void;
   keyBindings?: KeyBinding[];
   showSftpTab: boolean;
   terminalSettings?: Pick<TerminalSettings, "localShell" | "localShellArgs">;
@@ -88,6 +97,7 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
   onClose,
   onCreateLocalTerminal,
   onCreateWorkspace,
+  onCommandAction,
   keyBindings,
   showSftpTab,
   terminalSettings,
@@ -111,6 +121,11 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
     // Default shell first
     return [...list].sort((a, b) => (a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1));
   }, [quickSwitcherShells, query]);
+
+  const commandActions = useMemo(
+    () => (onCommandAction ? filterCommandPaletteActions(query) : []),
+    [onCommandAction, query],
+  );
 
   // Get hotkey display strings
   const getHotkeyLabel = useCallback((actionId: string) => {
@@ -221,6 +236,10 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
       } else if (shouldShowLocalTerminalFallback) {
         items.push({ type: "action", id: "local-terminal" });
       }
+      // Searchable settings / actions / help
+      commandActions.forEach((action) =>
+        items.push({ type: "command", id: action.id }),
+      );
     } else {
       // Recent connections only
       results.forEach((host) =>
@@ -229,6 +248,9 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
       // Also include matching shells in search results
       filteredShells.forEach((shell) =>
         items.push({ type: "shell", id: shell.id }),
+      );
+      commandActions.forEach((action) =>
+        items.push({ type: "command", id: action.id }),
       );
     }
 
@@ -239,7 +261,7 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
     });
 
     return { flatItems: items, itemIndexMap: indexMap };
-  }, [showCategorized, results, builtInTabs, filteredOrphanSessions, filteredWorkspaces, filteredShells, shouldShowLocalTerminalFallback]);
+  }, [showCategorized, results, builtInTabs, filteredOrphanSessions, filteredWorkspaces, filteredShells, shouldShowLocalTerminalFallback, commandActions]);
 
   // O(1) index lookup
   const getItemIndex = useCallback((type: string, id: string) => {
@@ -278,6 +300,12 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
           onClose();
         }
         break;
+      case "command":
+        if (onCommandAction) {
+          onCommandAction(item.id as CommandPaletteActionId);
+          onClose();
+        }
+        break;
       case "shell": {
         const shell = quickSwitcherShells.find(s => s.id === item.id);
         if (shell && onCreateLocalTerminal) {
@@ -287,6 +315,14 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
         break;
       }
     }
+  };
+
+  const commandIcon = (id: string) => {
+    if (id === "open-settings") return <Settings size={16} className="text-muted-foreground" />;
+    if (id === "import-hosts") return <FolderInput size={16} className="text-muted-foreground" />;
+    if (id === "run-host-health") return <Activity size={16} className="text-muted-foreground" />;
+    if (id === "local-terminal") return <Terminal size={16} className="text-muted-foreground" />;
+    return <Plus size={16} className="text-muted-foreground" />;
   };
 
   return (
@@ -525,6 +561,38 @@ const QuickSwitcherInner: React.FC<QuickSwitcherProps> = ({
                   </div>
                   <span className="text-sm font-medium">{t("qs.localTerminal")}</span>
                 </div>
+              </div>
+            )}
+
+            {commandActions.length > 0 && (
+              <div>
+                <div className="px-4 py-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("qs.commands")}
+                  </span>
+                </div>
+                {commandActions.map((action) => {
+                  const idx = getItemIndex("command", action.id);
+                  const isSelected = idx === selectedIndex;
+                  return (
+                    <div
+                      key={action.id}
+                      className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
+                        isSelected ? "bg-primary/15" : "hover:bg-muted/50"
+                      }`}
+                      onClick={() => {
+                        onCommandAction?.(action.id);
+                        onClose();
+                      }}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                    >
+                      <div className="h-6 w-6 rounded flex items-center justify-center">
+                        {commandIcon(action.id)}
+                      </div>
+                      <span className="text-sm font-medium">{t(action.labelKey)}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

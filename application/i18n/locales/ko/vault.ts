@@ -463,6 +463,13 @@ export const koVaultMessages: Messages = {
   'qs.localShells': '로컬 셸',
   'qs.default': '기본값',
 
+  'qs.commands': 'Commands',
+  'qs.command.openSettings': 'Open Settings',
+  'qs.command.newHost': 'New Host',
+  'qs.command.importHosts': 'Import hosts / migrate',
+  'qs.command.hostHealth': 'Host health snapshot',
+  'qs.command.localTerminal': 'New local terminal',
+
   // Select Host panel
   'selectHost.title': '호스트 선택',
   'selectHost.noHostsFound': '호스트를 찾을 수 없습니다',

@@ -101,21 +101,38 @@ If you regularly work with a fleet of servers, MagiesTerminal is built for speed
 <a name="features"></a>
 # Features
 
+### Feature matrix
+
+| Area | Highlights |
+|------|------------|
+| **Vault** | Grid / list / tree hosts, groups, tags, import/export, notes, known hosts, connection logs |
+| **Auth** | Password, key, certificate, **SSH Agent** (identity picker + preferred fingerprint), jump hosts, proxies |
+| **Connection UX** | Progress logs, **Test Connection** diagnostics (DNS → TCP → jump → host key → auth → SFTP), deep links |
+| **Terminal** | Split panes, workspaces, session restore, broadcast, snippets/scripts, serial / telnet / mosh / ET |
+| **SFTP** | Dual pane, conflict handling, transfer queue with **resume / auto-retry / optional checksum**, editor |
+| **Ops** | Port forwarding, system manager, **multi-host health snapshot**, AI sidebar agent |
+| **Productization** | First-run onboarding, command palette (quick switcher), empty-state migration paths |
+
 ### 🗂️ Vault
 - **Multiple views** — grid / list / tree
 - **Fast search** — locate hosts and groups quickly
+- **Test Connection** — stepwise diagnostics before you save or after a failure
+- **Host health snapshot** — batch latency / auth / load·mem·disk check on demand
 
 ### 🖥️ Terminal Workspaces
 - **Split panes** — horizontal and vertical splits for multi-tasking
 - **Session management** — run multiple connections side-by-side
+- **Session restore** — bring back previous layouts after restart
 
 ### 📁 SFTP + Built-in Editor
 - **File workflows** — drag & drop uploads/downloads
+- **Reliable transfers** — resume partial files, auto-retry with backoff, optional SHA-256 verify
 - **Edit in place** — built-in editor for quick changes
 
 ### 🎨 Personalization
 - **Custom themes** — tune the app appearance to your taste
 - **Keyword highlighting** — customize highlight rules for terminal output
+- **Command palette** — search hosts, tabs, settings, and actions from the quick switcher
 
 ---
 

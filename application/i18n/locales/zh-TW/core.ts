@@ -767,4 +767,11 @@ export const zhTWCoreMessages: Messages = {
   'qs.localShells': '本機 Shell',
   'qs.default': '預設',
 
+  'qs.commands': '命令',
+  'qs.command.openSettings': '開啟設定',
+  'qs.command.newHost': '新增主機',
+  'qs.command.importHosts': '匯入主機 / 遷移',
+  'qs.command.hostHealth': '多主機健康快照',
+  'qs.command.localTerminal': '新增本機終端',
+
 };

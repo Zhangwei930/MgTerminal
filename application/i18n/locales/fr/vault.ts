@@ -470,6 +470,13 @@ export const frVaultMessages: Messages = {
   'qs.localShells': 'Shells locaux',
   'qs.default': 'Par défaut',
 
+  'qs.commands': 'Commands',
+  'qs.command.openSettings': 'Open Settings',
+  'qs.command.newHost': 'New Host',
+  'qs.command.importHosts': 'Import hosts / migrate',
+  'qs.command.hostHealth': 'Host health snapshot',
+  'qs.command.localTerminal': 'New local terminal',
+
   // Select Host panel
   'selectHost.title': 'Sélectionner un hôte',
   'selectHost.noHostsFound': 'Aucun hôte trouvé',

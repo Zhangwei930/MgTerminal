@@ -459,6 +459,13 @@ export const ptVaultMessages: Messages = {
   'qs.localShells': 'Shells locais',
   'qs.default': 'Padrão',
 
+  'qs.commands': 'Commands',
+  'qs.command.openSettings': 'Open Settings',
+  'qs.command.newHost': 'New Host',
+  'qs.command.importHosts': 'Import hosts / migrate',
+  'qs.command.hostHealth': 'Host health snapshot',
+  'qs.command.localTerminal': 'New local terminal',
+
   // Select Host panel
   'selectHost.title': 'Selecionar host',
   'selectHost.noHostsFound': 'Nenhum host encontrado',

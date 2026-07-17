@@ -819,5 +819,28 @@ export const ptTerminalMessages: Messages = {
   'health.runScript': 'Executar script',
 
 
+  // First-run onboarding + first-connection tips
+  'onboarding.title': 'Welcome to MagiesTerminal',
+  'onboarding.subtitle': 'Three quick steps to your first productive session.',
+  'onboarding.next': 'Next',
+  'onboarding.skip': 'Skip',
+  'onboarding.done': 'Get started',
+  'onboarding.action.addHost': 'Add a host',
+  'onboarding.action.import': 'Import / migrate',
+  'onboarding.action.openSettings': 'Open settings',
+  'onboarding.step.addHost.title': 'Add your first host',
+  'onboarding.step.addHost.body': 'Create a host or import from SSH config / other tools so you can reconnect in one click.',
+  'onboarding.step.connect.title': 'Connect and verify',
+  'onboarding.step.connect.body': 'Use Test Connection if something fails — DNS, TCP, jump hosts, keys, and auth are checked step by step.',
+  'onboarding.step.explore.title': 'Explore the workspace',
+  'onboarding.step.explore.body': 'Split terminals, open SFTP, save workspaces, and run scripts across hosts from one window.',
+  'onboarding.tip.title': 'You are connected — try next',
+  'onboarding.tip.openSftp': 'Open the SFTP panel',
+  'onboarding.tip.saveWorkspace': 'Save this layout as a workspace',
+  'onboarding.tip.sessionRestore': 'Enable session restore in Settings',
+  'onboarding.tip.createSnippet': 'Save a reusable snippet/script',
+  'vault.hosts.empty.hint.import': 'Import SSH config or another client export',
+  'vault.hosts.empty.hint.connect': 'Add a host, then Connect or press the quick switcher',
+  'vault.hosts.empty.hint.sftp': 'After connect, open SFTP for files and editor',
 
 };

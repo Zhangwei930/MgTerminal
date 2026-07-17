@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { Suspense, lazy, useCallback, useMemo } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Download, Trash2 } from 'lucide-react';
 import { activeTabStore, toEditorTabId, useIsEditorTabActive } from '../state/activeTabStore';
 import { editorTabStore } from '../state/editorTabStore';
@@ -12,6 +12,7 @@ import { QuickScriptEditorDialog } from '../../components/scripts/QuickScriptEdi
 import { AddToWorkspaceDialog } from '../../components/workspace/AddToWorkspaceDialog';
 import { KeyboardInteractiveModal } from '../../components/KeyboardInteractiveModal';
 import { PassphraseModal } from '../../components/PassphraseModal';
+import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 import { UnsavedChangesProvider } from '../../components/editor/UnsavedChangesDialog';
 import { SnippetExecutionProvider } from '../../components/SnippetExecutionProvider';
 import { Button } from '../../components/ui/button';
@@ -20,6 +21,13 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { LazyLoadBoundary } from '../../components/ui/lazy-load-boundary';
 import { toast } from '../../components/ui/toast';
+import { isOnboardingComplete, pickFirstConnectionTips } from '../../domain/onboarding';
+import type { CommandPaletteActionId } from '../../domain/onboarding';
+import {
+  STORAGE_KEY_FIRST_CONNECTION_TIPS_SHOWN,
+  STORAGE_KEY_ONBOARDING_COMPLETE,
+} from '../../infrastructure/config/storageKeys';
+import { localStorageAdapter } from '../../infrastructure/persistence/localStorageAdapter';
 import { AppHostTreeLayer } from './AppHostTreeLayer';
 import { getUiThemeById } from '../../infrastructure/config/uiThemes';
 import { buildAppThemeCssVars } from '../state/settingsStateDefaults';
@@ -120,6 +128,63 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
       colorScheme: resolvedTheme,
     } as React.CSSProperties;
   }, [accentMode, customAccent, resolvedTheme, settings.darkUiThemeId, settings.lightUiThemeId]);
+
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try {
+      return !isOnboardingComplete(localStorageAdapter.readBoolean(STORAGE_KEY_ONBOARDING_COMPLETE));
+    } catch {
+      return false;
+    }
+  });
+
+  const completeOnboarding = useCallback(() => {
+    localStorageAdapter.writeBoolean(STORAGE_KEY_ONBOARDING_COMPLETE, true);
+    setShowOnboarding(false);
+  }, []);
+
+  // After the first successful remote connection, surface a short product tip list once.
+  useEffect(() => {
+    try {
+      if (localStorageAdapter.readBoolean(STORAGE_KEY_FIRST_CONNECTION_TIPS_SHOWN)) return;
+    } catch {
+      return;
+    }
+    const hasConnectedRemote = sessions.some(
+      (session: { status?: string; protocol?: string }) =>
+        session.status === "connected" &&
+        session.protocol !== "local" &&
+        session.protocol !== "serial",
+    );
+    if (!hasConnectedRemote) return;
+    localStorageAdapter.writeBoolean(STORAGE_KEY_FIRST_CONNECTION_TIPS_SHOWN, true);
+    const tipIds = pickFirstConnectionTips(3);
+    toast.info(
+      tipIds.map((id) => t(`onboarding.tip.${id}`)).join(" · "),
+      {
+        title: t("onboarding.tip.title"),
+        duration: 10000,
+      },
+    );
+  }, [sessions, t]);
+
+  const handleCommandAction = useCallback((actionId: CommandPaletteActionId) => {
+    switch (actionId) {
+      case "open-settings":
+        handleOpenSettings();
+        break;
+      case "new-host":
+      case "import-hosts":
+      case "run-host-health":
+        setActiveTabId("vault");
+        setNavigateToSection("hosts");
+        break;
+      case "local-terminal":
+        handleCreateLocalTerminal();
+        break;
+      default:
+        break;
+    }
+  }, [handleCreateLocalTerminal, handleOpenSettings, setActiveTabId, setNavigateToSection]);
 
   return (
     <SnippetExecutionProvider>
@@ -555,6 +620,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
                 setQuickSearch('');
                 setAddToWorkspaceDialog({ mode: 'create' });
               }}
+              onCommandAction={handleCommandAction}
               onClose={() => {
                 setIsQuickSwitcherOpen(false);
                 setQuickSearch('');
@@ -564,6 +630,22 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
             />
           </Suspense>
         </LazyLoadBoundary>
+      )}
+
+      {showOnboarding && (
+        <OnboardingWizard
+          open={showOnboarding}
+          onComplete={completeOnboarding}
+          onAddHost={() => {
+            setActiveTabId("vault");
+            setNavigateToSection("hosts");
+          }}
+          onImport={() => {
+            setActiveTabId("vault");
+            setNavigateToSection("hosts");
+          }}
+          onOpenSettings={handleOpenSettings}
+        />
       )}
 
       <Dialog open={!!sessionRenameTarget} onOpenChange={(open) => {

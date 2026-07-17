@@ -867,5 +867,28 @@ export const zhTWTerminalMessages: Messages = {
   'health.runScript': '執行腳本',
 
 
+  // First-run onboarding + first-connection tips
+  'onboarding.title': '歡迎使用 MagiesTerminal',
+  'onboarding.subtitle': '三步完成首次高效連線。',
+  'onboarding.next': '下一步',
+  'onboarding.skip': '略過',
+  'onboarding.done': '開始使用',
+  'onboarding.action.addHost': '新增主機',
+  'onboarding.action.import': '匯入 / 遷移',
+  'onboarding.action.openSettings': '開啟設定',
+  'onboarding.step.addHost.title': '新增第一台主機',
+  'onboarding.step.addHost.body': '手動建立主機，或從 SSH config / 其他工具匯入，之後一鍵重連。',
+  'onboarding.step.connect.title': '連線並診斷',
+  'onboarding.step.connect.body': '連線失敗時用「測試連線」逐步檢查 DNS、TCP、跳板機、主機金鑰與認證。',
+  'onboarding.step.explore.title': '探索工作區',
+  'onboarding.step.explore.body': '分割終端、SFTP、儲存工作區、跨主機腳本，都在同一個視窗完成。',
+  'onboarding.tip.title': '已連線 — 可以試試',
+  'onboarding.tip.openSftp': '開啟 SFTP 面板',
+  'onboarding.tip.saveWorkspace': '將目前配置儲存為工作區',
+  'onboarding.tip.sessionRestore': '在設定中啟用工作階段還原',
+  'onboarding.tip.createSnippet': '儲存可重用的程式碼片段/腳本',
+  'vault.hosts.empty.hint.import': '可匯入 SSH config 或其他用戶端匯出',
+  'vault.hosts.empty.hint.connect': '新增主機後點選連線，或使用快速切換',
+  'vault.hosts.empty.hint.sftp': '連線後開啟 SFTP 進行檔案與編輯',
 
 };

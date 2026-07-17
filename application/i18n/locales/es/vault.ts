@@ -423,6 +423,13 @@ export const esVaultMessages: Messages = {
   'qs.localTerminal': 'Terminal local',
   'qs.localShells': 'Shells locales',
   'qs.default': 'Predeterminado',
+
+  'qs.commands': 'Commands',
+  'qs.command.openSettings': 'Open Settings',
+  'qs.command.newHost': 'New Host',
+  'qs.command.importHosts': 'Import hosts / migrate',
+  'qs.command.hostHealth': 'Host health snapshot',
+  'qs.command.localTerminal': 'New local terminal',
   'selectHost.title': 'Seleccionar host',
   'selectHost.noHostsFound': 'No hosts encontrados',
   'selectHost.newHost': 'Nuevo host',

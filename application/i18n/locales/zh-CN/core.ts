@@ -779,4 +779,11 @@ export const zhCNCoreMessages: Messages = {
   'qs.localShells': '本地 Shell',
   'qs.default': '默认',
 
+  'qs.commands': '命令',
+  'qs.command.openSettings': '打开设置',
+  'qs.command.newHost': '新建主机',
+  'qs.command.importHosts': '导入主机 / 迁移',
+  'qs.command.hostHealth': '多主机健康快照',
+  'qs.command.localTerminal': '新建本地终端',
+
 };

@@ -867,5 +867,27 @@ export const zhCNTerminalMessages: Messages = {
   'health.runScript': '运行脚本',
 
 
+  'onboarding.title': '欢迎使用 MagiesTerminal',
+  'onboarding.subtitle': '三步完成首次高效连接。',
+  'onboarding.next': '下一步',
+  'onboarding.skip': '跳过',
+  'onboarding.done': '开始使用',
+  'onboarding.action.addHost': '添加主机',
+  'onboarding.action.import': '导入 / 迁移',
+  'onboarding.action.openSettings': '打开设置',
+  'onboarding.step.addHost.title': '添加第一台主机',
+  'onboarding.step.addHost.body': '手动创建主机，或从 SSH config / 其他工具导入，之后一键重连。',
+  'onboarding.step.connect.title': '连接并诊断',
+  'onboarding.step.connect.body': '连接失败时用「测试连接」逐步检查 DNS、TCP、跳板机、主机密钥与认证。',
+  'onboarding.step.explore.title': '探索工作区',
+  'onboarding.step.explore.body': '分屏终端、SFTP、保存工作区、跨主机脚本，都在同一个窗口完成。',
+  'onboarding.tip.title': '已连接 — 可以试试',
+  'onboarding.tip.openSftp': '打开 SFTP 面板',
+  'onboarding.tip.saveWorkspace': '将当前布局保存为工作区',
+  'onboarding.tip.sessionRestore': '在设置中启用会话恢复',
+  'onboarding.tip.createSnippet': '保存可复用的代码片段/脚本',
+  'vault.hosts.empty.hint.import': '可导入 SSH config 或其他客户端导出',
+  'vault.hosts.empty.hint.connect': '添加主机后点击连接，或使用快速切换',
+  'vault.hosts.empty.hint.sftp': '连接后打开 SFTP 进行文件与编辑',
 
 };

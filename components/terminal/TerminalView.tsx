@@ -19,6 +19,7 @@ import {
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { BroadcastToolbarControl } from './BroadcastToolbarControl';
 import { DEFAULT_BROADCAST_CONFIG } from '../../domain/broadcastTargets';
+import { TERMINAL_HEX_PANEL_HEIGHT_PX } from './TerminalHexPanel';
 
 type TerminalViewContext = Record<string, any>;
 type HostLineTimestampToggle = {
@@ -180,7 +181,7 @@ function terminalViewCtxEqual(
 }
 
 function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
-  const { Activity, Button, Clock3, Copy, Maximize2, Radio, Sparkles, SquareArrowOutUpRight, TerminalAutocomplete, TerminalComposeBar, TerminalConnectionDialog, TerminalContextMenu, TerminalSearchBar, Tooltip, TooltipContent, TooltipTrigger, ZmodemOverwriteDialog, ZmodemProgressIndicator, auth, autocompleteAcceptTextRef, autocompleteCloseRef, autocompleteHostOs, autocompleteInputRef, autocompleteKeyEventRef, autocompleteRepositionRef, autocompleteSettings, chainProgress, cn, compactToolbar, lineTimestampsAvailable, containerRef, effectiveFontSize, effectiveFontWeight, effectiveTheme, error, executeSnippet, executeSnippetCommand, handleAddSelectionToAI, handleCancelConnect, handleCloseDisconnectedSession, handleCloseSearch, handleDismissDisconnectedDialog, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, handleFindNext, handleFindPrevious, handleHostKeyAddAndContinue, handleHostKeyClose, handleHostKeyContinue, handleOsc52ReadResponse, handleOsc7SetupConfirm, handleOsc7SetupOpenChange, handleReceiveYmodem, handleRetry, handleSearch, handleSendYmodem, handleTopOverlayMouseDownCapture, hasMouseTracking, hasSelection, host, hotkeyScheme, inWorkspace, isBroadcastEnabled, dangerousPasteDialog, handleDangerousPasteDialogOpenChange, handleDangerousPasteConfirm, broadcastConfig, onUpdateBroadcastConfig, broadcastSessionOptions, broadcastAllSessionRefs, isCancelling, isComposeBarOpen, isConnectionAwaitingUserInput, isDraggingOver, isFocusMode, isLocalConnection, remoteDragDropUsesZmodem, isSerialConnection, isSearchOpen, isSupportedOs, isSystemSidebarEligible, isVisible, keyBindings, keys, knownCwdRef, needsHostKeyVerification, onCloseSession, onDetach, onDetachPointerDown, onExpandToFocus, onOpenSystem, onRename, onRunDiagnostics, onSplitHorizontal, onSplitVertical, onToggleBroadcast, onUpdateHost, osc52ReadPromptVisible, osc7SetupOpen, osc7SetupRunning, pendingHostKeyInfo, progressLogs, progressValue, renderControls, resolvedFontFamily, restoreState, scriptExecutionOverlay, searchMatchCount, searchFocusToken, selectionOverlayPosition, sessionDisplayName, sessionId, sessionRef, setIsComposeBarOpen, setShowLogs, shouldShowConnectionDialog, showLogs, showSelectionAIAction, snippets, status, sudoHintRef, sudoHintText, t, termRef, terminalContextActions, terminalCwdTracker, terminalPreviewVars, terminalSettings, timeLeft, toast, zmodem } = ctx;
+  const { Activity, Binary, Button, Clock3, Copy, Maximize2, Radio, Sparkles, SquareArrowOutUpRight, TerminalAutocomplete, TerminalComposeBar, TerminalConnectionDialog, TerminalContextMenu, TerminalHexPanel, TerminalSearchBar, Tooltip, TooltipContent, TooltipTrigger, ZmodemOverwriteDialog, ZmodemProgressIndicator, auth, autocompleteAcceptTextRef, autocompleteCloseRef, autocompleteHostOs, autocompleteInputRef, autocompleteKeyEventRef, autocompleteRepositionRef, autocompleteSettings, chainProgress, cn, compactToolbar, lineTimestampsAvailable, hexDiagnosticsOpen, hexDumpText, hexByteLength, handleToggleHexDiagnostics, handleClearHexDiagnostics, containerRef, effectiveFontSize, effectiveFontWeight, effectiveTheme, error, executeSnippet, executeSnippetCommand, handleAddSelectionToAI, handleCancelConnect, handleCloseDisconnectedSession, handleCloseSearch, handleDismissDisconnectedDialog, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, handleFindNext, handleFindPrevious, handleHostKeyAddAndContinue, handleHostKeyClose, handleHostKeyContinue, handleOsc52ReadResponse, handleOsc7SetupConfirm, handleOsc7SetupOpenChange, handleReceiveYmodem, handleRetry, handleSearch, handleSendYmodem, handleTopOverlayMouseDownCapture, hasMouseTracking, hasSelection, host, hotkeyScheme, inWorkspace, isBroadcastEnabled, dangerousPasteDialog, handleDangerousPasteDialogOpenChange, handleDangerousPasteConfirm, broadcastConfig, onUpdateBroadcastConfig, broadcastSessionOptions, broadcastAllSessionRefs, isCancelling, isComposeBarOpen, isConnectionAwaitingUserInput, isDraggingOver, isFocusMode, isLocalConnection, remoteDragDropUsesZmodem, isSerialConnection, isSearchOpen, isSupportedOs, isSystemSidebarEligible, isVisible, keyBindings, keys, knownCwdRef, needsHostKeyVerification, onCloseSession, onDetach, onDetachPointerDown, onExpandToFocus, onOpenSystem, onRename, onRunDiagnostics, onSplitHorizontal, onSplitVertical, onToggleBroadcast, onUpdateHost, osc52ReadPromptVisible, osc7SetupOpen, osc7SetupRunning, pendingHostKeyInfo, progressLogs, progressValue, renderControls, resolvedFontFamily, restoreState, scriptExecutionOverlay, searchMatchCount, searchFocusToken, selectionOverlayPosition, sessionDisplayName, sessionId, sessionRef, setIsComposeBarOpen, setShowLogs, shouldShowConnectionDialog, showLogs, showSelectionAIAction, snippets, status, sudoHintRef, sudoHintText, t, termRef, terminalContextActions, terminalCwdTracker, terminalPreviewVars, terminalSettings, timeLeft, toast, zmodem } = ctx;
   const ymodemActionEnabled = shouldEnableYmodemAction({
     isSerialConnection,
     status,
@@ -206,6 +207,11 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
   const lineTimestampToggleLabel = showLineTimestampGutter
     ? t("terminal.toolbar.timestampsDisable")
     : t("terminal.toolbar.timestampsEnable");
+  const hexPanelOpen = Boolean(hexDiagnosticsOpen);
+  const hexPanelHeight = hexPanelOpen ? TERMINAL_HEX_PANEL_HEIGHT_PX : 0;
+  const hexToggleLabel = hexPanelOpen
+    ? t("terminal.hex.disable")
+    : t("terminal.hex.enable");
   const titleConnectionAddress = formatTerminalTitleConnectionAddress(host);
   const hasBlockingReconnectOverlay = Boolean(osc52ReadPromptVisible || osc7SetupOpen || scriptExecutionOverlay || zmodem.active || zmodem.overwriteRequest);
   const showEnterReconnectHint = shouldReconnectTerminalOnEnterKey({
@@ -396,6 +402,31 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
                   <TooltipContent side="bottom">{lineTimestampToggleLabel}</TooltipContent>
                 </Tooltip>
               )}
+              {typeof handleToggleHexDiagnostics === "function" && Binary && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "ml-0.5 p-0.5 rounded transition-colors flex-shrink-0",
+                        "hover:bg-[color:var(--terminal-toolbar-btn-hover)]",
+                        hexPanelOpen ? "opacity-100" : "opacity-60 hover:opacity-100",
+                      )}
+                      style={
+                        hexPanelOpen
+                          ? { backgroundColor: "var(--terminal-toolbar-btn-active)" }
+                          : undefined
+                      }
+                      onClick={handleToggleHexDiagnostics}
+                      aria-label={hexToggleLabel}
+                      aria-pressed={hexPanelOpen}
+                    >
+                      <Binary size={10} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{hexToggleLabel}</TooltipContent>
+                </Tooltip>
+              )}
               {isSystemSidebarEligible && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -527,7 +558,7 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
               top: terminalContentTop,
               left: activeLineTimestampGutterWidth + terminalBodyInset,
               right: terminalBodyInset,
-              bottom: terminalBodyInset,
+              bottom: terminalBodyInset + hexPanelHeight,
               paddingLeft: 6,
               backgroundColor: 'var(--terminal-ui-bg)',
             }}
@@ -538,7 +569,7 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
             enabled={showLineTimestampGutter}
             top={terminalContentTop}
             left={terminalBodyInset}
-            bottom={terminalBodyInset}
+            bottom={terminalBodyInset + hexPanelHeight}
             sessionId={sessionId}
             color={lineTimestampColor}
             fontFamily={resolvedFontFamily}
@@ -547,6 +578,15 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
             width={lineTimestampGutterWidth}
             onWidthChange={handleLineTimestampGutterWidthChange}
           />
+          {TerminalHexPanel && (
+            <TerminalHexPanel
+              open={hexPanelOpen}
+              text={hexDumpText || ""}
+              byteLength={hexByteLength || 0}
+              onClose={handleToggleHexDiagnostics}
+              onClear={handleClearHexDiagnostics}
+            />
+          )}
           {shouldShowSelectionAIOverlay({
             hasSelection,
             selectionOverlayPosition,

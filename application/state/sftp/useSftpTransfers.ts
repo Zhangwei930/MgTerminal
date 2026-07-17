@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FileConflict,
   FileConflictAction,
@@ -13,6 +13,16 @@ import {
   describeSftpIncomingKind,
   getSftpConflictTypeKey,
 } from "../../../domain/sftpConflict";
+import {
+  computeRetryBackoffMs,
+  DEFAULT_MAX_AUTO_RETRIES,
+  parsePersistedTransferQueue,
+  resolveResumeOffset,
+  serializeTransferQueue,
+  shouldAutoRetry,
+} from "../../../domain/transferReliability";
+import { STORAGE_KEY_SFTP_TRANSFER_QUEUE } from "../../../infrastructure/config/storageKeys";
+import { localStorageAdapter } from "../../../infrastructure/persistence/localStorageAdapter";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import { logger } from "../../../lib/logger";
 import { SftpPane } from "./types";
@@ -21,6 +31,15 @@ import { useSftpTransferConflictOps } from "./transferConflictOps";
 import { useSftpTransferTaskOps } from "./transferTaskOps";
 import type { TransferResult, UseSftpTransfersParams, UseSftpTransfersResult } from "./useSftpTransfers.types";
 import { getParentPath, joinPath } from "./utils";
+
+const loadPersistedTransfers = (): TransferTask[] => {
+  try {
+    const raw = localStorageAdapter.read<unknown>(STORAGE_KEY_SFTP_TRANSFER_QUEUE);
+    return parsePersistedTransferQueue(raw);
+  } catch {
+    return [];
+  }
+};
 
 export const useSftpTransfers = ({
   getActivePane,
@@ -35,7 +54,7 @@ export const useSftpTransfers = ({
   listRemoteFiles,
   handleSessionError,
 }: UseSftpTransfersParams): UseSftpTransfersResult => {
-  const [transfers, setTransfers] = useState<TransferTask[]>([]);
+  const [transfers, setTransfers] = useState<TransferTask[]>(() => loadPersistedTransfers());
   const [conflicts, setConflicts] = useState<FileConflict[]>([]);
 
   // Track cancelled task IDs for checking during async operations
@@ -48,6 +67,18 @@ export const useSftpTransfers = ({
   conflictsRef.current = conflicts;
   const completionHandlersRef = useRef<Map<string, (result: TransferResult) => void | Promise<void>>>(new Map());
   const conflictDefaultsRef = useRef<Map<string, FileConflictAction>>(new Map());
+
+  // Persist incomplete top-level file transfers so restart can offer resume/retry.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        localStorageAdapter.write(STORAGE_KEY_SFTP_TRANSFER_QUEUE, serializeTransferQueue(transfers));
+      } catch (err) {
+        logger.warn("[SFTP] Failed to persist transfer queue", err);
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [transfers]);
 
   const clearCancelledTask = useCallback((taskId: string) => {
     cancelledTasksRef.current.delete(taskId);
@@ -96,6 +127,25 @@ export const useSftpTransfers = ({
   });
 
   const { statTargetPath, getDuplicateTarget, deleteTargetPath } = useSftpTransferConflictOps();
+
+  const probePartialTargetBytes = useCallback(
+    async (task: TransferTask, targetPane: SftpPane): Promise<number> => {
+      try {
+        if (task.direction === "download" || task.targetConnectionId === "local" || targetPane.connection?.isLocal) {
+          const stat = await magiesTerminalBridge.get()?.statLocal?.(task.targetPath);
+          return typeof stat?.size === "number" && stat.size > 0 ? stat.size : 0;
+        }
+        const sftpId = sftpSessionsRef.current.get(task.targetConnectionId);
+        if (!sftpId) return 0;
+        const encoding = targetPane.filenameEncoding || "auto";
+        const stat = await magiesTerminalBridge.get()?.statSftp?.(sftpId, task.targetPath, encoding);
+        return typeof stat?.size === "number" && stat.size > 0 ? stat.size : 0;
+      } catch {
+        return 0;
+      }
+    },
+    [sftpSessionsRef],
+  );
 
   const { estimateDirectoryBytes, transferFile, countDirectoryFiles, transferDirectory } = useSftpDirectoryTransferOps({
     cancelledTasksRef,
@@ -228,7 +278,8 @@ export const useSftpTransfers = ({
       updateTask({
         status: "transferring",
         totalBytes: Math.max(task.totalBytes, 0),
-        transferredBytes: 0,
+        // Keep resume offset so the progress bar does not jump back to 0%.
+        transferredBytes: Math.max(0, task.resumeOffset || 0),
         startTime: Date.now(),
       });
 
@@ -525,11 +576,58 @@ export const useSftpTransfers = ({
         return "cancelled";
       }
 
+      const nextAttempt = (task.attemptCount || 0) + 1;
+      const maxAttempts = task.maxAttempts ?? DEFAULT_MAX_AUTO_RETRIES;
+      const canRetry = shouldAutoRetry({
+        attemptCount: nextAttempt - 1,
+        maxAttempts,
+        retryable: task.retryable,
+        isDirectory: task.isDirectory,
+        isCancelled: false,
+      });
+
+      if (canRetry) {
+        const partialBytes = await probePartialTargetBytes(task, targetPane);
+        const resumeOffset = resolveResumeOffset({
+          partialTargetBytes: partialBytes,
+          transferredBytes: task.transferredBytes,
+          totalBytes: task.totalBytes,
+          direction: task.direction,
+        });
+        const delayMs = computeRetryBackoffMs(nextAttempt);
+        updateTask({
+          status: "pending",
+          attemptCount: nextAttempt,
+          resumeOffset,
+          transferredBytes: resumeOffset > 0 ? resumeOffset : task.transferredBytes,
+          error: `Retrying (${nextAttempt}/${maxAttempts})…`,
+          speed: 0,
+          endTime: undefined,
+        });
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        if (cancelledTasksRef.current.has(task.id)) {
+          clearCancelledTask(task.id);
+          return "cancelled";
+        }
+        const latest = transfersRef.current.find((t) => t.id === task.id);
+        const retriedTask: TransferTask = {
+          ...(latest || task),
+          attemptCount: nextAttempt,
+          resumeOffset,
+          status: "pending",
+          error: undefined,
+          endTime: undefined,
+          speed: 0,
+        };
+        return processTransfer(retriedTask, sourcePane, targetPane, targetSide);
+      }
+
       updateTask({
         status: "failed",
         error: err instanceof Error ? err.message : "Transfer failed",
         endTime: Date.now(),
         speed: 0,
+        attemptCount: nextAttempt - 1,
       });
       const completionHandler = completionHandlersRef.current.get(task.id);
       if (completionHandler) {
@@ -676,20 +774,31 @@ export const useSftpTransfers = ({
       const task = transfersRef.current.find((t) => t.id === transferId);
       if (!task || task.retryable === false) return;
 
+      const endpoints = resolveTaskEndpoints(task);
+      if (!endpoints) return;
+      const { targetSide, sourcePane, targetPane } = endpoints;
+
+      const partialBytes = await probePartialTargetBytes(task, targetPane);
+      const resumeOffset = resolveResumeOffset({
+        partialTargetBytes: partialBytes,
+        transferredBytes: task.transferredBytes,
+        totalBytes: task.totalBytes,
+        direction: task.direction,
+      });
+
       const retriedTask: TransferTask = {
         ...task,
         id: crypto.randomUUID(),
         status: "pending" as TransferStatus,
         error: undefined,
-        transferredBytes: 0,
+        transferredBytes: resumeOffset > 0 ? resumeOffset : 0,
+        resumeOffset: resumeOffset > 0 ? resumeOffset : undefined,
+        // Manual retry resets the auto-retry counter so the user gets a fresh budget.
+        attemptCount: 0,
         speed: 0,
         startTime: Date.now(),
         endTime: undefined,
       };
-
-      const endpoints = resolveTaskEndpoints(task);
-      if (!endpoints) return;
-      const { targetSide, sourcePane, targetPane } = endpoints;
 
       const completionHandler = completionHandlersRef.current.get(transferId);
       if (completionHandler) {
@@ -707,7 +816,7 @@ export const useSftpTransfers = ({
       await processTransfer(retriedTask, sourcePane, targetPane, targetSide);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- processTransfer is defined inline
-    [resolveTaskEndpoints],
+    [probePartialTargetBytes, resolveTaskEndpoints],
   );
 
   const clearCompletedTransfers = useCallback(() => {

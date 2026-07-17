@@ -60,6 +60,14 @@ export interface TransferTask {
   skipConflictCheck?: boolean; // Skip conflict check for replace operations
   replaceExistingTarget?: boolean; // Delete the existing target before transferring
   retryable?: boolean; // False for task types that cannot be safely replayed through generic retry
+  /** Completed auto-retry attempts (0 = first try). */
+  attemptCount?: number;
+  /** Max auto-retries before surfacing failure (default 3). */
+  maxAttempts?: number;
+  /** Byte offset to resume from on the next attempt (stream append path). */
+  resumeOffset?: number;
+  /** When true, main process verifies SHA-256 of source vs target after transfer. */
+  verifyChecksum?: boolean;
 }
 
 export type FileConflictAction = 'stop' | 'skip' | 'replace' | 'duplicate' | 'merge';

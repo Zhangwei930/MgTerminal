@@ -6,8 +6,35 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const crypto = require("node:crypto");
 const { encodePathForSession, ensureRemoteDirForSession, requireSftpChannel, resolveEncodingForRequest } = require("./sftpBridge.cjs");
 const { TRANSFER_CHUNK_SIZE, TRANSFER_CONCURRENCY } = require("./transferLimits.cjs");
+
+/**
+ * Stream a local file through SHA-256. Used for optional post-transfer verify.
+ */
+function hashLocalFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+/**
+ * Stream a remote SFTP file through SHA-256 (sequential read).
+ */
+function hashSftpFile(sftp, remotePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = sftp.createReadStream(remotePath, { highWaterMark: TRANSFER_CHUNK_SIZE });
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
 
 /**
  * Verify a completed remote upload matches the expected byte count.
@@ -325,14 +352,22 @@ async function acquireIsolatedDownloadChannel(client, transfer) {
 /**
  * Upload a local file to SFTP using ssh2's fastPut (parallel SFTP requests).
  * Falls back to sequential stream piping if fastPut is unavailable.
+ * When startOffset > 0, always uses append streams for resume support.
  */
-async function uploadFile(localPath, remotePath, client, fileSize, transfer, sendProgress) {
+async function uploadFile(localPath, remotePath, client, fileSize, transfer, sendProgress, startOffset = 0) {
   await requireSftpChannel(client);
   const sftp = client.sftp;
   if (!sftp) throw new Error("SFTP client not ready");
 
+  const resumeFrom = Number.isFinite(startOffset) && startOffset > 0 ? Math.floor(startOffset) : 0;
+  if (resumeFrom > 0 && fileSize > 0 && resumeFrom >= fileSize) {
+    sendProgress(fileSize, fileSize);
+    return;
+  }
+
   // Prefer fastPut on an isolated SFTP channel so cancellation can abort just this transfer.
-  if (!client.__magiesTerminalSudoMode) {
+  // Resume cannot use fastPut (no append offset), so skip it when resuming.
+  if (!client.__magiesTerminalSudoMode && resumeFrom === 0) {
     let fastSftp = null;
     try {
       fastSftp = await openIsolatedSftpChannel(client);
@@ -393,18 +428,23 @@ async function uploadFile(localPath, remotePath, client, fileSize, transfer, sen
     }
   }
 
-  // Fallback: sequential stream piping.
+  // Fallback / resume path: sequential stream piping.
   // ssh2 closes the remote handle from _final and may suppress Node's normal
   // 'finish' event. Treat a successful close after the complete local read as
   // completion, then verify the persisted remote size below.
   await new Promise((resolve, reject) => {
-    const readStream = fs.createReadStream(localPath, { highWaterMark: TRANSFER_CHUNK_SIZE });
-    const writeStream = sftp.createWriteStream(remotePath, { highWaterMark: TRANSFER_CHUNK_SIZE });
-    let transferred = 0;
+    const readOptions = { highWaterMark: TRANSFER_CHUNK_SIZE };
+    if (resumeFrom > 0) readOptions.start = resumeFrom;
+    const writeOptions = { highWaterMark: TRANSFER_CHUNK_SIZE };
+    if (resumeFrom > 0) writeOptions.flags = "a";
+    const readStream = fs.createReadStream(localPath, readOptions);
+    const writeStream = sftp.createWriteStream(remotePath, writeOptions);
+    let transferred = resumeFrom;
     let settled = false;
 
     transfer.readStream = readStream;
     transfer.writeStream = writeStream;
+    sendProgress(transferred, fileSize);
 
     const cleanup = (err) => {
       if (settled) return;
@@ -432,7 +472,7 @@ async function uploadFile(localPath, remotePath, client, fileSize, transfer, sen
         cleanup(new Error('Transfer cancelled'));
         return;
       }
-      if (!readStream.readableEnded || transferred !== fileSize) {
+      if (!readStream.readableEnded || (fileSize > 0 && transferred !== fileSize)) {
         cleanup(new Error('Upload stream closed before finish'));
         return;
       }
@@ -446,14 +486,22 @@ async function uploadFile(localPath, remotePath, client, fileSize, transfer, sen
 /**
  * Download from SFTP to local file using ssh2's fastGet (parallel SFTP requests).
  * Falls back to sequential stream piping if fastGet is unavailable.
+ * When startOffset > 0, always uses append streams for resume support.
  */
-async function downloadFile(remotePath, localPath, client, fileSize, transfer, sendProgress) {
+async function downloadFile(remotePath, localPath, client, fileSize, transfer, sendProgress, startOffset = 0) {
   await requireSftpChannel(client);
   const sftp = client.sftp;
   if (!sftp) throw new Error("SFTP client not ready");
 
+  const resumeFrom = Number.isFinite(startOffset) && startOffset > 0 ? Math.floor(startOffset) : 0;
+  if (resumeFrom > 0 && fileSize > 0 && resumeFrom >= fileSize) {
+    sendProgress(fileSize, fileSize);
+    return;
+  }
+
   // Prefer fastGet on an isolated SFTP channel so cancellation can abort just this transfer.
-  if (!client.__magiesTerminalSudoMode) {
+  // Resume cannot use fastGet, so skip it when resuming.
+  if (!client.__magiesTerminalSudoMode && resumeFrom === 0) {
       const fastSftp = await acquireIsolatedDownloadChannel(client, transfer);
 
     if (fastSftp && typeof fastSftp.fastGet === "function") {
@@ -504,15 +552,20 @@ async function downloadFile(remotePath, localPath, client, fileSize, transfer, s
     }
   }
 
-  // Fallback: sequential stream piping
+  // Fallback / resume path: sequential stream piping
   return new Promise((resolve, reject) => {
-    const readStream = sftp.createReadStream(remotePath, { highWaterMark: TRANSFER_CHUNK_SIZE });
-    const writeStream = fs.createWriteStream(localPath, { highWaterMark: TRANSFER_CHUNK_SIZE });
-    let transferred = 0;
+    const readOptions = { highWaterMark: TRANSFER_CHUNK_SIZE };
+    if (resumeFrom > 0) readOptions.start = resumeFrom;
+    const writeOptions = { highWaterMark: TRANSFER_CHUNK_SIZE };
+    if (resumeFrom > 0) writeOptions.flags = "a";
+    const readStream = sftp.createReadStream(remotePath, readOptions);
+    const writeStream = fs.createWriteStream(localPath, writeOptions);
+    let transferred = resumeFrom;
     let finished = false;
 
     transfer.readStream = readStream;
     transfer.writeStream = writeStream;
+    sendProgress(transferred, fileSize);
 
     const cleanup = (err) => {
       if (finished) return;
@@ -562,7 +615,12 @@ async function startTransfer(event, payload, onProgress) {
     sourceEncoding,
     targetEncoding,
     sameHost,
+    startOffset: rawStartOffset,
+    verifyChecksum,
   } = payload;
+  const startOffset = Number.isFinite(rawStartOffset) && rawStartOffset > 0
+    ? Math.floor(rawStartOffset)
+    : 0;
   const sender = event.sender;
 
   const transfer = { cancelled: false, readStream: null, writeStream: null, abort: null, wakeWaiter: null };
@@ -694,7 +752,7 @@ async function startTransfer(event, payload, onProgress) {
       }
     }
 
-    sendProgress(0, fileSize);
+    sendProgress(Math.min(startOffset, fileSize || startOffset), fileSize);
 
     if (sourceType === 'local' && targetType === 'sftp') {
       const client = sftpClients.get(targetSftpId);
@@ -704,7 +762,15 @@ async function startTransfer(event, payload, onProgress) {
       try { await ensureRemoteDirForSession(targetSftpId, dir, targetEncoding); } catch { }
 
       const encodedTargetPath = encodePathForSession(targetSftpId, targetPath, targetEncoding);
-      await uploadFile(sourcePath, encodedTargetPath, client, fileSize, transfer, sendProgress);
+      await uploadFile(sourcePath, encodedTargetPath, client, fileSize, transfer, sendProgress, startOffset);
+      if (verifyChecksum) {
+        await requireSftpChannel(client);
+        const localHash = await hashLocalFile(sourcePath);
+        const remoteHash = await hashSftpFile(client.sftp, encodedTargetPath);
+        if (localHash !== remoteHash) {
+          throw new Error(`Checksum mismatch after upload (sha256 local=${localHash.slice(0, 12)}… remote=${remoteHash.slice(0, 12)}…)`);
+        }
+      }
 
     } else if (sourceType === 'sftp' && targetType === 'local') {
       const client = sftpClients.get(sourceSftpId);
@@ -714,7 +780,15 @@ async function startTransfer(event, payload, onProgress) {
       await ensureLocalDir(dir);
 
       const encodedSourcePath = encodePathForSession(sourceSftpId, sourcePath, sourceEncoding);
-      await downloadFile(encodedSourcePath, targetPath, client, fileSize, transfer, sendProgress);
+      await downloadFile(encodedSourcePath, targetPath, client, fileSize, transfer, sendProgress, startOffset);
+      if (verifyChecksum) {
+        await requireSftpChannel(client);
+        const localHash = await hashLocalFile(targetPath);
+        const remoteHash = await hashSftpFile(client.sftp, encodedSourcePath);
+        if (localHash !== remoteHash) {
+          throw new Error(`Checksum mismatch after download (sha256 local=${localHash.slice(0, 12)}… remote=${remoteHash.slice(0, 12)}…)`);
+        }
+      }
 
     } else if (sourceType === 'local' && targetType === 'local') {
       const dir = path.dirname(targetPath);

@@ -132,6 +132,8 @@ export function useSftpDirectoryTransferOps({
         sourceEncoding: sourceIsLocal ? undefined : sourceEncoding,
         targetEncoding: targetIsLocal ? undefined : targetEncoding,
         sameHost: sameHost || undefined,
+        startOffset: task.resumeOffset && task.resumeOffset > 0 ? task.resumeOffset : undefined,
+        verifyChecksum: task.verifyChecksum || undefined,
       };
 
       let lastProgressUpdate = 0;

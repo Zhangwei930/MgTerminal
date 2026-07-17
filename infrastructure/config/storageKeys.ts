@@ -120,6 +120,8 @@ export const STORAGE_KEY_SFTP_DEFAULT_VIEW_MODE = 'magiesTerminal_sftp_default_v
 export const STORAGE_KEY_SFTP_HOST_VIEW_MODES = 'magiesTerminal_sftp_host_view_modes_v1';
 export const STORAGE_KEY_SFTP_TRANSFER_PANEL_HEIGHT = 'magiesTerminal_sftp_transfer_panel_height_v1';
 export const STORAGE_KEY_SFTP_TRANSFER_CHILD_NAME_WIDTH = 'magiesTerminal_sftp_transfer_child_name_width_v1';
+/** Incomplete SFTP file transfer queue (resume/retry after restart). */
+export const STORAGE_KEY_SFTP_TRANSFER_QUEUE = 'magiesTerminal_sftp_transfer_queue_v1';
 
 // Editor Settings
 export const STORAGE_KEY_EDITOR_WORD_WRAP = 'magiesTerminal_editor_word_wrap_v1';

@@ -76,6 +76,10 @@ declare global {
         sourceEncoding?: SftpFilenameEncoding;
         targetEncoding?: SftpFilenameEncoding;
         sameHost?: boolean;
+        /** Resume partial transfer from this byte offset (append streams). */
+        startOffset?: number;
+        /** Optional post-transfer SHA-256 verification of source vs target. */
+        verifyChecksum?: boolean;
       },
       onProgress?: (transferred: number, total: number, speed: number) => void,
       onComplete?: () => void,

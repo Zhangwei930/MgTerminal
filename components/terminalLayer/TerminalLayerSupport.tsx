@@ -21,6 +21,8 @@ import type { ExecutorContext } from '../../infrastructure/ai/magiesTerminalAgen
 import Terminal from '../Terminal';
 import { removePaneVisible, setPaneVisible } from '../terminal/paneVisibilityStore';
 import type { TerminalBroadcastInputOptions } from '../terminal/terminalHelpers';
+import type { ProgrammaticCommandLogRewrite } from '../terminal/programmaticCommandLog';
+import type { BroadcastConfig } from '../../domain/broadcastTargets';
 import type { TerminalContextReader } from '../../domain/terminalContextRead';
 import {
   getTerminalPaneRenderSnapshot,
@@ -655,7 +657,7 @@ export interface TerminalLayerProps {
   onCopySessionToNewWindow?: (sessionId: string) => void;
   onRemoveSessionFromWorkspace?: (
     sessionId: string,
-    tabInsertionTarget?: { tabId: string; position: 'before' | 'after'; additionalTabIds?: readonly string[] },
+    tabInsertionTarget?: { tabId: string; position: 'before' | 'after', additionalTabIds?: readonly string[] },
   ) => void;
   onSplitSession?: (sessionId: string, direction: SplitDirection) => void;
   onConnectToHost: (host: Host) => string | void;
@@ -663,6 +665,11 @@ export interface TerminalLayerProps {
   // Broadcast mode
   isBroadcastEnabled?: (workspaceId: string) => boolean;
   onToggleBroadcast?: (workspaceId: string) => void;
+  getBroadcastConfig?: (workspaceId: string) => BroadcastConfig;
+  updateBroadcastConfig?: (
+    workspaceId: string,
+    patch: Partial<BroadcastConfig>,
+  ) => void;
   // SFTP side panel
   updateHosts: (hosts: Host[]) => void;
   updateSnippets?: (snippets: Snippet[]) => void;
@@ -701,6 +708,8 @@ interface TerminalPaneProps {
   sessionHostResolved: boolean;
   chainHosts?: Host[];
   sudoAutofillPassword?: string;
+  sessions: TerminalSession[];
+  sessionHostsMap: Map<string, Host>;
   workspaceById: Map<string, Workspace>;
   workspaceRectsById: Map<string, Record<string, WorkspaceRect>>;
   isTerminalLayerVisible: boolean;
@@ -759,6 +768,11 @@ interface TerminalPaneProps {
   onSetWorkspaceFocusedSession?: (workspaceId: string, sessionId: string) => void;
   onSplitSession?: (sessionId: string, direction: SplitDirection) => void;
   isBroadcastEnabled?: (workspaceId: string) => boolean;
+  getBroadcastConfig?: (workspaceId: string) => BroadcastConfig;
+  updateBroadcastConfig?: (
+    workspaceId: string,
+    patch: Partial<BroadcastConfig>,
+  ) => void;
   onBroadcastInput: (
     data: string,
     sourceSessionId: string,
@@ -782,7 +796,7 @@ interface TerminalPaneProps {
   onStartSessionRename?: (sessionId: string) => void;
   onRemoveSessionFromWorkspace?: (
     sessionId: string,
-    tabInsertionTarget?: { tabId: string; position: 'before' | 'after'; additionalTabIds?: readonly string[] },
+    tabInsertionTarget?: { tabId: string; position: 'before' | 'after', additionalTabIds?: readonly string[] },
   ) => void;
   onReorderTabs?: (draggedId: string, targetId: string, position: 'before' | 'after', additionalTabIds?: readonly string[]) => void;
   onStartSessionDrag?: (sessionId: string) => void;
@@ -880,6 +894,8 @@ const terminalPanePropsAreEqual = (
   prev.onSetWorkspaceFocusedSession === next.onSetWorkspaceFocusedSession &&
   prev.onSplitSession === next.onSplitSession &&
   prev.isBroadcastEnabled === next.isBroadcastEnabled &&
+  prev.getBroadcastConfig === next.getBroadcastConfig &&
+  prev.updateBroadcastConfig === next.updateBroadcastConfig &&
   prev.onBroadcastInput === next.onBroadcastInput &&
   prev.onBroadcastInterruptPriorityChange === next.onBroadcastInterruptPriorityChange &&
   prev.onToggleWorkspaceComposeBar === next.onToggleWorkspaceComposeBar &&
@@ -890,7 +906,9 @@ const terminalPanePropsAreEqual = (
   prev.onRemoveSessionFromWorkspace === next.onRemoveSessionFromWorkspace &&
   prev.onReorderTabs === next.onReorderTabs &&
   prev.onStartSessionDrag === next.onStartSessionDrag &&
-  prev.onEndSessionDrag === next.onEndSessionDrag
+  prev.onEndSessionDrag === next.onEndSessionDrag &&
+  prev.sessions === next.sessions &&
+  prev.sessionHostsMap === next.sessionHostsMap
 );
 
 const TerminalPane: React.FC<TerminalPaneProps> = memo(({
@@ -899,6 +917,8 @@ const TerminalPane: React.FC<TerminalPaneProps> = memo(({
   sessionHostResolved,
   chainHosts,
   sudoAutofillPassword,
+  sessions,
+  sessionHostsMap,
   workspaceById,
   workspaceRectsById,
   isTerminalLayerVisible,
@@ -951,6 +971,8 @@ const TerminalPane: React.FC<TerminalPaneProps> = memo(({
   onSetWorkspaceFocusedSession,
   onSplitSession,
   isBroadcastEnabled,
+  getBroadcastConfig,
+  updateBroadcastConfig,
   onBroadcastInput,
   onBroadcastInterruptPriorityChange,
   onToggleWorkspaceComposeBar,
@@ -1119,6 +1141,34 @@ const TerminalPane: React.FC<TerminalPaneProps> = memo(({
   const splitHorizontalHandler = splitHorizontalHandlersRef.current.get(session.id);
   const splitVerticalHandler = splitVerticalHandlersRef.current.get(session.id);
   const broadcastEnabled = activeWorkspaceId ? !!isBroadcastEnabled?.(activeWorkspaceId) : false;
+  const broadcastConfig = activeWorkspaceId ? getBroadcastConfig?.(activeWorkspaceId) : undefined;
+  const handleUpdateBroadcastConfig = useCallback((
+    patch: Partial<BroadcastConfig>,
+  ) => {
+    if (!activeWorkspaceId || !updateBroadcastConfig) return;
+    updateBroadcastConfig(activeWorkspaceId, patch);
+  }, [activeWorkspaceId, updateBroadcastConfig]);
+  const broadcastSessionOptions = useMemo(() => {
+    if (!activeWorkspaceId) return [];
+    return sessions
+      .filter((candidate) => candidate.workspaceId === activeWorkspaceId)
+      .map((candidate) => {
+        const candidateHost = sessionHostsMap.get(candidate.id);
+        return {
+          id: candidate.id,
+          label: candidate.customName || candidateHost?.label || candidateHost?.hostname || candidate.id.slice(0, 8),
+          groupPath: candidateHost?.group ?? '',
+        };
+      });
+  }, [activeWorkspaceId, sessionHostsMap, sessions]);
+  const broadcastAllSessionRefs = useMemo(
+    () => sessions.map((candidate) => ({
+      id: candidate.id,
+      workspaceId: candidate.workspaceId,
+      groupPath: sessionHostsMap.get(candidate.id)?.group ?? '',
+    })),
+    [sessionHostsMap, sessions],
+  );
   const isHostEphemeral = !isSavedVaultHost(hostMap.get(host.id));
   const sessionAppearance = useMemo(
     () => resolveSessionAppearance({ host, isEphemeral: isHostEphemeral }),
@@ -1403,6 +1453,12 @@ const TerminalPane: React.FC<TerminalPaneProps> = memo(({
         onSplitVertical={onSplitSession ? splitVerticalHandler : undefined}
         isBroadcastEnabled={broadcastEnabled}
         onToggleBroadcast={inActiveWorkspace ? workspaceBroadcastHandler : undefined}
+        broadcastConfig={broadcastConfig}
+        onUpdateBroadcastConfig={
+          inActiveWorkspace && updateBroadcastConfig ? handleUpdateBroadcastConfig : undefined
+        }
+        broadcastSessionOptions={broadcastSessionOptions}
+        broadcastAllSessionRefs={broadcastAllSessionRefs}
         onToggleComposeBar={inActiveWorkspace ? onToggleWorkspaceComposeBar : undefined}
         isWorkspaceComposeBarOpen={inActiveWorkspace ? isComposeBarOpen : undefined}
         onBroadcastInput={broadcastEnabled ? onBroadcastInput : undefined}
@@ -1487,6 +1543,11 @@ interface TerminalPanesHostProps {
   onSetWorkspaceFocusedSession?: (workspaceId: string, sessionId: string) => void;
   onSplitSession?: (sessionId: string, direction: SplitDirection) => void;
   isBroadcastEnabled?: (workspaceId: string) => boolean;
+  getBroadcastConfig?: (workspaceId: string) => BroadcastConfig;
+  updateBroadcastConfig?: (
+    workspaceId: string,
+    patch: Partial<BroadcastConfig>,
+  ) => void;
   onBroadcastInput: (
     data: string,
     sourceSessionId: string,
@@ -1570,6 +1631,8 @@ const terminalPanesHostPropsAreEqual = (
   if (prev.onSetWorkspaceFocusedSession !== next.onSetWorkspaceFocusedSession) return false;
   if (prev.onSplitSession !== next.onSplitSession) return false;
   if (prev.isBroadcastEnabled !== next.isBroadcastEnabled) return false;
+  if (prev.getBroadcastConfig !== next.getBroadcastConfig) return false;
+  if (prev.updateBroadcastConfig !== next.updateBroadcastConfig) return false;
   if (prev.onBroadcastInput !== next.onBroadcastInput) return false;
   if (prev.onBroadcastInterruptPriorityChange !== next.onBroadcastInterruptPriorityChange) return false;
   if (prev.onToggleWorkspaceComposeBar !== next.onToggleWorkspaceComposeBar) return false;
@@ -1630,6 +1693,8 @@ export const TerminalPanesHost: React.FC<TerminalPanesHostProps> = memo(({
             sessionHostResolved={resolvedSessionHostIds.has(session.id)}
             chainHosts={sessionChainHostsMap.get(session.id)}
             sudoAutofillPassword={sessionSudoAutofillPasswordsMap.get(session.id)}
+            sessions={sessions}
+            sessionHostsMap={sessionHostsMap}
             showSelectionAIAction={showSelectionAIAction}
             {...sharedProps}
           />

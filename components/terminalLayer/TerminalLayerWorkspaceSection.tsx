@@ -73,6 +73,8 @@ function TerminalLayerWorkspaceSectionInner({ ctx }: { ctx: WorkspaceContext }) 
     onSetWorkspaceFocusedSession,
     onSplitSession,
     isBroadcastEnabled,
+    getBroadcastConfig,
+    updateBroadcastConfig,
     handleBroadcastInput,
     handleBroadcastInterruptPriorityChange,
     handleToggleWorkspaceComposeBar,
@@ -197,6 +199,8 @@ function TerminalLayerWorkspaceSectionInner({ ctx }: { ctx: WorkspaceContext }) 
           onSetWorkspaceFocusedSession={onSetWorkspaceFocusedSession}
           onSplitSession={onSplitSession}
           isBroadcastEnabled={isBroadcastEnabled}
+          getBroadcastConfig={getBroadcastConfig}
+          updateBroadcastConfig={updateBroadcastConfig}
           onBroadcastInput={handleBroadcastInput}
           onBroadcastInterruptPriorityChange={handleBroadcastInterruptPriorityChange}
           onToggleWorkspaceComposeBar={handleToggleWorkspaceComposeBar}

@@ -60,6 +60,8 @@ export const terminalLayerAreEqual = (
   prev.onCreateLocalTerminal === next.onCreateLocalTerminal &&
   prev.isBroadcastEnabled === next.isBroadcastEnabled &&
   prev.onToggleBroadcast === next.onToggleBroadcast &&
+  prev.getBroadcastConfig === next.getBroadcastConfig &&
+  prev.updateBroadcastConfig === next.updateBroadcastConfig &&
   prev.updateSnippets === next.updateSnippets &&
   prev.updateSnippetPackages === next.updateSnippetPackages &&
   prev.updateNotes === next.updateNotes &&

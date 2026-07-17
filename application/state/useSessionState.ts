@@ -46,6 +46,12 @@ import {
 import { resolveRestorePreviousSessionSetting } from './sessionRestoreSettings';
 import type { CodingCliProviderId } from '../../domain/codingCliProviders';
 import { normalizeCodingCliDynamicTitleForStorage } from '../../domain/codingCliTitleParse';
+import {
+  createEnabledBroadcastConfig,
+  DEFAULT_BROADCAST_CONFIG,
+  normalizeBroadcastConfig,
+  type BroadcastConfig,
+} from '../../domain/broadcastTargets';
 
 export function addWorkspaceIfMissing(
   workspaces: Workspace[],
@@ -149,8 +155,10 @@ export const useSessionState = ({
   const [workspaceRenameValue, setWorkspaceRenameValue] = useState('');
   // Tab order: stores ordered list of tab IDs (orphan session IDs and workspace IDs)
   const [tabOrder, setTabOrder] = useState<string[]>(initialRestoreState.tabOrder);
-  // Broadcast mode: stores workspace IDs that have broadcast enabled
-  const [broadcastWorkspaceIds, setBroadcastWorkspaceIds] = useState<Set<string>>(new Set());
+  // Broadcast mode: per-workspace config (enabled + scope + selection/excludes)
+  const [broadcastByWorkspaceId, setBroadcastByWorkspaceId] = useState<Map<string, BroadcastConfig>>(
+    () => new Map(),
+  );
   // Log views: stores open log replay tabs
   const [logViews, setLogViews] = useState<LogView[]>([]);
   const [restorePreviousSessionRevision, setRestorePreviousSessionRevision] = useState(0);
@@ -1073,23 +1081,41 @@ export const useSessionState = ({
     return newSessionId;
   }, [setActiveTabId]);
 
-  // Toggle broadcast mode for a workspace
+  // Toggle broadcast mode for a workspace (preserves scope/selection when re-enabling)
   const toggleBroadcast = useCallback((workspaceId: string) => {
-    setBroadcastWorkspaceIds(prev => {
-      const next = new Set(prev);
-      if (next.has(workspaceId)) {
-        next.delete(workspaceId);
+    setBroadcastByWorkspaceId((prev: Map<string, BroadcastConfig>) => {
+      const next = new Map<string, BroadcastConfig>(prev);
+      const existing = next.get(workspaceId);
+      if (existing?.enabled) {
+        next.set(workspaceId, { ...existing, enabled: false });
+      } else if (existing) {
+        next.set(workspaceId, { ...existing, enabled: true });
       } else {
-        next.add(workspaceId);
+        next.set(workspaceId, createEnabledBroadcastConfig());
       }
       return next;
     });
   }, []);
 
-  // Check if a workspace has broadcast enabled
   const isBroadcastEnabled = useCallback((workspaceId: string) => {
-    return broadcastWorkspaceIds.has(workspaceId);
-  }, [broadcastWorkspaceIds]);
+    return Boolean(broadcastByWorkspaceId.get(workspaceId)?.enabled);
+  }, [broadcastByWorkspaceId]);
+
+  const getBroadcastConfig = useCallback((workspaceId: string): BroadcastConfig => {
+    return broadcastByWorkspaceId.get(workspaceId) ?? DEFAULT_BROADCAST_CONFIG;
+  }, [broadcastByWorkspaceId]);
+
+  const updateBroadcastConfig = useCallback((
+    workspaceId: string,
+    patch: Partial<BroadcastConfig>,
+  ) => {
+    setBroadcastByWorkspaceId((prev: Map<string, BroadcastConfig>) => {
+      const next = new Map<string, BroadcastConfig>(prev);
+      const base = next.get(workspaceId) ?? DEFAULT_BROADCAST_CONFIG;
+      next.set(workspaceId, normalizeBroadcastConfig({ ...base, ...patch }));
+      return next;
+    });
+  }, []);
 
   const baseWorkTabIds = useMemo(() => [
     ...orphanSessions.map(s => s.id),
@@ -1216,6 +1242,8 @@ export const useSessionState = ({
     // Broadcast mode
     toggleBroadcast,
     isBroadcastEnabled,
+    getBroadcastConfig,
+    updateBroadcastConfig,
     orderedTabs,
     getOrderedWorkTabs,
     reorderTabs,

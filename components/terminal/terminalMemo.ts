@@ -49,6 +49,10 @@ export const terminalPropsAreEqual = (
   && prev.disableTerminalFontZoom === next.disableTerminalFontZoom
   && prev.keyBindings === next.keyBindings
   && prev.isBroadcastEnabled === next.isBroadcastEnabled
+  && prev.broadcastConfig === next.broadcastConfig
+  && prev.onUpdateBroadcastConfig === next.onUpdateBroadcastConfig
+  && prev.broadcastSessionOptions === next.broadcastSessionOptions
+  && prev.broadcastAllSessionRefs === next.broadcastAllSessionRefs
   && prev.isWorkspaceComposeBarOpen === next.isWorkspaceComposeBarOpen
   && prev.sessionLog === next.sessionLog
   && prev.sshDebugLogEnabled === next.sshDebugLogEnabled

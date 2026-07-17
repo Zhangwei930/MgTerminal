@@ -18,6 +18,12 @@ import { inferCodingCliProviderFromTitleSignals, shouldClearCodingCliProviderFor
 import { sessionCapabilitiesStore } from '../application/state/sessionCapabilitiesStore';
 import { useTerminalBackend } from '../application/state/useTerminalBackend';
 import { collectSessionIds } from '../domain/workspace';
+import {
+  DEFAULT_BROADCAST_CONFIG,
+  resolveBroadcastTargets,
+  type BroadcastConfig,
+  type BroadcastSessionRef,
+} from '../domain/broadcastTargets';
 
 import { cn, normalizeLineEndings } from '../lib/utils';
 import { detectLocalOs } from '../lib/localShell';
@@ -204,6 +210,8 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
   onCreateLocalTerminal,
   isBroadcastEnabled,
   onToggleBroadcast,
+  getBroadcastConfig,
+  updateBroadcastConfig,
   updateHosts,
   updateSnippets,
   updateSnippetPackages,
@@ -802,7 +810,15 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
   const sessionHostsMapRef = useRef(sessionHostsMap);
   sessionHostsMapRef.current = sessionHostsMap;
 
-  // Handle broadcast input - write to all other sessions in the source workspace.
+  const buildBroadcastSessionRefs = useCallback((): BroadcastSessionRef[] => {
+    return sessionsRef.current.map((session) => ({
+      id: session.id,
+      workspaceId: session.workspaceId,
+      groupPath: sessionHostsMapRef.current.get(session.id)?.group ?? '',
+    }));
+  }, []);
+
+  // Handle broadcast input — fan-out to resolved targets (default: workspace peers).
   const handleBroadcastInput = useCallback((
     data: string,
     sourceSessionId: string,
@@ -812,11 +828,27 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
     const workspaceId = sourceSession?.workspaceId;
     if (!workspaceId) return;
 
-    for (const session of sessionsRef.current) {
-      if (session.workspaceId !== workspaceId || session.id === sourceSessionId) continue;
-      if (!canUseDirectSessionWriteFallback(session)) continue;
+    const config: BroadcastConfig = getBroadcastConfig?.(workspaceId) ?? {
+      ...DEFAULT_BROADCAST_CONFIG,
+      enabled: Boolean(isBroadcastEnabled?.(workspaceId)),
+      scope: 'workspace',
+    };
+    if (!config.enabled) return;
 
-      const lineDelayMs = options?.lineDelayMs;
+    const sourceGroupPath = sessionHostsMapRef.current.get(sourceSessionId)?.group ?? '';
+    const targetIds = resolveBroadcastTargets({
+      sourceSessionId,
+      sessions: buildBroadcastSessionRefs(),
+      config,
+      sourceGroupPath,
+      includeSource: false,
+    });
+
+    const lineDelayMs = options?.lineDelayMs;
+    for (const sessionId of targetIds) {
+      const session = sessionsRef.current.find((candidate) => candidate.id === sessionId);
+      if (!session || !canUseDirectSessionWriteFallback(session)) continue;
+
       if (data === "\x03" && terminalBackend.interruptSession) {
         broadcastInterruptPrioritizersRef.current.get(session.id)?.();
         terminalBackend.interruptSession(session.id);
@@ -827,7 +859,7 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
         ...(lineDelayMs ? { lineDelayMs } : {}),
       });
     }
-  }, [terminalBackend]);
+  }, [buildBroadcastSessionRefs, getBroadcastConfig, isBroadcastEnabled, terminalBackend]);
 
   const handleCommandSubmitted = useCallback((command: string, _hostId: string, _hostLabel: string, sessionId: string) => {
     applySessionCodingCliProviderFromCommand(sessionId, command);
@@ -1508,39 +1540,47 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
     const payload = text + '\r';
     const broadcastEnabled = isBroadcastEnabled?.(activeWorkspace.id);
     const focusedSessionId = activeWorkspace.focusedSessionId;
+    const workspaceSessions = sessionsRef.current.filter((session) => session.workspaceId === activeWorkspace.id);
+    const validFocusedId = focusedSessionId && workspaceSessions.some((session) => session.id === focusedSessionId)
+      ? focusedSessionId
+      : undefined;
+    const fallbackTargetId = validFocusedId ?? workspaceSessions[0]?.id;
 
-    if (broadcastEnabled) {
-      const allSessionIds = sessionsRef.current
-        .filter((session) => session.workspaceId === activeWorkspace.id)
-        .map((session) => session.id);
-      for (const sid of allSessionIds) {
-        const executor = snippetExecutorsRef.current.get(sid);
-        if (executor) {
-          executor(text, false, { broadcast: false });
-        } else {
-          const session = sessionsRef.current.find((candidate) => candidate.id === sid);
-          if (!session || !canUseDirectSessionWriteFallback(session)) continue;
-          terminalBackend.writeToSession(sid, payload);
-        }
+    const writeToSessionId = (sid: string, options?: { broadcast?: boolean }) => {
+      const executor = snippetExecutorsRef.current.get(sid);
+      if (executor) {
+        executor(text, false, options);
+        return;
       }
-    } else {
-      const workspaceSessions = sessionsRef.current.filter((session) => session.workspaceId === activeWorkspace.id);
-      const validFocusedId = focusedSessionId && workspaceSessions.some((session) => session.id === focusedSessionId)
-        ? focusedSessionId
-        : undefined;
-      const targetId = validFocusedId ?? workspaceSessions[0]?.id;
-      if (targetId) {
-        const executor = snippetExecutorsRef.current.get(targetId);
-        if (executor) {
-          executor(text, false);
-        } else {
-          const session = sessionsRef.current.find((candidate) => candidate.id === targetId);
-          if (!session || !canUseDirectSessionWriteFallback(session)) return;
-          terminalBackend.writeToSession(targetId, payload);
-        }
+      const session = sessionsRef.current.find((candidate) => candidate.id === sid);
+      if (!session || !canUseDirectSessionWriteFallback(session)) return;
+      terminalBackend.writeToSession(sid, payload);
+    };
+
+    if (broadcastEnabled && fallbackTargetId) {
+      const config: BroadcastConfig = getBroadcastConfig?.(activeWorkspace.id) ?? {
+        ...DEFAULT_BROADCAST_CONFIG,
+        enabled: true,
+        scope: 'workspace',
+      };
+      const sourceGroupPath = sessionHostsMapRef.current.get(fallbackTargetId)?.group ?? '';
+      const targetIds = resolveBroadcastTargets({
+        sourceSessionId: fallbackTargetId,
+        sessions: buildBroadcastSessionRefs(),
+        config: { ...config, enabled: true },
+        sourceGroupPath,
+        includeSource: true,
+      });
+      for (const sid of targetIds) {
+        writeToSessionId(sid, { broadcast: false });
       }
+      return;
     }
-  }, [isBroadcastEnabled, terminalBackend]);
+
+    if (fallbackTargetId) {
+      writeToSessionId(fallbackTargetId);
+    }
+  }, [buildBroadcastSessionRefs, getBroadcastConfig, isBroadcastEnabled, terminalBackend]);
 
   const sessionLogConfig = useMemo(
     () =>
@@ -1649,6 +1689,8 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
     restoreTerminalCwd,
     identities,
     isBroadcastEnabled,
+    getBroadcastConfig,
+    updateBroadcastConfig,
     isComposeBarOpen,
     keyBindings,
     keys,

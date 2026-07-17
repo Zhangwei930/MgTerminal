@@ -182,6 +182,12 @@ export interface TerminalProps {
   onOpenSystem?: () => void;
   isBroadcastEnabled?: boolean;
   onToggleBroadcast?: () => void;
+  broadcastConfig?: import('../../domain/broadcastTargets').BroadcastConfig;
+  onUpdateBroadcastConfig?: (
+    patch: Partial<import('../../domain/broadcastTargets').BroadcastConfig>,
+  ) => void;
+  broadcastSessionOptions?: Array<{ id: string; label: string; groupPath?: string }>;
+  broadcastAllSessionRefs?: import('../../domain/broadcastTargets').BroadcastSessionRef[];
   onToggleComposeBar?: () => void;
   isWorkspaceComposeBarOpen?: boolean;
   onBroadcastInput?: (

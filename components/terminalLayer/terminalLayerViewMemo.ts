@@ -352,6 +352,8 @@ const WORKSPACE_CTX_KEYS = [
   'onSetWorkspaceFocusedSession',
   'onSplitSession',
   'isBroadcastEnabled',
+  'getBroadcastConfig',
+  'updateBroadcastConfig',
   'handleBroadcastInput',
   'handleBroadcastInterruptPriorityChange',
   'handleToggleWorkspaceComposeBar',

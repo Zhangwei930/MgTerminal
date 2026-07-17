@@ -32,6 +32,11 @@ import { AppHostTreeLayer } from './AppHostTreeLayer';
 import { getUiThemeById } from '../../infrastructure/config/uiThemes';
 import { buildAppThemeCssVars } from '../state/settingsStateDefaults';
 import { useMainWindowInputFocusRecovery } from '../state/useMainWindowInputFocusRecovery';
+import { useWorkspaceTemplates } from '../state/useWorkspaceTemplates';
+import {
+  SaveWorkspaceTemplateDialog,
+  WorkspaceTemplatesDialog,
+} from '../../components/workspace/WorkspaceTemplatesDialog';
 
 const LazyProtocolSelectDialog = lazy(() => import('../../components/ProtocolSelectDialog'));
 const LazyQuickSwitcher = lazy(() =>
@@ -96,7 +101,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
   const {
     accentMode, addShellHistoryEntry, addSessionToWorkspace, addToWorkspaceDialog, appendHostToWorkspace, appendLocalTerminalToWorkspace,
     clearAndRemoveSource, clearAndRemoveSources, clearUnsavedConnectionLogs, closeLogView, closeSession, closeTabsBatch, closeWorkspace, copySessionToNewWindowWithCurrentShell, copySessionWithCurrentShell,
-    connectionLogs, convertKnownHostToHost, createWorkspaceFromSessions, createWorkspaceFromTargets, createWorkspaceWithHosts, customAccent,
+    connectionLogs, convertKnownHostToHost, createWorkspaceFromSessions, createWorkspaceFromTargets, createWorkspaceWithHosts, buildWorkspaceTemplate, applyWorkspaceTemplate, customAccent,
     customGroups, currentTerminalTheme, deepLinkHostDraft, deleteConnectionLog, draggingSessionId, effectiveKnownHosts, editorTabs, editorWordWrap, emptyVaultConflict,
     followAppTerminalTheme,
     groupConfigs, handleAddKnownHost, handleConnectSerial, handleConnectToHost, handleCreateLocalTerminal, handleDefaultTerminalThemeChange, handleDeleteHost,
@@ -117,6 +122,43 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
     updateNoteGroups, updateNotes, updateProxyProfiles, updateSnippetPackages, updateSnippets, updateSplitSizes, updateTerminalSetting, vaultFocusRequest, workspaceRenameTarget, workspaceRenameValue, workspaces,
     VaultViewContainer, SftpViewMount, TerminalLayerMount, LogViewWrapper,
   } = ctx;
+
+  const { templates, saveTemplate, deleteTemplate, renameTemplate } = useWorkspaceTemplates();
+  const [workspaceTemplatesOpen, setWorkspaceTemplatesOpen] = useState(false);
+  const [saveTemplateTarget, setSaveTemplateTarget] = useState<{ workspaceId: string; defaultName: string } | null>(null);
+
+  const handleSaveWorkspaceTemplate = useCallback((workspaceId: string) => {
+    const workspace = workspaces.find((item) => item.id === workspaceId);
+    setSaveTemplateTarget({
+      workspaceId,
+      defaultName: workspace?.title || t('workspace.templates.defaultName'),
+    });
+  }, [t, workspaces]);
+
+  const handleConfirmSaveTemplate = useCallback((name: string) => {
+    if (!saveTemplateTarget || !buildWorkspaceTemplate) return;
+    const template = buildWorkspaceTemplate(saveTemplateTarget.workspaceId, name);
+    if (!template) {
+      toast.error(t('workspace.templates.saveFailed'));
+      return;
+    }
+    saveTemplate(template);
+    toast.success(t('workspace.templates.saved'));
+    setSaveTemplateTarget(null);
+  }, [buildWorkspaceTemplate, saveTemplate, saveTemplateTarget, t]);
+
+  const handleApplyWorkspaceTemplate = useCallback((template: import('../../domain/workspaceTemplates').WorkspaceTemplate) => {
+    if (!applyWorkspaceTemplate) {
+      toast.error(t('workspace.templates.applyFailed'));
+      return;
+    }
+    const id = applyWorkspaceTemplate(template, hosts);
+    if (!id) {
+      toast.error(t('workspace.templates.applyFailed'));
+      return;
+    }
+    toast.success(t('workspace.templates.applied'));
+  }, [applyWorkspaceTemplate, hosts, t]);
 
   const appThemeStyle = useMemo(() => {
     const tokens = getUiThemeById(
@@ -282,6 +324,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
         onCopySessionToNewWindow={copySessionToNewWindowWithCurrentShell}
         onRenameWorkspace={startWorkspaceRename}
         onCloseWorkspace={closeWorkspace}
+        onSaveWorkspaceTemplate={handleSaveWorkspaceTemplate}
         onCloseLogView={closeLogView}
         onCloseTabsBatch={closeTabsBatch}
         onOpenQuickSwitcher={handleOpenQuickSwitcher}
@@ -645,6 +688,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
                 setIsQuickSwitcherOpen(false);
                 setQuickSearch('');
               }}
+              onOpenWorkspaceTemplates={() => setWorkspaceTemplatesOpen(true)}
               onCreateWorkspace={() => {
                 setIsQuickSwitcherOpen(false);
                 setQuickSearch('');
@@ -744,6 +788,21 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
           </Suspense>
         </LazyLoadBoundary>
       )}
+
+      <WorkspaceTemplatesDialog
+        open={workspaceTemplatesOpen}
+        onOpenChange={setWorkspaceTemplatesOpen}
+        templates={templates}
+        onApply={handleApplyWorkspaceTemplate}
+        onDelete={deleteTemplate}
+        onRename={renameTemplate}
+      />
+      <SaveWorkspaceTemplateDialog
+        open={Boolean(saveTemplateTarget)}
+        defaultName={saveTemplateTarget?.defaultName || ''}
+        onOpenChange={(open) => { if (!open) setSaveTemplateTarget(null); }}
+        onSave={handleConfirmSaveTemplate}
+      />
 
       {/* Protocol Select Dialog for QuickSwitcher */}
       {protocolSelectHost && (

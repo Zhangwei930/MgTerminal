@@ -39,6 +39,16 @@ export const useApplicationBackend = () => {
     return status ?? null;
   }, []);
 
-  return { openExternal, getApplicationInfo, checkSshAgent };
+  const listSshAgentIdentities = useCallback(async (): Promise<{
+    available: boolean;
+    error?: string;
+    identities: MagiesTerminalAgentIdentity[];
+  }> => {
+    const bridge = magiesTerminalBridge.get();
+    const result = await bridge?.listSshAgentIdentities?.();
+    return result ?? { available: false, identities: [] };
+  }, []);
+
+  return { openExternal, getApplicationInfo, checkSshAgent, listSshAgentIdentities };
 };
 

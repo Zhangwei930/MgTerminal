@@ -732,4 +732,10 @@ export const esVaultMessages: Messages = {
   'logView.export': 'Exportar',
 
   'hostDetails.testConnection': 'Probar conexión',
+
+  'hostDetails.credential.agent': 'Agente SSH',
+  'hostDetails.agent.loading': 'Leyendo identidades del agente…',
+  'hostDetails.agent.unavailable': 'No se detectó ningún agente SSH. Inicia ssh-agent e inténtalo de nuevo.',
+  'hostDetails.agent.empty': 'El agente SSH no tiene claves. Añade una con ssh-add.',
+  'hostDetails.agent.anyIdentity': 'Cualquier identidad disponible',
 };

@@ -2,6 +2,7 @@ import React from "react";
 import { ChevronDown, Eye, EyeOff, FileKey, FolderLock, FolderOpen, Key, KeyRound, MapPin, Plus, Shapes, Shield, Trash2, User, X } from "lucide-react";
 import type { Host } from "../types";
 import { HostIconPicker } from "./HostIconPicker";
+import AgentAuthSection from "./host/AgentAuthSection";
 import { Button } from "./ui/button";
 import { Combobox } from "./ui/combobox";
 import { HostDetailsSection, HostDetailsSettingRow } from "./host-details";
@@ -276,7 +277,7 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
               })()
             )}
 
-            {!selectedIdentity && !form.identityId && (
+            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && (
               <div className="relative">
                 <Input
                   placeholder={t("hostDetails.password.placeholder")}
@@ -300,8 +301,37 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
               </div>
             )}
 
+            {/* SSH Agent auth: summary chip + identity picker */}
+            {!selectedIdentity && form.authMethod === "agent" && (
+              <>
+                <div className="flex items-center gap-2 min-w-0 overflow-hidden p-2 rounded-md bg-secondary/50 border border-border/60">
+                  <KeyRound size={14} className="text-primary shrink-0" />
+                  <span className="text-sm min-w-0 flex-1 truncate">
+                    {t("hostDetails.credential.agent")}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => {
+                      update("authMethod", "password");
+                      update("agentIdentityFingerprint", undefined);
+                    }}
+                  >
+                    <X size={12} />
+                  </Button>
+                </div>
+                <AgentAuthSection
+                  preferredFingerprint={form.agentIdentityFingerprint}
+                  onSelectPreferred={(fingerprint) =>
+                    update("agentIdentityFingerprint", fingerprint)
+                  }
+                />
+              </>
+            )}
+
             {/* Save Password toggle - shown when password is entered */}
-            {!selectedIdentity && !form.identityId && form.password && (
+            {!selectedIdentity && !form.identityId && form.authMethod !== "agent" && form.password && (
               <div className="flex items-center justify-between py-1">
                 <span className="text-xs text-muted-foreground">
                   {t("hostDetails.password.save")}
@@ -377,6 +407,7 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
             {/* Credential type selection with inline popover - hidden when credential is selected */}
             {!selectedIdentity &&
               !form.identityFileId &&
+              form.authMethod !== "agent" &&
               !selectedCredentialType && (
                 <Popover
                   open={credentialPopoverOpen}
@@ -436,6 +467,24 @@ export const HostDetailsConnectionSections: React.FC<HostDetailsConnectionSectio
                         <FileKey size={16} className="text-muted-foreground" />
                         <span className="text-sm font-medium">
                           {t("hostDetails.credential.localKeyFile")}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-secondary/80 transition-colors text-left"
+                        onClick={() => {
+                          update("identityFileId", undefined);
+                          update("identityFilePaths", undefined);
+                          update("authMethod", "agent");
+                          setPendingReferenceKeyPath(null);
+                          setSelectedCredentialType(null);
+                          setCredentialPopoverOpen(false);
+                        }}
+                      >
+                        <KeyRound size={16} className="text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {t("hostDetails.credential.agent")}
                         </span>
                       </button>
                     </div>

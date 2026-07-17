@@ -62,3 +62,18 @@ test("ConnectionLogsManager renders saved distro icon snapshots with custom colo
   assert.match(markup, /src="\/distro\/ubuntu.svg"/);
   assert.doesNotMatch(markup, /bg-\[#E95420\]/);
 });
+
+test("formatLogAuthMethod maps bridge auth ids to readable labels", async () => {
+  const { formatLogAuthMethod } = await import("./ConnectionLogsManager.tsx");
+  assert.equal(formatLogAuthMethod("agent"), "agent");
+  assert.equal(formatLogAuthMethod("password"), "password");
+  assert.equal(formatLogAuthMethod("publickey-user"), "key");
+  assert.equal(formatLogAuthMethod("publickey-default-id_ed25519"), "key (id_ed25519)");
+  assert.equal(formatLogAuthMethod("publickey-encrypted-id_rsa"), "key (id_rsa)");
+});
+
+test("renders the recorded auth method on ssh log rows", () => {
+  const markup = renderLogs({ ...baseLog, authMethod: "agent" });
+  assert.ok(markup.includes("ssh, root"));
+  assert.ok(markup.includes("agent"));
+});

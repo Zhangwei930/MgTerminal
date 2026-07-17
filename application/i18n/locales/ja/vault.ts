@@ -791,4 +791,10 @@ export const jaVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': '接続テスト',
+
+  'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.agent.loading': 'エージェントのアイデンティティを読み込み中…',
+  'hostDetails.agent.unavailable': 'SSH エージェントが見つかりません。ssh-agent を起動して再試行してください。',
+  'hostDetails.agent.empty': 'SSH エージェントにキーがありません。ssh-add で追加してください。',
+  'hostDetails.agent.anyIdentity': '利用可能な任意のアイデンティティ',
 };

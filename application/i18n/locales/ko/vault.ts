@@ -791,4 +791,10 @@ export const koVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': '연결 테스트',
+
+  'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.agent.loading': '에이전트 자격 증명을 읽는 중…',
+  'hostDetails.agent.unavailable': 'SSH 에이전트를 찾을 수 없습니다. ssh-agent를 시작한 후 다시 시도하세요.',
+  'hostDetails.agent.empty': 'SSH 에이전트에 키가 없습니다. ssh-add로 추가하세요.',
+  'hostDetails.agent.anyIdentity': '사용 가능한 모든 자격 증명',
 };

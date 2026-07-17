@@ -791,4 +791,10 @@ export const enVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': 'Test Connection',
+
+  'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.agent.loading': 'Reading agent identities...',
+  'hostDetails.agent.unavailable': 'No SSH agent detected. Start ssh-agent (or enable your key manager\'s agent) and try again.',
+  'hostDetails.agent.empty': 'The SSH agent holds no keys. Add one with ssh-add.',
+  'hostDetails.agent.anyIdentity': 'Any available identity',
 };

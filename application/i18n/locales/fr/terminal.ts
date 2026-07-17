@@ -819,4 +819,6 @@ export const frTerminalMessages: Messages = {
   'diagnostics.rerun': 'Relancer',
   'diagnostics.unavailable': 'Le diagnostic n\'est disponible que dans l\'application de bureau.',
   'diagnostics.runFromError': 'Lancer le diagnostic',
+
+  'keychain.import.fido2AgentHint': 'Astuce : dans les réglages de l\'hôte, définissez l\'authentification sur « SSH Agent » et choisissez cette clé comme identité préférée.',
 };

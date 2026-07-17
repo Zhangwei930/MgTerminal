@@ -83,7 +83,7 @@ declare global {
       certificate?: string;
       keyId?: string;
       passphrase?: string;
-      authMethod?: 'password' | 'key' | 'certificate';
+      authMethod?: 'password' | 'key' | 'certificate' | 'agent';
       identityFilePaths?: string[];
       port?: number;
       etPort?: number;

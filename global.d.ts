@@ -94,6 +94,9 @@ declare global {
     keyId?: string;
     keySource?: 'generated' | 'imported' | 'reference';
     agentForwarding?: boolean;
+    // Preferred SSH agent identity (SHA256 fingerprint); restricts agent auth
+    // to the matching key when set.
+    agentIdentityFingerprint?: string;
     x11Forwarding?: boolean;
     x11Display?: string;
     cols?: number;

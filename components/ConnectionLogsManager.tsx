@@ -26,6 +26,15 @@ interface ConnectionLogsManagerProps {
 }
 
 // Format date for display
+// Human-readable label for the auth method recorded on a connection log
+// (values come from the bridge's auth handler ids).
+export const formatLogAuthMethod = (method: string): string => {
+    if (method === "publickey" || method === "publickey-user") return "key";
+    if (method.startsWith("publickey-default-")) return `key (${method.slice("publickey-default-".length)})`;
+    if (method.startsWith("publickey-encrypted-")) return `key (${method.slice("publickey-encrypted-".length)})`;
+    return method;
+};
+
 const formatDate = (timestamp: number, locale: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString(locale || undefined, {
@@ -134,6 +143,7 @@ const LogItem = memo<LogItemProps>(({ log, onToggleSaved, onDelete, onClick }) =
                     <div className="text-sm font-medium truncate">{isLocal ? t("logs.localTerminal") : log.hostLabel}</div>
                     <div className="text-xs text-muted-foreground truncate">
                         {isLocal ? "local" : isSerial ? `serial, ${log.hostname}` : `${log.protocol}, ${log.username}`}
+                        {!isLocal && !isSerial && log.authMethod ? ` · ${formatLogAuthMethod(log.authMethod)}` : ""}
                     </div>
                 </div>
             </div>

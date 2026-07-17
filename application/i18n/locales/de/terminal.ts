@@ -803,4 +803,6 @@ export const deTerminalMessages: Messages = {
   'diagnostics.rerun': 'Erneut ausführen',
   'diagnostics.unavailable': 'Die Diagnose ist nur in der Desktop-App verfügbar.',
   'diagnostics.runFromError': 'Diagnose ausführen',
+
+  'keychain.import.fido2AgentHint': 'Tipp: Stelle in den Host-Einstellungen die Authentifizierung auf \'SSH Agent\' und wähle diesen Schlüssel als bevorzugte Identität.',
 };

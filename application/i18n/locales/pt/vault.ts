@@ -784,4 +784,10 @@ export const ptVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': 'Testar conexão',
+
+  'hostDetails.credential.agent': 'Agente SSH',
+  'hostDetails.agent.loading': 'Lendo identidades do agente…',
+  'hostDetails.agent.unavailable': 'Nenhum agente SSH detectado. Inicie o ssh-agent e tente novamente.',
+  'hostDetails.agent.empty': 'O agente SSH não tem chaves. Adicione uma com ssh-add.',
+  'hostDetails.agent.anyIdentity': 'Qualquer identidade disponível',
 };

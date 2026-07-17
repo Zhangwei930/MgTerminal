@@ -153,3 +153,44 @@ test("resolveHostAutofillPassword ignores undecryptable password placeholders", 
     undefined,
   );
 });
+
+test("resolveHostAuth: authMethod 'agent' yields agent auth with no key or password", () => {
+  const host = {
+    id: "h1",
+    label: "agent-host",
+    hostname: "example.com",
+    username: "deploy",
+    tags: [],
+    os: "linux",
+    authMethod: "agent",
+    password: "stale-password",
+    identityFileId: "key-1",
+  } as unknown as Host;
+  const resolved = resolveHostAuth({ host, keys: [referenceKey], identities: [] });
+  assert.equal(resolved.authMethod, "agent");
+  assert.equal(resolved.key, undefined);
+  assert.equal(resolved.keyId, undefined);
+  assert.equal(resolved.password, undefined);
+});
+
+test("resolveHostAuth: identity with agent auth method resolves to agent", () => {
+  const identity: Identity = {
+    id: "id-1",
+    label: "agent identity",
+    username: "ops",
+    authMethod: "agent" as Identity["authMethod"],
+    created: 1,
+  };
+  const host = {
+    id: "h1",
+    label: "host",
+    hostname: "example.com",
+    username: "",
+    tags: [],
+    os: "linux",
+    identityId: "id-1",
+  } as unknown as Host;
+  const resolved = resolveHostAuth({ host, keys: [], identities: [identity] });
+  assert.equal(resolved.authMethod, "agent");
+  assert.equal(resolved.username, "ops");
+});

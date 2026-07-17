@@ -808,4 +808,10 @@ export const frVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': 'Tester la connexion',
+
+  'hostDetails.credential.agent': 'Agent SSH',
+  'hostDetails.agent.loading': 'Lecture des identités de l\'agent…',
+  'hostDetails.agent.unavailable': 'Aucun agent SSH détecté. Démarrez ssh-agent puis réessayez.',
+  'hostDetails.agent.empty': 'L\'agent SSH ne contient aucune clé. Ajoutez-en une avec ssh-add.',
+  'hostDetails.agent.anyIdentity': 'N\'importe quelle identité disponible',
 };

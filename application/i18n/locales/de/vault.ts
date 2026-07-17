@@ -791,4 +791,10 @@ export const deVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': 'Verbindung testen',
+
+  'hostDetails.credential.agent': 'SSH-Agent',
+  'hostDetails.agent.loading': 'Agent-Identitäten werden gelesen…',
+  'hostDetails.agent.unavailable': 'Kein SSH-Agent gefunden. Starte ssh-agent und versuche es erneut.',
+  'hostDetails.agent.empty': 'Der SSH-Agent enthält keine Schlüssel. Füge einen mit ssh-add hinzu.',
+  'hostDetails.agent.anyIdentity': 'Beliebige verfügbare Identität',
 };

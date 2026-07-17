@@ -1,7 +1,7 @@
 import type { Host, Identity, SSHKey } from "./models";
 import { sanitizeCredentialValue } from "./credentials";
 
-type HostAuthMethod = "password" | "key" | "certificate";
+type HostAuthMethod = "password" | "key" | "certificate" | "agent";
 
 type HostAuthOverride = {
   authMethod?: HostAuthMethod;
@@ -65,16 +65,19 @@ export const resolveHostAuth = (args: {
     host.authMethod
   ) as HostAuthMethod | undefined;
 
-  // Don't load key when password auth is selected.
+  // Don't load key when password or agent auth is selected.
   // This ensures the user's auth method selection is strictly respected.
-  const keyId = selectedAuthMethod === "password"
+  const keyId = selectedAuthMethod === "password" || selectedAuthMethod === "agent"
     ? undefined
     : (override?.keyId || identity?.keyId || host.identityFileId || undefined);
 
 
   const key = keyId ? keys.find((k) => k.id === keyId) : undefined;
 
-  const password = override?.password ?? identity?.password ?? host.password;
+  // Agent auth sends no stored secrets — the agent holds the keys.
+  const password = selectedAuthMethod === "agent"
+    ? undefined
+    : override?.password ?? identity?.password ?? host.password;
 
   const authMethod = inferAuthMethod({
     explicit: override?.authMethod,

@@ -803,4 +803,6 @@ export const enTerminalMessages: Messages = {
   'diagnostics.rerun': 'Run again',
   'diagnostics.unavailable': 'Diagnostics is only available in the desktop app.',
   'diagnostics.runFromError': 'Run diagnostics',
+
+  'keychain.import.fido2AgentHint': 'Tip: in host settings, set Authentication to \'SSH Agent\' and pick this key as the preferred identity.',
 };

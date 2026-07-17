@@ -797,4 +797,6 @@ export const ptTerminalMessages: Messages = {
   'diagnostics.rerun': 'Executar novamente',
   'diagnostics.unavailable': 'O diagnóstico só está disponível no aplicativo desktop.',
   'diagnostics.runFromError': 'Executar diagnóstico',
+
+  'keychain.import.fido2AgentHint': 'Dica: nas configurações do host, defina a autenticação como \'SSH Agent\' e escolha esta chave como identidade preferida.',
 };

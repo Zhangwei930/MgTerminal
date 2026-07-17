@@ -46,6 +46,7 @@ export interface ConnectionLog {
   hostname: string; // Target hostname or 'localhost'
   username: string; // SSH username or system username
   protocol: 'ssh' | 'telnet' | 'local' | 'mosh' | 'et' | 'serial';
+  authMethod?: string; // Auth method that actually succeeded (e.g. 'agent', 'password', 'publickey-user')
   hostOs?: 'linux' | 'windows' | 'macos'; // Snapshot of the connected host OS for log icons
   hostDistro?: string; // Snapshot of the connected host distro/vendor icon id
   hostIconMode?: HostIconMode; // Snapshot of the host icon mode for log icons

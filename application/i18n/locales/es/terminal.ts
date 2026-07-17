@@ -772,4 +772,6 @@ export const esTerminalMessages: Messages = {
   'diagnostics.rerun': 'Ejecutar de nuevo',
   'diagnostics.unavailable': 'El diagnóstico solo está disponible en la aplicación de escritorio.',
   'diagnostics.runFromError': 'Ejecutar diagnóstico',
+
+  'keychain.import.fido2AgentHint': 'Consejo: en la configuración del host, establece la autenticación en \'SSH Agent\' y elige esta clave como identidad preferida.',
 };

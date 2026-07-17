@@ -234,6 +234,15 @@ function createPreloadApi(ctx) {
   checkSshAgent: async () => {
     return ipcRenderer.invoke("magiesTerminal:ssh:check-agent");
   },
+  listSshAgentIdentities: async () => {
+    return ipcRenderer.invoke("magiesTerminal:ssh:list-agent-identities");
+  },
+  onSshAuthMethodUsed: (cb) => {
+    sshAuthMethodUsedListeners.add(cb);
+    return () => {
+      sshAuthMethodUsedListeners.delete(cb);
+    };
+  },
   getDefaultKeys: async () => {
     return ipcRenderer.invoke("magiesTerminal:ssh:get-default-keys");
   },

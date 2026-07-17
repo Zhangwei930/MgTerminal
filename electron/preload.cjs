@@ -33,6 +33,7 @@ const zmodemListeners = new Map();
 const zmodemOverwriteListeners = new Map(); // sessionId -> Set<cb>
 const sftpConnectionProgressListeners = new Set();
 const connectionDiagnosticsProgressListeners = new Set();
+const sshAuthMethodUsedListeners = new Set();
 const authFailedListeners = new Map();
 const telnetAutoLoginCompleteListeners = new Map();
 const telnetAutoLoginCancelledListeners = new Map();
@@ -332,6 +333,17 @@ ipcRenderer.on("magiesTerminal:connection-reuse:fallback", (_event, payload) => 
       cb(payload.sessionId, payload.sourceSessionId);
     } catch (err) {
       console.error("Connection reuse fallback callback failed", err);
+    }
+  });
+});
+
+// Successful auth method notifications (connection log enrichment)
+ipcRenderer.on("magiesTerminal:ssh:auth-method-used", (_event, payload) => {
+  sshAuthMethodUsedListeners.forEach((cb) => {
+    try {
+      cb(payload);
+    } catch (err) {
+      console.error("Auth method used callback failed", err);
     }
   });
 });
@@ -798,6 +810,7 @@ const api = createPreloadApi({
   zmodemOverwriteListeners,
   sftpConnectionProgressListeners,
   connectionDiagnosticsProgressListeners,
+  sshAuthMethodUsedListeners,
   authFailedListeners,
   telnetAutoLoginCompleteListeners,
   telnetAutoLoginCancelledListeners,

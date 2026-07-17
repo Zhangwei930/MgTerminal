@@ -803,4 +803,6 @@ export const koTerminalMessages: Messages = {
   'diagnostics.rerun': '다시 실행',
   'diagnostics.unavailable': '진단은 데스크톱 앱에서만 사용할 수 있습니다.',
   'diagnostics.runFromError': '진단 실행',
+
+  'keychain.import.fido2AgentHint': '팁: 호스트 설정에서 인증 방식을 \'SSH Agent\'로 설정하면 이 키를 기본 자격 증명으로 선택할 수 있습니다.',
 };

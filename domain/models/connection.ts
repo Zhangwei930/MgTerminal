@@ -152,7 +152,10 @@ export interface Host {
   autoOpenSftpPanel?: boolean;
   password?: string;
   savePassword?: boolean; // Whether to save the password (default: true)
-  authMethod?: 'password' | 'key' | 'certificate';
+  authMethod?: 'password' | 'key' | 'certificate' | 'agent';
+  // Preferred SSH agent identity (SHA256 fingerprint, no prefix). When set
+  // with authMethod 'agent', only the matching agent key is offered.
+  agentIdentityFingerprint?: string;
   agentForwarding?: boolean;
   x11Forwarding?: boolean;
   createdAt?: number; // Timestamp when host was created
@@ -261,7 +264,7 @@ export interface Host {
 export type KeyType = 'RSA' | 'ECDSA' | 'ED25519';
 type KeySource = 'generated' | 'imported' | 'reference';
 export type KeyCategory = 'key' | 'certificate' | 'identity';
-type IdentityAuthMethod = 'password' | 'key' | 'certificate';
+type IdentityAuthMethod = 'password' | 'key' | 'certificate' | 'agent';
 
 export interface SSHKey {
   id: string;

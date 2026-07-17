@@ -845,4 +845,6 @@ export const zhTWTerminalMessages: Messages = {
   'diagnostics.rerun': '重新檢測',
   'diagnostics.unavailable': '診斷功能僅在桌面應用程式中可用。',
   'diagnostics.runFromError': '執行診斷',
+
+  'keychain.import.fido2AgentHint': '提示:在主機設定中將驗證方式設為「SSH Agent」,並可將此金鑰選為首選身份。',
 };

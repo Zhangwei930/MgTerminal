@@ -828,4 +828,10 @@ export const zhTWVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': '測試連線',
+
+  'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.agent.loading': '正在讀取 Agent 中的身份…',
+  'hostDetails.agent.unavailable': '未偵測到 SSH Agent。請先啟動 ssh-agent(或啟用金鑰管理器的 Agent)後重試。',
+  'hostDetails.agent.empty': 'SSH Agent 中沒有金鑰,可用 ssh-add 新增。',
+  'hostDetails.agent.anyIdentity': '任意可用身份',
 };

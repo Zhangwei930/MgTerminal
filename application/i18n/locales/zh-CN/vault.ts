@@ -828,4 +828,10 @@ export const zhCNVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': '测试连接',
+
+  'hostDetails.credential.agent': 'SSH Agent',
+  'hostDetails.agent.loading': '正在读取 Agent 中的身份…',
+  'hostDetails.agent.unavailable': '未检测到 SSH Agent。请先启动 ssh-agent(或启用密钥管理器的 Agent)后重试。',
+  'hostDetails.agent.empty': 'SSH Agent 中没有密钥,可用 ssh-add 添加。',
+  'hostDetails.agent.anyIdentity': '任意可用身份',
 };

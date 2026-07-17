@@ -780,6 +780,20 @@ function createStartSessionApi(ctx) {
           }
         }
 
+        // Preferred agent identity: restrict the offered agent keys to the
+        // fingerprint the user picked for this host. Only applies to plain
+        // agent sockets — the certificate MagiesTerminalAgent manages its own key.
+        if (options.agentIdentityFingerprint && typeof connectOpts.agent === "string") {
+          const { createIdentityFilteredAgent } = require("../sshAgentIdentities.cjs");
+          connectOpts.agent = createIdentityFilteredAgent(
+            connectOpts.agent,
+            options.agentIdentityFingerprint,
+          );
+          log("Using preferred agent identity", {
+            fingerprint: options.agentIdentityFingerprint,
+          });
+        }
+
         // Build authentication handler with fallback support
         // ssh2 authHandler can be a function that returns the next auth method to try
 
@@ -1147,10 +1161,20 @@ function createStartSessionApi(ctx) {
             });
 
             // Cache the successful auth method
-            if (connectOpts._lastTriedMethodRef) {
-              const successMethod = connectOpts._lastTriedMethodRef();
-              if (successMethod) {
+            {
+              const successMethod = connectOpts._lastTriedMethodRef
+                ? connectOpts._lastTriedMethodRef()
+                : (authAgent ? "agent" : null);
+              if (successMethod && connectOpts._lastTriedMethodRef) {
                 setCachedAuthMethod(connectOpts.username, options.hostname, options.port, successMethod);
+              }
+              // Tell the renderer which method actually authenticated so the
+              // connection log can record it (feature: agent auth visibility).
+              if (successMethod && !sender.isDestroyed()) {
+                sender.send("magiesTerminal:ssh:auth-method-used", {
+                  sessionId,
+                  method: successMethod,
+                });
               }
             }
 

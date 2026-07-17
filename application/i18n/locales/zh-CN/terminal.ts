@@ -845,4 +845,6 @@ export const zhCNTerminalMessages: Messages = {
   'diagnostics.rerun': '重新检测',
   'diagnostics.unavailable': '诊断功能仅在桌面应用中可用。',
   'diagnostics.runFromError': '运行诊断',
+
+  'keychain.import.fido2AgentHint': '提示:在主机设置中将认证方式设为“SSH Agent”,并可将此密钥选为首选身份。',
 };

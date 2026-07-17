@@ -41,6 +41,7 @@ import {
   STORAGE_KEY_TERM_SETTINGS,
 } from "../../infrastructure/config/storageKeys";
 import { localStorageAdapter, LOCAL_STORAGE_ADAPTER_CHANGED_EVENT } from "../../infrastructure/persistence/localStorageAdapter";
+import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
 import { mergeGlobalHistoryOnAppend, sanitizeGlobalHistoryEntries } from "../../domain/globalHistory";
 import {
   buildTerminalDataMapFromLogs,
@@ -550,6 +551,27 @@ export const useVaultState = () => {
     },
     [persistConnectionLogState],
   );
+
+  // Record which auth method actually authenticated each SSH session (agent,
+  // password, publickey-...) on its connection log entry.
+  useEffect(() => {
+    const unsubscribe = magiesTerminalBridge.get()?.onSshAuthMethodUsed?.(
+      ({ sessionId, method }) => {
+        setConnectionLogs((prev) => {
+          // Logs are sorted newest-first; the first sessionId match is the
+          // entry for the current connection attempt.
+          const index = prev.findIndex((log) => log.sessionId === sessionId);
+          if (index === -1) return prev;
+          const updated = prev.map((log, i) =>
+            i === index ? { ...log, authMethod: method } : log,
+          );
+          persistConnectionLogState(updated, { pruneMainBlob: true });
+          return updated;
+        });
+      },
+    );
+    return () => unsubscribe?.();
+  }, [persistConnectionLogState]);
 
   const toggleConnectionLogSaved = useCallback((id: string) => {
     setConnectionLogs((prev) => {

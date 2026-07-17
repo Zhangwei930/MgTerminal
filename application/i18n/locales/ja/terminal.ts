@@ -803,4 +803,6 @@ export const jaTerminalMessages: Messages = {
   'diagnostics.rerun': '再実行',
   'diagnostics.unavailable': '診断はデスクトップアプリでのみ利用できます。',
   'diagnostics.runFromError': '診断を実行',
+
+  'keychain.import.fido2AgentHint': 'ヒント: ホスト設定で認証方式を「SSH Agent」にすると、このキーを優先アイデンティティとして選択できます。',
 };

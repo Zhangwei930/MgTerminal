@@ -806,4 +806,10 @@ export const ruVaultMessages: Messages = {
 
 
   'hostDetails.testConnection': 'Проверить подключение',
+
+  'hostDetails.credential.agent': 'SSH-агент',
+  'hostDetails.agent.loading': 'Чтение ключей агента…',
+  'hostDetails.agent.unavailable': 'SSH-агент не найден. Запустите ssh-agent и повторите попытку.',
+  'hostDetails.agent.empty': 'В SSH-агенте нет ключей. Добавьте ключ командой ssh-add.',
+  'hostDetails.agent.anyIdentity': 'Любой доступный ключ',
 };

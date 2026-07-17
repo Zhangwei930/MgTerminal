@@ -824,4 +824,6 @@ export const ruTerminalMessages: Messages = {
   'diagnostics.rerun': 'Повторить',
   'diagnostics.unavailable': 'Диагностика доступна только в настольном приложении.',
   'diagnostics.runFromError': 'Запустить диагностику',
+
+  'keychain.import.fido2AgentHint': 'Совет: в настройках хоста выберите аутентификацию \'SSH Agent\' и укажите этот ключ как предпочитаемую личность.',
 };

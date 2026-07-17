@@ -1238,6 +1238,10 @@ function registerHandlers(ipcMain, options = {}) {
   ipcMain.handle("magiesTerminal:ssh:check-agent", async () => {
     return await checkWindowsSshAgent();
   });
+  ipcMain.handle("magiesTerminal:ssh:list-agent-identities", async () => {
+    const { listAgentIdentities } = require("./sshAgentIdentities.cjs");
+    return await listAgentIdentities();
+  });
   ipcMain.handle("magiesTerminal:ssh:get-default-keys", async () => {
     const sshDir = path.join(os.homedir(), ".ssh");
     const keys = [];

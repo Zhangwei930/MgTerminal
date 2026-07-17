@@ -10,6 +10,7 @@ import {
   normalizeAutoSyncIntervalMs,
   parseInventoryDocument,
   syncHostsFromInventory,
+  withHostDataSourceSyncOutcome,
   type HostDataSourceSyncStats,
 } from "../../domain/hostDataSource";
 import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
@@ -112,8 +113,11 @@ export function useHostDataSourceSync({
         if (!options?.force && source.lastFileHash && source.lastFileHash === contentHash) {
           const now = Date.now();
           const updatedSources = managedSourcesRef.current.map((entry) =>
-            entry.id === source.id ? { ...entry, lastSyncedAt: now } : entry,
+            entry.id === source.id
+              ? withHostDataSourceSyncOutcome(entry, { success: true, unchanged: true, now })
+              : entry,
           );
+          managedSourcesRef.current = updatedSources;
           onUpdateManagedSources(updatedSources);
           return {
             sourceId: source.id,
@@ -137,7 +141,11 @@ export function useHostDataSourceSync({
         const now = Date.now();
         const updatedSources = managedSourcesRef.current.map((entry) =>
           entry.id === source.id
-            ? { ...entry, lastSyncedAt: now, lastFileHash: contentHash }
+            ? withHostDataSourceSyncOutcome(entry, {
+              success: true,
+              now,
+              contentHash,
+            })
             : entry,
         );
         onUpdateManagedSources(updatedSources);
@@ -152,6 +160,14 @@ export function useHostDataSourceSync({
         };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        const now = Date.now();
+        const updatedSources = managedSourcesRef.current.map((entry) =>
+          entry.id === source.id
+            ? withHostDataSourceSyncOutcome(entry, { success: false, error: message, now })
+            : entry,
+        );
+        managedSourcesRef.current = updatedSources;
+        onUpdateManagedSources(updatedSources);
         return { sourceId: source.id, success: false, error: message };
       }
     },

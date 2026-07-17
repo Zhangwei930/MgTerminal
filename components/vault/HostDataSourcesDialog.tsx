@@ -38,6 +38,7 @@ export type HostDataSourcesDialogProps = {
     syncNow?: boolean;
   }) => Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }>;
   onSyncSource: (sourceId: string, options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome>;
+  onSyncAllSources?: (options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome[]>;
   onRemoveSource: (sourceId: string, options?: { deleteHosts?: boolean }) => boolean;
   onSetAutoSyncInterval: (sourceId: string, autoSyncIntervalMs: number | undefined) => void;
 };
@@ -92,6 +93,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   syncingSourceId,
   onAddJsonSource,
   onSyncSource,
+  onSyncAllSources,
   onRemoveSource,
   onSetAutoSyncInterval,
 }) => {
@@ -104,6 +106,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const [syncMode, setSyncMode] = useState<"merge" | "replace_group">("merge");
   const [autoSyncIntervalMs, setAutoSyncIntervalMs] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   const jsonSources = useMemo(
     () => managedSources.filter((source) => isJsonManagedSourceType(source.type)),
@@ -201,6 +204,38 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     [onSyncSource, t],
   );
 
+  const handleSyncAll = useCallback(async () => {
+    if (!onSyncAllSources) return;
+    setSyncingAll(true);
+    try {
+      const outcomes = await onSyncAllSources({ force: true });
+      const failed = outcomes.filter((o) => !o.success);
+      const unchanged = outcomes.filter((o) => o.success && o.unchanged).length;
+      const ok = outcomes.filter((o) => o.success && !o.unchanged).length;
+      if (failed.length > 0) {
+        toast.error(
+          t("vault.dataSources.toast.syncAllPartial", {
+            ok: ok + unchanged,
+            failed: failed.length,
+            error: failed[0]?.error || t("common.unknownError"),
+          }),
+          t("vault.dataSources.toast.syncFailedTitle"),
+        );
+      } else {
+        toast.success(
+          t("vault.dataSources.toast.syncAllSummary", {
+            count: outcomes.length,
+            ok,
+            unchanged,
+          }),
+          t("vault.dataSources.toast.syncCompletedTitle"),
+        );
+      }
+    } finally {
+      setSyncingAll(false);
+    }
+  }, [onSyncAllSources, t]);
+
   const handleRemove = useCallback(
     (sourceId: string) => {
       const ok = onRemoveSource(sourceId, { deleteHosts: false });
@@ -242,10 +277,27 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                 <div className="text-sm text-muted-foreground">
                   {t("vault.dataSources.count", { count: jsonSources.length })}
                 </div>
-                <Button size="sm" onClick={() => setShowAddForm(true)}>
-                  <Plus size={14} className="mr-2" />
-                  {t("vault.dataSources.add")}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {jsonSources.length > 0 && onSyncAllSources && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={syncingAll || Boolean(syncingSourceId)}
+                      onClick={() => void handleSyncAll()}
+                    >
+                      {syncingAll || syncingSourceId ? (
+                        <Loader2 size={14} className="mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw size={14} className="mr-2" />
+                      )}
+                      {t("vault.dataSources.syncAll")}
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => setShowAddForm(true)}>
+                    <Plus size={14} className="mr-2" />
+                    {t("vault.dataSources.add")}
+                  </Button>
+                </div>
               </div>
 
               {jsonSources.length === 0 ? (
@@ -291,6 +343,27 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                                 : ` · ${t("vault.dataSources.neverSynced")}`}
                               {` · ${t("vault.dataSources.autoSync.label")}: ${formatAutoSyncLabel(t, source.autoSyncIntervalMs)}`}
                             </div>
+                            {source.lastSyncStatus && (
+                              <div
+                                className={cn(
+                                  "mt-1 text-[11px]",
+                                  source.lastSyncStatus === "error"
+                                    ? "text-destructive"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {source.lastSyncStatus === "ok" && t("vault.dataSources.status.ok")}
+                                {source.lastSyncStatus === "unchanged" && t("vault.dataSources.status.unchanged")}
+                                {source.lastSyncStatus === "error" && (
+                                  <>
+                                    {t("vault.dataSources.status.error")}
+                                    {source.lastSyncError
+                                      ? `: ${source.lastSyncError}`
+                                      : ""}
+                                  </>
+                                )}
+                              </div>
+                            )}
                             <div className="mt-1.5 flex flex-wrap gap-1">
                               {HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS.map((preset) => {
                                 const current = normalizeAutoSyncIntervalMs(source.autoSyncIntervalMs) || 0;

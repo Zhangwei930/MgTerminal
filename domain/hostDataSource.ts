@@ -110,6 +110,59 @@ export function normalizeManagedSource(value: unknown): ManagedSource | null {
     syncMode: record.syncMode === "replace_group" ? "replace_group" : "merge",
     enabled: record.enabled === false ? false : true,
     autoSyncIntervalMs: normalizeAutoSyncIntervalMs(record.autoSyncIntervalMs),
+    lastSyncStatus: normalizeLastSyncStatus(record.lastSyncStatus),
+    lastSyncError: normalizeLastSyncError(record.lastSyncError),
+  };
+}
+
+export function normalizeLastSyncStatus(
+  value: unknown,
+): ManagedSource["lastSyncStatus"] | undefined {
+  if (value === "ok" || value === "unchanged" || value === "error") return value;
+  return undefined;
+}
+
+export function normalizeLastSyncError(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.slice(0, 400);
+}
+
+/** Apply last-sync outcome onto a managed source record (immutable). */
+export function withHostDataSourceSyncOutcome(
+  source: ManagedSource,
+  outcome: {
+    success: boolean;
+    unchanged?: boolean;
+    error?: string;
+    now?: number;
+    contentHash?: string;
+  },
+): ManagedSource {
+  const now = outcome.now ?? Date.now();
+  if (!outcome.success) {
+    return {
+      ...source,
+      lastSyncedAt: now,
+      lastSyncStatus: "error",
+      lastSyncError: normalizeLastSyncError(outcome.error) || "Sync failed.",
+    };
+  }
+  if (outcome.unchanged) {
+    return {
+      ...source,
+      lastSyncedAt: now,
+      lastSyncStatus: "unchanged",
+      lastSyncError: undefined,
+    };
+  }
+  return {
+    ...source,
+    lastSyncedAt: now,
+    lastFileHash: outcome.contentHash ?? source.lastFileHash,
+    lastSyncStatus: "ok",
+    lastSyncError: undefined,
   };
 }
 

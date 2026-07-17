@@ -630,6 +630,10 @@ export const zhCNCoreMessages: Messages = {
   'vault.dataSources.addAndSync': '添加并同步',
   'vault.dataSources.empty': '还没有清单数据源。可添加 JSON / Ansible INI 文件或 URL，从 CMDB / Ansible / 自定义 API 同步主机。',
   'vault.dataSources.sync': '同步',
+  'vault.dataSources.syncAll': '全部同步',
+  'vault.dataSources.status.ok': '上次同步：成功',
+  'vault.dataSources.status.unchanged': '上次同步：无变化',
+  'vault.dataSources.status.error': '上次同步失败',
   'vault.dataSources.group': '分组',
   'vault.dataSources.lastSynced': '上次同步 {time}',
   'vault.dataSources.neverSynced': '尚未同步',
@@ -667,6 +671,10 @@ export const zhCNCoreMessages: Messages = {
   'vault.dataSources.toast.syncCompletedTitle': '同步完成',
   'vault.dataSources.toast.syncFailedTitle': '同步失败',
   'vault.dataSources.toast.unchanged': '清单自上次同步后无变化。',
+  'vault.dataSources.toast.syncAllSummary':
+    '已同步 {count} 个数据源：{ok} 个有更新，{unchanged} 个无变化。',
+  'vault.dataSources.toast.syncAllPartial':
+    '{ok} 成功，{failed} 失败。首个错误：{error}',
   'vault.dataSources.toast.syncSummary':
     '新增 {added}，更新 {updated}，移除 {removed}，跳过 {skipped}。',
   'vault.dataSources.toast.removedTitle': '已移除数据源',

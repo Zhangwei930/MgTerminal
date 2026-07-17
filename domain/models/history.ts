@@ -94,4 +94,8 @@ export interface ManagedSource {
    * Undefined or 0 = manual only. Min 60s when set.
    */
   autoSyncIntervalMs?: number;
+  /** Result of the last inventory pull (ok / unchanged / error). */
+  lastSyncStatus?: 'ok' | 'unchanged' | 'error';
+  /** Last pull error message when lastSyncStatus is error (truncated). */
+  lastSyncError?: string;
 }

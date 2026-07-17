@@ -83,6 +83,10 @@ export const enVaultMessages: Messages = {
   'vault.dataSources.addAndSync': 'Add & sync',
   'vault.dataSources.empty': 'No inventory sources yet. Add a JSON/Ansible INI file or URL to sync hosts from CMDB / Ansible / custom API.',
   'vault.dataSources.sync': 'Sync',
+  'vault.dataSources.syncAll': 'Sync all',
+  'vault.dataSources.status.ok': 'Last sync: ok',
+  'vault.dataSources.status.unchanged': 'Last sync: unchanged',
+  'vault.dataSources.status.error': 'Last sync failed',
   'vault.dataSources.group': 'Group',
   'vault.dataSources.lastSynced': 'Last synced {time}',
   'vault.dataSources.neverSynced': 'Never synced',
@@ -120,6 +124,10 @@ export const enVaultMessages: Messages = {
   'vault.dataSources.toast.syncCompletedTitle': 'Sync completed',
   'vault.dataSources.toast.syncFailedTitle': 'Sync failed',
   'vault.dataSources.toast.unchanged': 'Inventory unchanged since last sync.',
+  'vault.dataSources.toast.syncAllSummary':
+    'Synced {count} source(s): {ok} updated, {unchanged} unchanged.',
+  'vault.dataSources.toast.syncAllPartial':
+    '{ok} ok, {failed} failed. First error: {error}',
   'vault.dataSources.toast.syncSummary':
     'Added {added}, updated {updated}, removed {removed}, skipped {skipped}.',
   'vault.dataSources.toast.removedTitle': 'Source removed',

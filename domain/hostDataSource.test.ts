@@ -13,9 +13,12 @@ import {
   isHostDataSourceDueForAutoSync,
   listDueHostDataSources,
   normalizeAutoSyncIntervalMs,
+  normalizeLastSyncError,
+  normalizeLastSyncStatus,
   parseHostInventoryDocument,
   parseInventoryDocument,
   syncHostsFromInventory,
+  withHostDataSourceSyncOutcome,
 } from "./hostDataSource.ts";
 
 const sampleJson = JSON.stringify({
@@ -252,6 +255,41 @@ test("exportHostsToAnsibleInventoryIni is secret-free and re-importable", () => 
   const roundTrip = parseInventoryDocument(result.ini);
   assert.equal(roundTrip.hosts.length, 1);
   assert.equal(roundTrip.hosts[0]?.hostname, "10.0.0.5");
+});
+
+test("withHostDataSourceSyncOutcome records ok / unchanged / error", () => {
+  const base = createJsonManagedSource({
+    type: "json_file",
+    filePath: "/tmp/a.json",
+    groupName: "g",
+    id: "s-status",
+  });
+  const ok = withHostDataSourceSyncOutcome(base, {
+    success: true,
+    contentHash: "abc",
+    now: 10,
+  });
+  assert.equal(ok.lastSyncStatus, "ok");
+  assert.equal(ok.lastFileHash, "abc");
+  assert.equal(ok.lastSyncError, undefined);
+
+  const unchanged = withHostDataSourceSyncOutcome(base, {
+    success: true,
+    unchanged: true,
+    now: 20,
+  });
+  assert.equal(unchanged.lastSyncStatus, "unchanged");
+
+  const err = withHostDataSourceSyncOutcome(base, {
+    success: false,
+    error: "  boom  ",
+    now: 30,
+  });
+  assert.equal(err.lastSyncStatus, "error");
+  assert.equal(err.lastSyncError, "boom");
+  assert.equal(normalizeLastSyncStatus("error"), "error");
+  assert.equal(normalizeLastSyncStatus("nope"), undefined);
+  assert.equal(normalizeLastSyncError("x".repeat(500))?.length, 400);
 });
 
 test("normalizeAutoSyncIntervalMs clamps and clears invalid values", () => {

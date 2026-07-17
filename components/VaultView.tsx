@@ -812,6 +812,7 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
   const {
     syncingSourceId,
     syncSource,
+    syncAllJsonSources,
     addJsonSource,
     removeJsonSource,
     setAutoSyncInterval,
@@ -1297,6 +1298,7 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
         syncingSourceId={syncingSourceId}
         onAddJsonSource={addJsonSource}
         onSyncSource={syncSource}
+        onSyncAllSources={syncAllJsonSources}
         onRemoveSource={removeJsonSource}
         onSetAutoSyncInterval={setAutoSyncInterval}
       />

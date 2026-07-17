@@ -118,6 +118,10 @@ export const ruVaultMessages: Messages = {
   'vault.dataSources.addAndSync': 'Добавить и синхронизировать',
   'vault.dataSources.empty': 'Пока нет источников. Добавьте JSON / Ansible INI файл или URL для синхронизации из CMDB / Ansible / API.',
   'vault.dataSources.sync': 'Синхронизировать',
+  'vault.dataSources.syncAll': 'Синхр. все',
+  'vault.dataSources.status.ok': 'Последняя синхр.: ok',
+  'vault.dataSources.status.unchanged': 'Последняя синхр.: без изменений',
+  'vault.dataSources.status.error': 'Ошибка последней синхр.',
   'vault.dataSources.group': 'Группа',
   'vault.dataSources.lastSynced': 'Последняя синхронизация {time}',
   'vault.dataSources.neverSynced': 'Ещё не синхронизировалось',
@@ -155,6 +159,10 @@ export const ruVaultMessages: Messages = {
   'vault.dataSources.toast.syncCompletedTitle': 'Синхронизация завершена',
   'vault.dataSources.toast.syncFailedTitle': 'Ошибка синхронизации',
   'vault.dataSources.toast.unchanged': 'Инвентарь не изменился с прошлой синхронизации.',
+  'vault.dataSources.toast.syncAllSummary':
+    'Синхронизировано источников: {count} ({ok} обновлено, {unchanged} без изменений).',
+  'vault.dataSources.toast.syncAllPartial':
+    'Успешно: {ok}, ошибок: {failed}. Первая: {error}',
   'vault.dataSources.toast.syncSummary':
     'Добавлено {added}, обновлено {updated}, удалено {removed}, пропущено {skipped}.',
   'vault.dataSources.toast.removedTitle': 'Источник удалён',

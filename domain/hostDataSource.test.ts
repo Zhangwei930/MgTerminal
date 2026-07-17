@@ -9,6 +9,9 @@ import {
   hostToInventoryItem,
   inventoryContainsSecrets,
   isHttpInventoryUrl,
+  isHostDataSourceDueForAutoSync,
+  listDueHostDataSources,
+  normalizeAutoSyncIntervalMs,
   parseHostInventoryDocument,
   parseInventoryDocument,
   syncHostsFromInventory,
@@ -223,4 +226,48 @@ test("export respects host id selection and managedExternalId", () => {
   assert.equal(result.exportedCount, 1);
   assert.equal(result.document.hosts[0]?.id, "cmdb-99");
   assert.equal(hostToInventoryItem(hosts[1]!)?.id, "local-2");
+});
+
+test("normalizeAutoSyncIntervalMs clamps and clears invalid values", () => {
+  assert.equal(normalizeAutoSyncIntervalMs(undefined), undefined);
+  assert.equal(normalizeAutoSyncIntervalMs(0), undefined);
+  assert.equal(normalizeAutoSyncIntervalMs(-1), undefined);
+  assert.equal(normalizeAutoSyncIntervalMs(30_000), 60_000);
+  assert.equal(normalizeAutoSyncIntervalMs(5 * 60_000), 5 * 60_000);
+  assert.equal(normalizeAutoSyncIntervalMs(48 * 60 * 60_000), 24 * 60 * 60_000);
+});
+
+test("isHostDataSourceDueForAutoSync respects interval and lastSyncedAt", () => {
+  const source = createJsonManagedSource({
+    type: "json_http",
+    filePath: "https://example.com/hosts.json",
+    groupName: "cmdb",
+    id: "src-auto",
+    autoSyncIntervalMs: 5 * 60_000,
+  });
+  assert.equal(isHostDataSourceDueForAutoSync({ ...source, lastSyncedAt: 0 }, 5 * 60_000), true);
+  assert.equal(
+    isHostDataSourceDueForAutoSync({ ...source, lastSyncedAt: 1000 }, 1000 + 5 * 60_000 - 1),
+    false,
+  );
+  assert.equal(
+    isHostDataSourceDueForAutoSync({ ...source, lastSyncedAt: 1000 }, 1000 + 5 * 60_000),
+    true,
+  );
+  assert.equal(
+    isHostDataSourceDueForAutoSync({ ...source, enabled: false, lastSyncedAt: 0 }, 1_000_000),
+    false,
+  );
+  assert.equal(
+    listDueHostDataSources([
+      { ...source, lastSyncedAt: 0 },
+      createJsonManagedSource({
+        type: "json_file",
+        filePath: "/tmp/x.json",
+        groupName: "other",
+        id: "src-manual",
+      }),
+    ], 5 * 60_000).map((s) => s.id).join(","),
+    "src-auto",
+  );
 });

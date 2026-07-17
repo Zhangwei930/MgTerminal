@@ -95,8 +95,15 @@ export const enVaultMessages: Messages = {
   'vault.dataSources.field.label': 'Label',
   'vault.dataSources.field.labelPlaceholder': 'Optional display name',
   'vault.dataSources.field.syncMode': 'Sync mode',
+  'vault.dataSources.field.autoSync': 'Auto-sync interval',
   'vault.dataSources.syncMode.merge': 'Merge by external id',
   'vault.dataSources.syncMode.replace': 'Replace managed hosts',
+  'vault.dataSources.autoSync.label': 'Auto-sync',
+  'vault.dataSources.autoSync.off': 'Off',
+  'vault.dataSources.autoSync.minutes': '{count}m',
+  'vault.dataSources.autoSync.hours': '{count}h',
+  'vault.dataSources.autoSync.hint':
+    'While MagiesTerminal is open, pull this inventory on a timer. Unchanged content is skipped via content hash. Default remains manual-only.',
   'vault.dataSources.secretsNote':
     'Inventory may only include host metadata (JSON fields or Ansible ansible_host/user/port…). Passwords and private key material are rejected; ansible_ssh_private_key_file is kept as a path hint only.',
   'vault.dataSources.sshConfigNote':

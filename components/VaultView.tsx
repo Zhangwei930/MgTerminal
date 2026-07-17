@@ -771,6 +771,7 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
     syncSource,
     addJsonSource,
     removeJsonSource,
+    setAutoSyncInterval,
   } = useHostDataSourceSync({
     hosts,
     customGroups,
@@ -1254,6 +1255,7 @@ const VaultViewInner: React.FC<VaultViewProps> = ({
         onAddJsonSource={addJsonSource}
         onSyncSource={syncSource}
         onRemoveSource={removeJsonSource}
+        onSetAutoSyncInterval={setAutoSyncInterval}
       />
     </>
   );

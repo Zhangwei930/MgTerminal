@@ -130,8 +130,15 @@ export const ruVaultMessages: Messages = {
   'vault.dataSources.field.label': 'Метка',
   'vault.dataSources.field.labelPlaceholder': 'Необязательное имя',
   'vault.dataSources.field.syncMode': 'Режим синхронизации',
+  'vault.dataSources.field.autoSync': 'Интервал автосинхронизации',
   'vault.dataSources.syncMode.merge': 'Слияние по внешнему id',
   'vault.dataSources.syncMode.replace': 'Заменить управляемые хосты',
+  'vault.dataSources.autoSync.label': 'Автосинхр.',
+  'vault.dataSources.autoSync.off': 'Выкл.',
+  'vault.dataSources.autoSync.minutes': '{count}м',
+  'vault.dataSources.autoSync.hours': '{count}ч',
+  'vault.dataSources.autoSync.hint':
+    'Пока приложение открыто, периодически подтягивать инвентарь. Без изменений — пропуск по хэшу. По умолчанию только вручную.',
   'vault.dataSources.secretsNote':
     'Инвентарь может содержать только метаданные хоста (поля JSON или Ansible ansible_host/user/port…). Пароли и материал ключей отклоняются; ansible_ssh_private_key_file сохраняется лишь как подсказка пути.',
   'vault.dataSources.sshConfigNote':

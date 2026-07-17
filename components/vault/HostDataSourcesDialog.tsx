@@ -2,8 +2,10 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Database, FileJson, Globe, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useI18n } from "../../application/i18n/I18nProvider";
 import {
+  HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS,
   isHttpInventoryUrl,
   isJsonManagedSourceType,
+  normalizeAutoSyncIntervalMs,
 } from "../../domain/hostDataSource";
 import type { ManagedSource } from "../../domain/models";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
@@ -32,11 +34,25 @@ export type HostDataSourcesDialogProps = {
     groupName: string;
     label?: string;
     syncMode?: "merge" | "replace_group";
+    autoSyncIntervalMs?: number;
     syncNow?: boolean;
   }) => Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }>;
   onSyncSource: (sourceId: string, options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome>;
   onRemoveSource: (sourceId: string, options?: { deleteHosts?: boolean }) => boolean;
+  onSetAutoSyncInterval: (sourceId: string, autoSyncIntervalMs: number | undefined) => void;
 };
+
+function formatAutoSyncLabel(
+  t: (key: string, values?: Record<string, unknown>) => string,
+  intervalMs: number | undefined,
+): string {
+  const ms = normalizeAutoSyncIntervalMs(intervalMs);
+  if (!ms) return t("vault.dataSources.autoSync.off");
+  if (ms % 3_600_000 === 0) {
+    return t("vault.dataSources.autoSync.hours", { count: ms / 3_600_000 });
+  }
+  return t("vault.dataSources.autoSync.minutes", { count: Math.round(ms / 60_000) });
+}
 
 function formatSyncOutcome(
   t: (key: string, values?: Record<string, unknown>) => string,
@@ -77,6 +93,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   onAddJsonSource,
   onSyncSource,
   onRemoveSource,
+  onSetAutoSyncInterval,
 }) => {
   const { t } = useI18n();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -85,6 +102,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const [groupName, setGroupName] = useState("Inventory");
   const [label, setLabel] = useState("");
   const [syncMode, setSyncMode] = useState<"merge" | "replace_group">("merge");
+  const [autoSyncIntervalMs, setAutoSyncIntervalMs] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   const jsonSources = useMemo(
@@ -103,6 +121,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     setGroupName("Inventory");
     setLabel("");
     setSyncMode("merge");
+    setAutoSyncIntervalMs(0);
   }, []);
 
   const handlePickFile = useCallback(async () => {
@@ -145,6 +164,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
         groupName: groupName.trim() || "Inventory",
         label: label.trim() || undefined,
         syncMode,
+        autoSyncIntervalMs: autoSyncIntervalMs || undefined,
         syncNow: true,
       });
       if (outcome && !outcome.success) {
@@ -166,7 +186,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     } finally {
       setSubmitting(false);
     }
-  }, [filePath, groupName, label, onAddJsonSource, resetForm, sourceType, syncMode, t]);
+  }, [autoSyncIntervalMs, filePath, groupName, label, onAddJsonSource, resetForm, sourceType, syncMode, t]);
 
   const handleSync = useCallback(
     async (sourceId: string) => {
@@ -269,6 +289,33 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                                     time: new Date(source.lastSyncedAt).toLocaleString(),
                                   })}`
                                 : ` · ${t("vault.dataSources.neverSynced")}`}
+                              {` · ${t("vault.dataSources.autoSync.label")}: ${formatAutoSyncLabel(t, source.autoSyncIntervalMs)}`}
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS.map((preset) => {
+                                const current = normalizeAutoSyncIntervalMs(source.autoSyncIntervalMs) || 0;
+                                const active = current === preset;
+                                return (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    className={cn(
+                                      "rounded-md border px-1.5 py-0.5 text-[10px] transition-colors",
+                                      active
+                                        ? "border-primary/60 bg-primary/10 text-foreground"
+                                        : "border-border/50 text-muted-foreground hover:bg-muted/40",
+                                    )}
+                                    onClick={() =>
+                                      onSetAutoSyncInterval(
+                                        source.id,
+                                        preset === 0 ? undefined : preset,
+                                      )
+                                    }
+                                  >
+                                    {formatAutoSyncLabel(t, preset || undefined)}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
@@ -423,6 +470,33 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                     {t("vault.dataSources.syncMode.replace")}
                   </button>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("vault.dataSources.field.autoSync")}</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS.map((preset) => {
+                    const active = autoSyncIntervalMs === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        className={cn(
+                          "rounded-lg border px-2.5 py-1.5 text-xs transition-colors",
+                          active
+                            ? "border-primary/60 bg-primary/5"
+                            : "border-border/60 hover:bg-muted/30",
+                        )}
+                        onClick={() => setAutoSyncIntervalMs(preset)}
+                      >
+                        {formatAutoSyncLabel(t, preset || undefined)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("vault.dataSources.autoSync.hint")}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {t("vault.dataSources.secretsNote")}
                 </p>

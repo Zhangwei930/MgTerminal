@@ -642,8 +642,15 @@ export const zhCNCoreMessages: Messages = {
   'vault.dataSources.field.label': '名称',
   'vault.dataSources.field.labelPlaceholder': '可选显示名称',
   'vault.dataSources.field.syncMode': '同步模式',
+  'vault.dataSources.field.autoSync': '自动同步间隔',
   'vault.dataSources.syncMode.merge': '按外部 ID 合并',
   'vault.dataSources.syncMode.replace': '替换托管主机',
+  'vault.dataSources.autoSync.label': '自动同步',
+  'vault.dataSources.autoSync.off': '关闭',
+  'vault.dataSources.autoSync.minutes': '{count} 分钟',
+  'vault.dataSources.autoSync.hours': '{count} 小时',
+  'vault.dataSources.autoSync.hint':
+    '应用打开期间按间隔拉取该清单。内容未变化时按哈希跳过。默认仍为仅手动同步。',
   'vault.dataSources.secretsNote':
     '清单只能包含主机元数据（JSON 字段或 Ansible ansible_host/user/port…）。密码与私钥材料会被拒绝；ansible_ssh_private_key_file 仅作路径提示。',
   'vault.dataSources.sshConfigNote':

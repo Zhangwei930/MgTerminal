@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Host, ManagedSource } from "../../domain/models";
 import {
@@ -6,6 +6,8 @@ import {
   hashInventoryContent,
   isHttpInventoryUrl,
   isJsonManagedSourceType,
+  listDueHostDataSources,
+  normalizeAutoSyncIntervalMs,
   parseInventoryDocument,
   syncHostsFromInventory,
   type HostDataSourceSyncStats,
@@ -13,6 +15,8 @@ import {
 import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
 
 const MAX_INVENTORY_BYTES = 5 * 1024 * 1024;
+/** Background poll frequency; actual source cadence is per-source autoSyncIntervalMs. */
+const AUTO_SYNC_TICK_MS = 30_000;
 
 export type HostDataSourceSyncOutcome = {
   sourceId: string;
@@ -193,6 +197,7 @@ export function useHostDataSourceSync({
       groupName: string;
       label?: string;
       syncMode?: "merge" | "replace_group";
+      autoSyncIntervalMs?: number;
       syncNow?: boolean;
     }): Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }> => {
       const path = input.filePath.trim();
@@ -220,6 +225,7 @@ export function useHostDataSourceSync({
         groupName,
         label: input.label,
         syncMode: input.syncMode,
+        autoSyncIntervalMs: input.autoSyncIntervalMs,
       });
 
       const nextSources = [...managedSourcesRef.current, source];
@@ -284,6 +290,51 @@ export function useHostDataSourceSync({
     [onUpdateManagedSources],
   );
 
+  const setAutoSyncInterval = useCallback(
+    (sourceId: string, autoSyncIntervalMs: number | undefined) => {
+      const interval = normalizeAutoSyncIntervalMs(autoSyncIntervalMs);
+      const nextSources = managedSourcesRef.current.map((entry) =>
+        entry.id === sourceId
+          ? { ...entry, autoSyncIntervalMs: interval }
+          : entry,
+      );
+      managedSourcesRef.current = nextSources;
+      onUpdateManagedSources(nextSources);
+    },
+    [onUpdateManagedSources],
+  );
+
+  // Background auto-sync for inventory sources that opted into an interval.
+  // Uses content-hash short-circuit (force: false) to avoid vault churn.
+  // Timer is long-lived (does not restart on each lastSyncedAt write).
+  const autoSyncInFlightRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled || autoSyncInFlightRef.current) return;
+      const due = listDueHostDataSources(managedSourcesRef.current);
+      if (due.length === 0) return;
+      autoSyncInFlightRef.current = true;
+      try {
+        for (const source of due) {
+          if (cancelled) break;
+          await applyInventoryToSource(source, { force: false });
+        }
+      } finally {
+        autoSyncInFlightRef.current = false;
+      }
+    };
+
+    void tick();
+    const timer = setInterval(() => {
+      void tick();
+    }, AUTO_SYNC_TICK_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [applyInventoryToSource]);
+
   return {
     syncingSourceId,
     syncSource,
@@ -291,5 +342,6 @@ export function useHostDataSourceSync({
     addJsonSource,
     removeJsonSource,
     setSourceEnabled,
+    setAutoSyncInterval,
   };
 }

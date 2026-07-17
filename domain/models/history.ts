@@ -89,4 +89,9 @@ export interface ManagedSource {
   syncMode?: 'merge' | 'replace_group';
   /** When false, auto/manual sync skips this source. Default true. */
   enabled?: boolean;
+  /**
+   * Optional pull interval for json_file / json_http sources (ms).
+   * Undefined or 0 = manual only. Min 60s when set.
+   */
+  autoSyncIntervalMs?: number;
 }

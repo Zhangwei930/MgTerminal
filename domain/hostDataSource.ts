@@ -108,7 +108,55 @@ export function normalizeManagedSource(value: unknown): ManagedSource | null {
       : undefined,
     syncMode: record.syncMode === "replace_group" ? "replace_group" : "merge",
     enabled: record.enabled === false ? false : true,
+    autoSyncIntervalMs: normalizeAutoSyncIntervalMs(record.autoSyncIntervalMs),
   };
+}
+
+/** Preset intervals offered in the data-sources UI (0 = off). */
+export const HOST_DATA_SOURCE_AUTO_SYNC_PRESETS_MS = [
+  0,
+  5 * 60_000,
+  15 * 60_000,
+  30 * 60_000,
+  60 * 60_000,
+] as const;
+
+const MIN_AUTO_SYNC_INTERVAL_MS = 60_000;
+const MAX_AUTO_SYNC_INTERVAL_MS = 24 * 60 * 60_000;
+
+/**
+ * Normalize auto-sync interval. 0 / invalid → undefined (manual only).
+ * Non-zero values clamped to [1m, 24h].
+ */
+export function normalizeAutoSyncIntervalMs(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "" || value === false) {
+    return undefined;
+  }
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  const ms = Math.trunc(n);
+  if (ms < MIN_AUTO_SYNC_INTERVAL_MS) return MIN_AUTO_SYNC_INTERVAL_MS;
+  if (ms > MAX_AUTO_SYNC_INTERVAL_MS) return MAX_AUTO_SYNC_INTERVAL_MS;
+  return ms;
+}
+
+export function isHostDataSourceDueForAutoSync(
+  source: Pick<ManagedSource, "type" | "enabled" | "lastSyncedAt" | "autoSyncIntervalMs">,
+  now = Date.now(),
+): boolean {
+  if (!isJsonManagedSourceType(source.type)) return false;
+  if (source.enabled === false) return false;
+  const interval = normalizeAutoSyncIntervalMs(source.autoSyncIntervalMs);
+  if (!interval) return false;
+  const last = Number.isFinite(source.lastSyncedAt) ? source.lastSyncedAt : 0;
+  return now - last >= interval;
+}
+
+export function listDueHostDataSources(
+  sources: ManagedSource[],
+  now = Date.now(),
+): ManagedSource[] {
+  return sources.filter((source) => isHostDataSourceDueForAutoSync(source, now));
 }
 
 /**
@@ -440,6 +488,7 @@ export function createJsonManagedSource(input: {
   groupName: string;
   label?: string;
   syncMode?: HostDataSourceSyncMode;
+  autoSyncIntervalMs?: number;
   id?: string;
   now?: number;
 }): ManagedSource {
@@ -453,6 +502,7 @@ export function createJsonManagedSource(input: {
     label: input.label?.trim() || undefined,
     syncMode: input.syncMode === "replace_group" ? "replace_group" : "merge",
     enabled: true,
+    autoSyncIntervalMs: normalizeAutoSyncIntervalMs(input.autoSyncIntervalMs),
   };
 }
 

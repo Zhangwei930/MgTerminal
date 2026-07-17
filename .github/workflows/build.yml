@@ -870,10 +870,42 @@ jobs:
         run: node .github/scripts/generate-release-note.js
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          # Download links in the release body must point at the public
+          # releases-only repo; this (source) repo is private.
+          GITHUB_REPOSITORY: JasonZhangDad/MgTerminal-releases
           GITHUB_SHA: ${{ github.sha }}
 
       - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Releases are published to the public releases-only repo so
+          # download URLs and the electron-updater feed keep working while
+          # this source repo stays private. Cross-repo publishing requires
+          # the RELEASE_TOKEN secret (fine-grained PAT with contents:write
+          # on MgTerminal-releases); the workflow token cannot write there.
+          repository: JasonZhangDad/MgTerminal-releases
+          body_path: release_notes.md
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            artifacts/*.AppImage
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/*.pacman
+            artifacts/*.dmg
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.msi
+            artifacts/*.yml
+            artifacts/*.blockmap
+          generate_release_notes: false
+          fail_on_unmatched_files: false
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      # Updater bridge: clients ≤ v0.4.8 shipped with app-update.yml pointing
+      # at this repo, so they only see new versions published here. Mirror the
+      # release into this repo until the installed base has upgraded to a
+      # build that reads the MgTerminal-releases feed, then delete this step.
+      - name: Create legacy GitHub Release (updater bridge)
         uses: softprops/action-gh-release@v2
         with:
           body_path: release_notes.md
@@ -889,11 +921,9 @@ jobs:
             artifacts/*.msi
             artifacts/*.yml
             artifacts/*.blockmap
-          generate_release_notes: true
+          generate_release_notes: false
           fail_on_unmatched_files: false
-          # Fall back to the workflow token (job has contents: write) when a
-          # dedicated RELEASE_TOKEN secret is not configured.
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          token: ${{ github.token }}
 
   update-nix-release:
     name: update Nix release metadata

@@ -115,7 +115,7 @@ let _lastStatus = { status: 'idle', percent: 0, error: null, version: null, isCh
  * generic provider works as a drop-in feed.
  */
 const MIRROR_FEED_URL = "https://dl.magies.top/stable";
-const GITHUB_FEED = { provider: "github", owner: "JasonZhangDad", repo: "MgTerminal" };
+const GITHUB_FEED = { provider: "github", owner: "JasonZhangDad", repo: "MgTerminal-releases" };
 const CN_TIMEZONES = new Set(["Asia/Shanghai", "Asia/Urumqi", "Asia/Chongqing", "Asia/Harbin"]);
 
 /** Region heuristic mirroring updateMirror.ts: zh-CN locale or CN timezone. */

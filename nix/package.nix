@@ -15,7 +15,7 @@ let
       or (throw "MagiesTerminal AppImage packages are available for x86_64-linux and aarch64-linux only.");
 
   src = fetchurl {
-    url = "https://github.com/JasonZhangDad/MagiesTerminal/releases/download/v${version}/MagiesTerminal-${version}-linux-${source.appImageArch}.AppImage";
+    url = "https://github.com/JasonZhangDad/MgTerminal-releases/releases/download/v${version}/MagiesTerminal-${version}-linux-${source.appImageArch}.AppImage";
     inherit (source) hash;
   };
 
@@ -44,7 +44,7 @@ appimageTools.wrapType2 {
 
   meta = {
     description = "Modern SSH client and terminal manager";
-    homepage = "https://github.com/JasonZhangDad/MagiesTerminal";
+    homepage = "https://shell.magies.top";
     license = lib.licenses.gpl3Plus;
     mainProgram = "magies-terminal";
     platforms = builtins.attrNames sources;

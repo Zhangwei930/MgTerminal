@@ -16,7 +16,7 @@
 
 /* global fetch, Response, Headers, URL */
 
-const REPO = "JasonZhangDad/MgTerminal";
+const REPO = "JasonZhangDad/MgTerminal-releases";
 const API_LATEST = `https://api.github.com/repos/${REPO}/releases/latest`;
 const MANIFEST_TTL_SECONDS = 300;
 const ASSET_TTL_SECONDS = 3600;

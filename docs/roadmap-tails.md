@@ -87,6 +87,20 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 - **协作与团队能力** 优先本地 / 自托管协议，避免订阅墙。
 - **密码学与企业认证** 跟随 ssh2 / OS 能力成熟度，不自研算法。
 
+### P1 落地进度（相对 `feat/workspace-templates` 栈）
+
+| 切片 | 状态 | 说明 |
+| --- | --- | --- |
+| 主机数据源 JSON file/HTTP | 已实现 | PR #17 — 无凭据 pull 同步 |
+| Hex / 原始数据流诊断 | 已实现 | PR #18 — 会话级 opt-in 面板 |
+| 团队清单分享（元数据 only） | 已实现 | PR #19 — 与数据源同 schema |
+| 本地 Follow（观看/控制锁） | 已实现 | PR #20 |
+| 设备解锁（Touch ID / PIN） | 已实现 | PR #21 — 非可移植 FIDO2 身份 |
+| PKCS#11 → ssh-agent | 已实现 | PR #22 — macOS/Linux，`ssh-add -s` |
+| LAN Follow 邀请 | 已实现 | PR #23 — 局域网 TCP NDJSON |
+| 后量子 SSH（hybrid ML-KEM） | **阻塞** | ssh2 1.17 无 PQ KEX；需库升级或可选系统 OpenSSH 后端 |
+| GSSAPI / Kerberos | **未做** | 需 OpenSSH 传输路径或独立栈，不宜在 ssh2 内硬造 |
+
 ---
 
 ## P2：根据用户需求再做

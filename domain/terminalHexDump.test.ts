@@ -16,7 +16,7 @@ test("stringToUtf8Bytes encodes ascii", () => {
 test("formatHexLine shows offset hex and ascii", () => {
   const bytes = stringToUtf8Bytes("Hello, world!!!!");
   const line = formatHexLine(0, bytes, 0, bytes.length, 16);
-  assert.match(line, /^00000000  /);
+  assert.match(line, /^00000000 {2}/);
   assert.match(line, /\|Hello, world!!!!\|$/);
   assert.match(line, /48 65 6c 6c 6f/);
 });
@@ -26,8 +26,8 @@ test("formatHexDump splits multi-line", () => {
   const dump = formatHexDump(bytes, { width: 16 });
   const lines = dump.split("\n");
   assert.equal(lines.length, 2);
-  assert.match(lines[0]!, /^00000000  /);
-  assert.match(lines[1]!, /^00000010  /);
+  assert.match(lines[0]!, /^00000000 {2}/);
+  assert.match(lines[1]!, /^00000010 {2}/);
 });
 
 test("ring buffer trims oldest bytes and advances offset", () => {
@@ -47,5 +47,5 @@ test("ring format uses sliding offset", () => {
   ring.pushString("abcd");
   ring.pushString("ef");
   const dump = ring.format(4);
-  assert.match(dump, /^00000002  /);
+  assert.match(dump, /^00000002 {2}/);
 });

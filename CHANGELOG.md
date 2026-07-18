@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.6] - 2026-07-18
+
+### 安全
+- **HTTP inventory 认证头加密存储**：json_http 数据源的认证头(Authorization / API Key)不再明文写入本地存储,改为随 vault 做字段级加密;升级后首次启动自动迁移已存的明文值
+- **依赖安全加固**：undici 升至 6.27.0、DOMPurify 升至 3.4.12、uuid 升至 13.0.2,修复过时 override 仍命中的可达 XSS 与请求走私 / DoS 公告
+
 ## [0.5.5] - 2026-07-18
 
 ### 修复

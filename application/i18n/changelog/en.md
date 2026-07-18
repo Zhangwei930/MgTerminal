@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.6] - 2026-07-18
+
+### Security
+- **Encrypted HTTP inventory auth header**: the auth header (Authorization / API key) for json_http data sources is no longer stored in plaintext; it now uses vault field-level encryption, and existing plaintext values are migrated on first launch after upgrade
+- **Dependency hardening**: undici → 6.27.0, DOMPurify → 3.4.12, uuid → 13.0.2, clearing reachable XSS and request-smuggling / DoS advisories that the stale overrides still matched
+
 ## [0.5.5] - 2026-07-18
 
 ### Fixes

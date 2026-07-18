@@ -1,6 +1,12 @@
 # Registro de cambios
 
 
+## [0.5.6] - 2026-07-18
+
+### Seguridad
+- **Cabecera de autenticación de inventario HTTP cifrada**: la cabecera de autenticación (Authorization / clave de API) de las fuentes json_http ya no se almacena en texto plano; ahora usa cifrado a nivel de campo del vault, y los valores en texto plano existentes se migran en el primer inicio tras la actualización
+- **Refuerzo de dependencias**: undici → 6.27.0, DOMPurify → 3.4.12, uuid → 13.0.2, corrigiendo avisos de XSS alcanzable y request smuggling / DoS que los overrides obsoletos aún cumplían
+
 ## [0.5.5] - 2026-07-18
 
 ### Correcciones

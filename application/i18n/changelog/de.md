@@ -1,6 +1,12 @@
 # Änderungsprotokoll
 
 
+## [0.5.6] - 2026-07-18
+
+### Sicherheit
+- **Verschlüsselter HTTP-Inventory-Auth-Header**: Der Auth-Header (Authorization / API-Key) für json_http-Datenquellen wird nicht mehr im Klartext gespeichert, sondern feldweise im Vault verschlüsselt; vorhandene Klartextwerte werden beim ersten Start nach dem Update migriert
+- **Dependency-Härtung**: undici → 6.27.0, DOMPurify → 3.4.12, uuid → 13.0.2 schließen erreichbare XSS- und Request-Smuggling-/DoS-Advisories, die die veralteten Overrides noch trafen
+
 ## [0.5.5] - 2026-07-18
 
 ### Korrekturen

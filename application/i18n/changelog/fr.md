@@ -1,6 +1,12 @@
 # Journal des modifications
 
 
+## [0.5.6] - 2026-07-18
+
+### Sécurité
+- **En-tête d’authentification d’inventaire HTTP chiffré** : l’en-tête d’authentification (Authorization / clé API) des sources json_http n’est plus stocké en clair ; il utilise désormais le chiffrement au niveau du champ du vault, et les valeurs en clair existantes sont migrées au premier lancement après la mise à jour
+- **Renforcement des dépendances** : undici → 6.27.0, DOMPurify → 3.4.12, uuid → 13.0.2, corrigeant les avis de XSS atteignable et de request smuggling / DoS que les overrides obsolètes touchaient encore
+
 ## [0.5.5] - 2026-07-18
 
 ### Corrections

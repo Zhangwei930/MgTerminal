@@ -1,6 +1,12 @@
 # Registro de alterações
 
 
+## [0.5.6] - 2026-07-18
+
+### Segurança
+- **Cabeçalho de autenticação de inventário HTTP criptografado**: o cabeçalho de autenticação (Authorization / chave de API) das fontes json_http não é mais armazenado em texto simples; agora usa criptografia em nível de campo do vault, e os valores em texto simples existentes são migrados no primeiro início após a atualização
+- **Reforço de dependências**: undici → 6.27.0, DOMPurify → 3.4.12, uuid → 13.0.2, corrigindo avisos de XSS alcançável e request smuggling / DoS que os overrides desatualizados ainda atingiam
+
 ## [0.5.5] - 2026-07-18
 
 ### Correções

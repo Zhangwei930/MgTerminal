@@ -185,6 +185,8 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   const [vaultUnlockSetupOpen, setVaultUnlockSetupOpen] = useState(false);
   const [vaultUnlockPin, setVaultUnlockPin] = useState("");
   const [vaultUnlockPinConfirm, setVaultUnlockPinConfirm] = useState("");
+  const [passkeyRegistered, setPasskeyRegistered] = useState<boolean | null>(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [crashLogs, setCrashLogs] = useState<CrashLogFile[]>([]);
   const [isLoadingCrashLogs, setIsLoadingCrashLogs] = useState(false);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
@@ -205,6 +207,23 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
       }).catch(() => {});
     }
   }, []);
+
+  const refreshPasskeyStatus = useCallback(async () => {
+    if (!vaultUnlockEnabled) {
+      setPasskeyRegistered(null);
+      return;
+    }
+    try {
+      const status = await magiesTerminalBridge.get()?.vaultUnlockStatus?.();
+      setPasskeyRegistered(Boolean(status?.hasWebAuthn));
+    } catch {
+      setPasskeyRegistered(false);
+    }
+  }, [vaultUnlockEnabled]);
+
+  useEffect(() => {
+    void refreshPasskeyStatus();
+  }, [refreshPasskeyStatus]);
 
   const loadTempDirInfo = useCallback(async () => {
     const bridge = magiesTerminalBridge.get();
@@ -867,50 +886,105 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                   </div>
                 )}
                 {vaultUnlockEnabled && !vaultUnlockSetupOpen && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <p className="text-xs text-muted-foreground">
                       {t("settings.system.vaultUnlock.enabledHint")}
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        void (async () => {
-                          try {
-                            const { registerVaultWebAuthn } = await import(
-                              "../../../application/state/vaultWebAuthnClient"
-                            );
-                            const result = await registerVaultWebAuthn();
-                            if (!result.success) {
-                              toast.error(
-                                result.error === "webauthn_unavailable"
-                                  ? (t("settings.system.vaultUnlock.webauthnUnavailable") || "Passkey unavailable on this device")
-                                  : (t("settings.system.vaultUnlock.webauthnFailed") || "Passkey registration failed"),
-                              );
-                              return;
-                            }
-                            toast.success(
-                              t("settings.system.vaultUnlock.webauthnRegistered")
-                                || "Device passkey registered for vault unlock",
-                            );
-                          } catch {
-                            toast.error(t("settings.system.vaultUnlock.webauthnFailed") || "Passkey registration failed");
-                          }
-                        })();
-                      }}
-                    >
-                      {t("settings.system.vaultUnlock.registerWebAuthn") || "Register device passkey"}
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t("settings.system.vaultUnlock.webauthnHint")
-                        || "Binds a platform authenticator (Touch ID / Windows Hello / etc.) to this device for unlock. Not a portable cloud passkey."}
-                    </p>
+
+                    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">
+                            {t("settings.system.vaultUnlock.passkeySection")}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                            {t("settings.system.vaultUnlock.webauthnHint")}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                            passkeyRegistered === true
+                              && "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                            passkeyRegistered === false
+                              && "border-border/60 bg-background text-muted-foreground",
+                            passkeyRegistered === null
+                              && "border-border/60 bg-background text-muted-foreground",
+                          )}
+                        >
+                          {passkeyRegistered === null
+                            ? t("settings.system.vaultUnlock.passkeyStatus.checking")
+                            : passkeyRegistered
+                              ? t("settings.system.vaultUnlock.passkeyStatus.registered")
+                              : t("settings.system.vaultUnlock.passkeyStatus.missing")}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={passkeyBusy}
+                          className="gap-1.5"
+                          onClick={() => {
+                            void (async () => {
+                              setPasskeyBusy(true);
+                              try {
+                                const { registerVaultWebAuthn } = await import(
+                                  "../../../application/state/vaultWebAuthnClient"
+                                );
+                                const result = await registerVaultWebAuthn();
+                                if (!result.success) {
+                                  toast.error(
+                                    result.error === "webauthn_unavailable"
+                                      ? t("settings.system.vaultUnlock.webauthnUnavailable")
+                                      : t("settings.system.vaultUnlock.webauthnFailed"),
+                                  );
+                                  return;
+                                }
+                                setPasskeyRegistered(true);
+                                toast.success(t("settings.system.vaultUnlock.webauthnRegistered"));
+                              } catch {
+                                toast.error(t("settings.system.vaultUnlock.webauthnFailed"));
+                              } finally {
+                                setPasskeyBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          {passkeyBusy
+                            ? t("settings.system.vaultUnlock.webauthnBusy")
+                            : passkeyRegistered
+                              ? t("settings.system.vaultUnlock.reRegisterWebAuthn")
+                              : t("settings.system.vaultUnlock.registerWebAuthn")}
+                        </Button>
+                        {passkeyRegistered && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={passkeyBusy}
+                            className="gap-1.5 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              void (async () => {
+                                setPasskeyBusy(true);
+                                try {
+                                  await magiesTerminalBridge.get()?.vaultClearWebAuthn?.();
+                                  setPasskeyRegistered(false);
+                                  toast.success(t("settings.system.vaultUnlock.webauthnCleared"));
+                                } catch {
+                                  toast.error(t("settings.system.vaultUnlock.webauthnFailed"));
+                                } finally {
+                                  setPasskeyBusy(false);
+                                }
+                              })();
+                            }}
+                          >
+                            {t("settings.system.vaultUnlock.clearWebAuthn")}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
-
-                <div className="pt-2">
-                  <TeamVaultPanel hosts={[]} />
-                </div>
               </div>
 
               {credentialRepairMessage && (
@@ -969,6 +1043,14 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
               <p className="text-xs text-muted-foreground">
                 {t("settings.system.credentials.portabilityHint")}
               </p>
+            </SettingCard>
+
+          <SectionHeader title={t("settings.system.teamVault.title")} />
+            <SettingCard className="space-y-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                {t("settings.system.teamVault.sectionDesc")}
+              </p>
+              <TeamVaultPanel />
             </SettingCard>
 
           <SectionHeader title={t("settings.system.crashLogs.title")} />

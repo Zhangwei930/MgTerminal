@@ -1,4 +1,4 @@
-import { ClipboardList, Copy, Eye, Hand, Network, Users } from "lucide-react";
+import { ClipboardList, Copy, Eye, Globe2, Hand, Network, Users } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../application/i18n/I18nProvider";
 import type { SessionFollowAuditEvent, SessionFollowPublicState } from "../../domain/sessionFollow";
@@ -7,6 +7,8 @@ import {
   exportFollowAuditText,
   formatFollowAuditLine,
 } from "../../domain/sessionFollow";
+import { STORAGE_KEY_FOLLOW_WAN_RELAY } from "../../infrastructure/config/storageKeys";
+import { localStorageAdapter } from "../../infrastructure/persistence/localStorageAdapter";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
@@ -50,6 +52,17 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
   const [busy, setBusy] = useState(false);
   const [lanInvite, setLanInvite] = useState<LanInviteInfo | null>(null);
   const [wanInvite, setWanInvite] = useState<WanInviteInfo | null>(null);
+  const [inviteMode, setInviteMode] = useState<"lan" | "wan">("lan");
+  const [wanUseCustomRelay, setWanUseCustomRelay] = useState(false);
+  const [wanRelayHost, setWanRelayHost] = useState(() => {
+    const saved = localStorageAdapter.readString(STORAGE_KEY_FOLLOW_WAN_RELAY) || "";
+    return saved.split(":")[0] || "";
+  });
+  const [wanRelayPort, setWanRelayPort] = useState(() => {
+    const saved = localStorageAdapter.readString(STORAGE_KEY_FOLLOW_WAN_RELAY) || "";
+    const port = Number(saved.split(":")[1]);
+    return Number.isFinite(port) && port > 0 ? String(port) : "7788";
+  });
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinValue, setJoinValue] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
@@ -174,6 +187,7 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
         return;
       }
       setLanInvite(result.invite as LanInviteInfo);
+      setInviteMode("lan");
       if (result.state) setState(result.state as SessionFollowPublicState);
       toast.success(t("terminal.follow.lan.created"));
     } finally {
@@ -189,27 +203,37 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
     }
     setBusy(true);
     try {
-      // Default: embedded local relay (same machine / port-forward). Pass
-      // relayHost/relayPort for a public VPS running scripts/follow-relay.cjs.
+      const useCustom = wanUseCustomRelay && wanRelayHost.trim().length > 0;
+      if (useCustom) {
+        localStorageAdapter.writeString(
+          STORAGE_KEY_FOLLOW_WAN_RELAY,
+          `${wanRelayHost.trim()}:${wanRelayPort.trim() || "7788"}`,
+        );
+      }
       const result = await bridge.followWanCreateInvite({
         sessionId,
         hostLabel: hostLabel || sessionId,
-        useLocalRelay: true,
+        useLocalRelay: !useCustom,
+        relayHost: useCustom ? wanRelayHost.trim() : undefined,
+        relayPort: useCustom ? Number(wanRelayPort) || 7788 : undefined,
       });
       if (!result?.success || !result.invite) {
-        toast.error(result?.error || t("terminal.follow.wan.error.create") || "WAN invite failed");
+        toast.error(result?.error || t("terminal.follow.wan.error.create"));
         return;
       }
       setWanInvite(result.invite as WanInviteInfo);
+      setInviteMode("wan");
       if (result.state) setState(result.state as SessionFollowPublicState);
-      toast.success(t("terminal.follow.wan.created") || "WAN follow invite ready");
+      toast.success(t("terminal.follow.wan.created"));
     } finally {
       setBusy(false);
     }
-  }, [hostLabel, sessionId, t]);
+  }, [hostLabel, sessionId, t, wanRelayHost, wanRelayPort, wanUseCustomRelay]);
 
   const handleCopyShare = useCallback(async () => {
-    const share = wanInvite?.shareString || lanInvite?.shareString;
+    const share = inviteMode === "wan"
+      ? (wanInvite?.shareString || lanInvite?.shareString)
+      : (lanInvite?.shareString || wanInvite?.shareString);
     if (!share) return;
     try {
       await navigator.clipboard.writeText(share);
@@ -217,7 +241,7 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
     } catch {
       toast.error(t("terminal.follow.lan.copyFailed"));
     }
-  }, [lanInvite, wanInvite, t]);
+  }, [inviteMode, lanInvite, wanInvite, t]);
 
   const handleGrant = useCallback(async (targetPeerId: string) => {
     const bridge = magiesTerminalBridge.get();
@@ -367,67 +391,159 @@ export const SessionFollowToolbarControl: React.FC<SessionFollowToolbarControlPr
           </TooltipTrigger>
           <TooltipContent side="bottom">{t("terminal.follow.toolbar")}</TooltipContent>
         </Tooltip>
-        <PopoverContent className="w-80 p-3 space-y-2" align="end">
-          <div className="text-xs font-medium">{t("terminal.follow.title")}</div>
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            {t("terminal.follow.desc")}
-          </p>
+        <PopoverContent className="w-[22rem] p-3.5 space-y-3" align="end">
+          <div>
+            <div className="text-sm font-medium">{t("terminal.follow.title")}</div>
+            <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+              {t("terminal.follow.desc")}
+            </p>
+          </div>
           {!active ? (
-            <Button size="sm" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleStart()}>
-              <Eye size={12} className="mr-1" />
+            <Button size="sm" className="w-full h-9 text-xs" disabled={busy} onClick={() => void handleStart()}>
+              <Eye size={13} className="mr-1.5" />
               {t("terminal.follow.start")}
             </Button>
           ) : (
             <>
-              <div className="text-[11px] text-muted-foreground">
-                {t("terminal.follow.peers", { count: state?.peerCount ?? 1 })}
-                {state?.pendingControlRequests?.length
-                  ? ` · ${t("terminal.follow.pending", { count: state.pendingControlRequests.length })}`
-                  : ""}
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-2">
+                <div className="text-[11px] text-muted-foreground">
+                  {t("terminal.follow.peers", { count: state?.peerCount ?? 1 })}
+                  {state?.pendingControlRequests?.length
+                    ? ` · ${t("terminal.follow.pending", { count: state.pendingControlRequests.length })}`
+                    : ""}
+                </div>
+                <Button size="sm" variant="secondary" className="h-7 text-[11px] px-2" disabled={busy} onClick={() => void handleOpenViewer()}>
+                  <Eye size={12} className="mr-1" />
+                  {t("terminal.follow.openViewer")}
+                </Button>
               </div>
-              <Button size="sm" variant="secondary" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleOpenViewer()}>
-                <Eye size={12} className="mr-1" />
-                {t("terminal.follow.openViewer")}
-              </Button>
-              <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleLanInvite()}>
-                <Network size={12} className="mr-1" />
-                {t("terminal.follow.lan.create")}
-              </Button>
-              <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleWanInvite()}>
-                <Network size={12} className="mr-1" />
-                {t("terminal.follow.wan.create") || "WAN invite (relay)"}
-              </Button>
-              {lanInvite && (
-                <div className="rounded-md border border-border/50 p-2 space-y-1.5 text-[11px]">
-                  <div className="font-medium">{t("terminal.follow.lan.inviteTitle")}</div>
-                  <div className="text-muted-foreground break-all">
-                    {(lanInvite.hosts || []).map((h) => `${h}:${lanInvite.port}`).join(" · ")}
-                  </div>
-                  <div>
-                    {t("terminal.follow.lan.code")}: <span className="font-mono font-semibold">{lanInvite.code}</span>
-                  </div>
-                  <Button size="sm" variant="secondary" className="w-full h-7 text-[11px]" onClick={() => void handleCopyShare()}>
-                    <Copy size={11} className="mr-1" />
-                    {t("terminal.follow.lan.copyShare")}
+
+              {/* Invite transport tabs */}
+              <div className="flex gap-1 rounded-lg border border-border/50 bg-muted/20 p-1">
+                <button
+                  type="button"
+                  onClick={() => setInviteMode("lan")}
+                  className={cn(
+                    "flex-1 inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
+                    inviteMode === "lan"
+                      ? "bg-background shadow-sm border border-border/60 text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Network size={12} />
+                  {t("terminal.follow.lan.tab")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteMode("wan")}
+                  className={cn(
+                    "flex-1 inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
+                    inviteMode === "wan"
+                      ? "bg-background shadow-sm border border-border/60 text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Globe2 size={12} />
+                  {t("terminal.follow.wan.tab")}
+                </button>
+              </div>
+
+              {inviteMode === "lan" && (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    {t("terminal.follow.lan.desc")}
+                  </p>
+                  <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleLanInvite()}>
+                    <Network size={12} className="mr-1.5" />
+                    {t("terminal.follow.lan.create")}
                   </Button>
+                  {lanInvite && (
+                    <div className="rounded-lg border border-border/50 bg-card/60 p-2.5 space-y-2 text-[11px]">
+                      <div className="font-medium">{t("terminal.follow.lan.inviteTitle")}</div>
+                      <div className="text-muted-foreground break-all leading-relaxed">
+                        {(lanInvite.hosts || []).map((h) => `${h}:${lanInvite.port}`).join(" · ") || "—"}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>
+                          {t("terminal.follow.lan.code")}:{" "}
+                          <span className="font-mono font-semibold tracking-wide">{lanInvite.code}</span>
+                        </span>
+                      </div>
+                      <Button size="sm" variant="secondary" className="w-full h-7 text-[11px]" onClick={() => void handleCopyShare()}>
+                        <Copy size={11} className="mr-1" />
+                        {t("terminal.follow.lan.copyShare")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
-              {wanInvite && (
-                <div className="rounded-md border border-border/50 p-2 space-y-1.5 text-[11px]">
-                  <div className="font-medium">{t("terminal.follow.wan.inviteTitle") || "WAN follow invite"}</div>
-                  <div className="text-muted-foreground break-all">
-                    {wanInvite.relayHost}:{wanInvite.relayPort}
-                    {wanInvite.localRelay ? " (local relay)" : ""}
-                  </div>
-                  <div>
-                    {t("terminal.follow.lan.code")}: <span className="font-mono font-semibold">{wanInvite.code}</span>
-                  </div>
-                  <Button size="sm" variant="secondary" className="w-full h-7 text-[11px]" onClick={() => void handleCopyShare()}>
-                    <Copy size={11} className="mr-1" />
-                    {t("terminal.follow.lan.copyShare")}
+
+              {inviteMode === "wan" && (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    {t("terminal.follow.wan.desc")}
+                  </p>
+                  <label className="flex items-start gap-2 rounded-md border border-border/50 px-2.5 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={wanUseCustomRelay}
+                      onChange={(e) => setWanUseCustomRelay(e.target.checked)}
+                    />
+                    <span className="text-[11px] leading-snug">
+                      <span className="font-medium text-foreground">{t("terminal.follow.wan.customRelay")}</span>
+                      <span className="block text-muted-foreground mt-0.5">
+                        {t("terminal.follow.wan.customRelayHint")}
+                      </span>
+                    </span>
+                  </label>
+                  {wanUseCustomRelay && (
+                    <div className="grid grid-cols-[1fr_5rem] gap-2">
+                      <Input
+                        value={wanRelayHost}
+                        onChange={(e) => setWanRelayHost(e.target.value)}
+                        placeholder={t("terminal.follow.wan.relayHostPlaceholder")}
+                        className="h-8 text-xs"
+                      />
+                      <Input
+                        value={wanRelayPort}
+                        onChange={(e) => setWanRelayPort(e.target.value)}
+                        placeholder="7788"
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                  )}
+                  <Button size="sm" variant="outline" className="w-full h-8 text-xs" disabled={busy} onClick={() => void handleWanInvite()}>
+                    <Globe2 size={12} className="mr-1.5" />
+                    {t("terminal.follow.wan.create")}
                   </Button>
+                  {wanInvite && (
+                    <div className="rounded-lg border border-sky-500/25 bg-sky-500/5 p-2.5 space-y-2 text-[11px]">
+                      <div className="font-medium">{t("terminal.follow.wan.inviteTitle")}</div>
+                      <div className="text-muted-foreground break-all">
+                        <span className="font-mono">{wanInvite.relayHost}:{wanInvite.relayPort}</span>
+                        {wanInvite.localRelay ? (
+                          <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px]">
+                            {t("terminal.follow.wan.localRelayBadge")}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div>
+                        {t("terminal.follow.lan.code")}:{" "}
+                        <span className="font-mono font-semibold tracking-wide">{wanInvite.code}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-snug">
+                        {t("terminal.follow.wan.shareHint")}
+                      </p>
+                      <Button size="sm" variant="secondary" className="w-full h-7 text-[11px]" onClick={() => void handleCopyShare()}>
+                        <Copy size={11} className="mr-1" />
+                        {t("terminal.follow.lan.copyShare")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
+
               {(state?.pendingControlRequests || []).map((req) => (
                 <Button
                   key={req.peerId}

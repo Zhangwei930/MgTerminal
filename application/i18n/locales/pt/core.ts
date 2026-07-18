@@ -151,6 +151,8 @@ export const ptCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'Logs de falha',
   'settings.system.crashLogs.description': 'Veja logs de erro do processo principal para ajudar a diagnosticar comportamentos inesperados.',
+  'settings.system.crashLogs.telemetryLabel': 'Relatórios de falhas anônimos',
+  'settings.system.crashLogs.telemetryDescription': 'Desligado por padrão. Quando ativado, resumos de falhas higienizados (sem caminhos, nomes de usuário, hosts ou dados de sessão) são enviados à equipe do MagiesTerminal para corrigir falhas mais rápido.',
   'settings.system.crashLogs.noLogs': 'Nenhum log de falha encontrado.',
   'settings.system.crashLogs.entries': '{count} entradas',
   'settings.system.crashLogs.clear': 'Limpar todos os logs',

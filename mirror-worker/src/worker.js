@@ -10,6 +10,9 @@
  *                                latest-release payload (edge-cached)
  *   GET /stable/<asset>       -> streams the asset of the LATEST release
  *                                (github.com/<repo>/releases/latest/download)
+ *   POST /crash-report        -> opt-in anonymous crash telemetry from the
+ *                                app; stored via the CRASH_REPORTS Analytics
+ *                                Engine binding (501 when not bound)
  *
  * Deploy: `npx wrangler deploy` from this directory.
  */
@@ -23,8 +26,59 @@ const ASSET_TTL_SECONDS = 3600;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
 };
+
+const CRASH_REPORT_MAX_BYTES = 32 * 1024;
+
+/** Minimal shape check for an app crash-report payload. */
+export function validateCrashReport(payload) {
+  return Boolean(
+    payload &&
+    typeof payload === "object" &&
+    payload.schema === 1 &&
+    typeof payload.message === "string" &&
+    typeof payload.appVersion === "string" &&
+    typeof payload.platform === "string",
+  );
+}
+
+async function serveCrashReport(request, env) {
+  const binding = env?.CRASH_REPORTS;
+  if (!binding || typeof binding.writeDataPoint !== "function") {
+    return new Response("crash reporting not configured", { status: 501, headers: CORS_HEADERS });
+  }
+
+  const body = await request.text();
+  if (body.length > CRASH_REPORT_MAX_BYTES) {
+    return new Response("payload too large", { status: 413, headers: CORS_HEADERS });
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    payload = null;
+  }
+  if (!validateCrashReport(payload)) {
+    return new Response("invalid crash report", { status: 400, headers: CORS_HEADERS });
+  }
+
+  binding.writeDataPoint({
+    blobs: [
+      String(payload.source ?? "").slice(0, 96),
+      payload.message.slice(0, 256),
+      payload.appVersion.slice(0, 32),
+      payload.platform.slice(0, 16),
+      String(payload.arch ?? "").slice(0, 16),
+      String(payload.electronVersion ?? "").slice(0, 32),
+      String(payload.osVersion ?? "").slice(0, 32),
+    ],
+    doubles: [Number(payload.uptimeSeconds) || 0],
+    indexes: [payload.appVersion.slice(0, 32)],
+  });
+  return new Response(null, { status: 202, headers: CORS_HEADERS });
+}
 
 /** Map the GitHub API release payload to the mirror manifest schema. */
 export function buildManifest(apiRelease, origin) {
@@ -100,15 +154,17 @@ async function serveAsset(name, request) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
+    }
+    const url = new URL(request.url);
+    if (request.method === "POST" && url.pathname === "/crash-report") {
+      return serveCrashReport(request, env);
     }
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("Method not allowed", { status: 405, headers: CORS_HEADERS });
     }
-
-    const url = new URL(request.url);
     if (url.pathname === "/stable/release.json") {
       return serveManifest(url.origin);
     }

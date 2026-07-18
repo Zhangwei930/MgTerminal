@@ -140,6 +140,8 @@ export const esCoreMessages: Messages = {
   'settings.system.networkProxy.hint': 'Afecta el inicio de sesión de sincronización de Google Drive/OneDrive/GitHub y las solicitudes de proveedores de IA. No cambia las conexiones SSH.',
   'settings.system.crashLogs.title': 'Registros de fallos',
   'settings.system.crashLogs.description': 'Vea los registros de errores del proceso principal para ayudar a diagnosticar comportamientos inesperados.',
+  'settings.system.crashLogs.telemetryLabel': 'Informes de fallos anónimos',
+  'settings.system.crashLogs.telemetryDescription': 'Desactivado por defecto. Si se activa, se envían resúmenes de fallos depurados (sin rutas, nombres de usuario, hosts ni datos de sesión) al equipo de MagiesTerminal para corregir fallos más rápido.',
   'settings.system.crashLogs.noLogs': 'No se encontraron registros de fallos.',
   'settings.system.crashLogs.entries': '{count} entradas',
   'settings.system.crashLogs.clear': 'Borrar todos los registros',

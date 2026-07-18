@@ -150,6 +150,8 @@ export const zhTWCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': '崩潰日誌',
   'settings.system.crashLogs.description': '檢視主程序錯誤日誌，協助診斷異常行為。',
+  'settings.system.crashLogs.telemetryLabel': '匿名當機回報',
+  'settings.system.crashLogs.telemetryDescription': '預設關閉。開啟後，將向 MagiesTerminal 團隊傳送去識別化的當機摘要（不含路徑、使用者名稱、主機名稱或工作階段資料），協助更快修復當機問題。',
   'settings.system.crashLogs.noLogs': '未找到崩潰日誌。',
   'settings.system.crashLogs.entries': '{count} 條記錄',
   'settings.system.crashLogs.clear': '清除所有日誌',

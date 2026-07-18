@@ -56,6 +56,8 @@ declare global {
     }>>;
     clearCrashLogs?(): Promise<{ deletedCount: number }>;
     openCrashLogsDir?(): Promise<{ success: boolean }>;
+    getCrashTelemetry?(): Promise<{ enabled: boolean }>;
+    setCrashTelemetry?(enabled: boolean): Promise<{ enabled: boolean }>;
 
     // Temp directory management
     getTempDirInfo?(): Promise<{ path: string; fileCount: number; totalSize: number }>;

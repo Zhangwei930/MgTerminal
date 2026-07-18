@@ -1,4 +1,8 @@
 const crypto = require("node:crypto");
+const {
+  BUILTIN_PQ_KEX,
+  isBuiltinPostQuantumKexAvailable,
+} = require("./sshBridge/mlkemPreload.cjs");
 
 const FIXED_DH_GROUP_BY_KEX = Object.freeze({
   "diffie-hellman-group1-sha1": "modp2",
@@ -214,6 +218,29 @@ function applyAlgorithmOverrides(algorithms, overrides) {
 }
 
 /**
+ * Prefer hybrid post-quantum KEX when the patched ssh2 + ML-KEM preload are
+ * available. Only touches the kex list when the user has not supplied an
+ * explicit kex override (that fully replaces the category).
+ *
+ * Classical algorithms stay as fallback so servers without PQ still connect.
+ */
+function applyPreferPostQuantumKex(algorithms, options = {}) {
+  if (!options.preferPostQuantumKex) return;
+  if (!isBuiltinPostQuantumKexAvailable()) return;
+  // Explicit kex override wins; do not re-inject PQ into a user-curated list.
+  const overrideKex = options.algorithmOverrides?.kex;
+  if (Array.isArray(overrideKex) && overrideKex.length > 0) return;
+
+  const kex = algorithms.kex || [];
+  if (kex.includes(BUILTIN_PQ_KEX)) {
+    // Already present (e.g. future default) — move to front.
+    algorithms.kex = [BUILTIN_PQ_KEX, ...kex.filter((name) => name !== BUILTIN_PQ_KEX)];
+    return;
+  }
+  algorithms.kex = [BUILTIN_PQ_KEX, ...kex];
+}
+
+/**
  * Build SSH algorithm configuration.
  * When legacyEnabled is true, legacy algorithms are appended to each list
  * (lower priority than modern ones) for compatibility with older network equipment.
@@ -221,14 +248,17 @@ function applyAlgorithmOverrides(algorithms, overrides) {
  * @param {boolean} legacyEnabled
  * @param {{
  *   skipEcdsaHostKey?: boolean,
+ *   preferPostQuantumKex?: boolean,
  *   algorithmOverrides?: Partial<Record<"kex"|"cipher"|"hmac"|"serverHostKey"|"compress", string[]>>,
  * }} [options]
  *   skipEcdsaHostKey: drop every ecdsa-sha2-* from the host-key advertisement.
  *     Useful when a server (e.g. old Huawei VRP) negotiates ECDSA but produces
  *     a signature that ssh2's strict RFC verification rejects — see #1027.
+ *   preferPostQuantumKex: put mlkem768x25519-sha256 first when the built-in
+ *     hybrid PQ KEX is available (classical algorithms remain as fallback).
  *   algorithmOverrides: per-category replacement lists (advanced). When a
  *     category's array is non-empty, it fully replaces the negotiated list
- *     for that category. Applied BEFORE skipEcdsaHostKey.
+ *     for that category. Applied BEFORE skipEcdsaHostKey / PQ preference.
  */
 function buildAlgorithms(legacyEnabled, options = {}) {
   const algorithms = buildBaseAlgorithms();
@@ -245,6 +275,9 @@ function buildAlgorithms(legacyEnabled, options = {}) {
   if (options.skipEcdsaHostKey) {
     applyEcdsaHostKeySkip(algorithms);
   }
+
+  // PQ preference after overrides: an explicit kex override is left alone.
+  applyPreferPostQuantumKex(algorithms, options);
 
   return algorithms;
 }
@@ -272,6 +305,8 @@ function buildSftpAlgorithms(legacyEnabled, options = {}) {
     applyEcdsaHostKeySkip(algorithms);
   }
 
+  applyPreferPostQuantumKex(algorithms, options);
+
   return algorithms;
 }
 
@@ -284,5 +319,8 @@ function _resetAlgorithmSupportCacheForTests() {
 module.exports = {
   buildAlgorithms,
   buildSftpAlgorithms,
+  applyPreferPostQuantumKex,
+  BUILTIN_PQ_KEX,
+  isBuiltinPostQuantumKexAvailable,
   _resetAlgorithmSupportCacheForTests,
 };

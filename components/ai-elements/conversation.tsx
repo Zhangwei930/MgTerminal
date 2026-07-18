@@ -20,7 +20,10 @@ export type ConversationContentProps = ComponentProps<typeof StickToBottom.Conte
 
 export const ConversationContent = ({ className, ...props }: ConversationContentProps) => (
   <StickToBottom.Content
-    className={cn('flex min-w-0 max-w-full flex-col gap-4 overflow-x-hidden p-4', className)}
+    className={cn(
+      'flex min-w-0 max-w-full flex-col gap-6 overflow-x-hidden px-3.5 py-5 sm:px-4',
+      className,
+    )}
     {...props}
   />
 );

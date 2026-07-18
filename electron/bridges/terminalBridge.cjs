@@ -1432,6 +1432,11 @@ function registerFollowHandlers(ipcMain, deps) {
     writeToSessionNow: lanWriteToSession,
     addDataTap: addFollowDataTap,
   });
+  const sessionFollowWan = require("./sessionFollowWan.cjs");
+  sessionFollowWan.configure({
+    writeToSession: lanWriteToSession,
+    addDataTap: addFollowDataTap,
+  });
   const resolveDisplayName = () => {
     try {
       return require("os").userInfo().username || "User";
@@ -1465,6 +1470,7 @@ function registerFollowHandlers(ipcMain, deps) {
   });
   ipcMain.handle("magiesTerminal:follow:stop", (event, payload) => {
     sessionFollowLan.stopInvite(payload?.sessionId);
+    sessionFollowWan.stopWanInvite(payload?.sessionId);
     return sessionFollowManager.stopFollow(payload?.sessionId, event.sender.id);
   });
   ipcMain.handle("magiesTerminal:follow:lanCreateInvite", async (event, payload) => {
@@ -1504,6 +1510,38 @@ function registerFollowHandlers(ipcMain, deps) {
   });
   ipcMain.handle("magiesTerminal:follow:lanViewerDisconnect", (_event, payload) => {
     return sessionFollowLan.disconnectViewer(payload?.clientId);
+  });
+  // WAN follow (TCP relay) — host dials out; viewers join via share string.
+  ipcMain.handle("magiesTerminal:follow:wanCreateInvite", async (event, payload) => {
+    const owned = checkOwnedSession(event, payload?.sessionId);
+    if (!owned.ok) {
+      return { success: false, error: owned.error };
+    }
+    try {
+      return await sessionFollowWan.createWanInvite({
+        sessionId: payload.sessionId,
+        hostLabel: payload?.hostLabel,
+        webContentsId: event.sender.id,
+        displayName: payload?.displayName || resolveDisplayName(),
+        relayHost: payload?.relayHost,
+        relayPort: payload?.relayPort,
+        useLocalRelay: payload?.useLocalRelay !== false && !payload?.relayHost,
+      });
+    } catch (err) {
+      return { success: false, error: err?.message || "wan_invite_failed" };
+    }
+  });
+  ipcMain.handle("magiesTerminal:follow:wanStopInvite", (_event, payload) => {
+    return sessionFollowWan.stopWanInvite(payload?.sessionId);
+  });
+  ipcMain.handle("magiesTerminal:follow:wanDecodeInvite", (_event, payload) => {
+    const decoded = sessionFollowWan.decodeShare(payload?.shareString || payload?.value || "");
+    return decoded.ok
+      ? { success: true, invite: decoded.payload }
+      : { success: false, error: decoded.error };
+  });
+  ipcMain.handle("magiesTerminal:follow:wanStartLocalRelay", async () => {
+    return sessionFollowWan.startLocalRelay();
   });
   ipcMain.handle("magiesTerminal:follow:join", (event, payload) => {
     const sessionId = payload?.sessionId;

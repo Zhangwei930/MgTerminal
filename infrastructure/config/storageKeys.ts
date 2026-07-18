@@ -69,6 +69,14 @@ export const STORAGE_KEY_COMPOSE_BAR_HEIGHT = 'magiesTerminal_compose_bar_height
 /** Snippet IDs pinned to the terminal compose bar quick strip. */
 export const STORAGE_KEY_COMPOSE_BAR_PINNED_SNIPPETS = 'magiesTerminal_compose_bar_pinned_snippets_v1';
 export const STORAGE_KEY_VAULT_KNOWN_HOSTS_VIEW_MODE = 'magiesTerminal_vault_known_hosts_view_mode_v1';
+/** Local-first team vault policy (roles + audit key; no secrets). */
+export const STORAGE_KEY_TEAM_VAULT_POLICY = 'magiesTerminal_team_vault_policy_v1';
+/** Local team vault audit ring (optionally HMAC-signed). */
+export const STORAGE_KEY_TEAM_VAULT_AUDIT = 'magiesTerminal_team_vault_audit_v1';
+/** Default WAN follow relay host:port for outbound invites. */
+export const STORAGE_KEY_FOLLOW_WAN_RELAY = 'magiesTerminal_follow_wan_relay_v1';
+/** Display name used in team vault / follow collaboration UI. */
+export const STORAGE_KEY_DISPLAY_NAME = 'magiesTerminal_display_name_v1';
 
 // Update check
 export const STORAGE_KEY_UPDATE_LAST_CHECK = 'magiesTerminal_update_last_check_v1';

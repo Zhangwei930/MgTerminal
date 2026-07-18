@@ -6,10 +6,11 @@
  * - Content area has max-height with scroll and top gradient fade
  */
 
-import { ChevronRight } from 'lucide-react';
+import { Brain, ChevronRight } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { cn } from '../../lib/utils';
+import { AiSquareSpinner } from './AiActivityIndicator';
 
 interface ThinkingBlockProps {
   content: string;
@@ -37,7 +38,6 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   const startRef = useRef(Date.now());
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-collapse when streaming ends
   useEffect(() => {
     if (wasStreamingRef.current && !isStreaming) {
       setIsExpanded(false);
@@ -45,7 +45,6 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     wasStreamingRef.current = isStreaming;
   }, [isStreaming]);
 
-  // Expand when streaming starts
   useEffect(() => {
     if (isStreaming) {
       setIsExpanded(true);
@@ -53,7 +52,6 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     }
   }, [isStreaming]);
 
-  // Elapsed time ticker
   useEffect(() => {
     if (!isStreaming) return;
     const timer = setInterval(() => {
@@ -62,46 +60,66 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
     return () => clearInterval(timer);
   }, [isStreaming]);
 
-  // Auto-scroll to bottom while streaming
   useEffect(() => {
     if (isStreaming && isExpanded && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [content, isStreaming, isExpanded]);
 
-  const toggle = useCallback(() => setIsExpanded(e => !e), []);
+  const toggle = useCallback(() => setIsExpanded((e) => !e), []);
 
   const displayDuration = durationMs || elapsed;
-  const preview = content.length > 60 ? content.slice(0, 60) + '…' : content;
+  const preview = content.length > 72 ? `${content.slice(0, 72)}…` : content;
 
   return (
-    <div className="mb-0.5">
-      {/* Header */}
+    <div
+      className={cn(
+        'rounded-xl border transition-colors',
+        isStreaming
+          ? 'border-violet-500/25 bg-violet-500/[0.06]'
+          : 'border-border/40 bg-muted/15',
+      )}
+    >
       <button
+        type="button"
         onClick={toggle}
         aria-expanded={isExpanded}
         aria-controls="thinking-block-content"
-        className="group flex items-center gap-1.5 py-0.5 px-1 cursor-pointer text-left w-full rounded hover:bg-white/[0.03] transition-colors"
+        className="group flex w-full items-center gap-2 px-2.5 py-1.5 text-left cursor-pointer rounded-xl hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors"
       >
+        <span
+          className={cn(
+            'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border',
+            isStreaming
+              ? 'border-violet-500/30 bg-violet-500/15 text-violet-400'
+              : 'border-border/50 bg-muted/40 text-muted-foreground/70',
+          )}
+        >
+          <Brain size={11} />
+        </span>
         <ChevronRight
           size={12}
           className={cn(
-            'shrink-0 text-muted-foreground/50 transition-transform duration-200',
+            'shrink-0 text-muted-foreground/45 transition-transform duration-200',
             isExpanded && 'rotate-90',
-            !isExpanded && 'opacity-50',
           )}
         />
-        <span className="text-[12px] font-medium text-muted-foreground/70 whitespace-nowrap shrink-0">
-          {isStreaming ? (
-            <span className="thinking-shimmer">{t('ai.chat.thinking')}</span>
-          ) : (
-            displayDuration > 0
+        {isStreaming ? (
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <AiSquareSpinner size="sm" tone="violet" />
+            <span className="thinking-shimmer thinking-shimmer--primary whitespace-nowrap text-[12px] font-medium">
+              {t('ai.chat.thinking')}
+            </span>
+          </span>
+        ) : (
+          <span className="shrink-0 whitespace-nowrap text-[12px] font-medium text-muted-foreground/80">
+            {displayDuration > 0
               ? t('ai.chat.thoughtFor', { duration: formatDuration(displayDuration) })
-              : t('ai.chat.thought')
-          )}
-        </span>
+              : t('ai.chat.thought')}
+          </span>
+        )}
         {isStreaming && elapsed > 0 && (
-          <span className="text-[11px] text-muted-foreground/40 tabular-nums shrink-0">
+          <span className="shrink-0 tabular-nums text-[11px] text-violet-400/70">
             {formatDuration(elapsed)}
           </span>
         )}
@@ -112,19 +130,16 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         )}
       </button>
 
-      {/* Content */}
       {isExpanded && content && (
-        <div id="thinking-block-content" className="relative">
-          {/* Top gradient fade */}
+        <div id="thinking-block-content" className="relative border-t border-border/30">
           {isStreaming && (
-            <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-violet-500/[0.06] to-transparent" />
           )}
           <div
             ref={scrollRef}
             className={cn(
-              'px-5 text-[12px] text-muted-foreground/60 leading-relaxed whitespace-pre-wrap break-words',
-              isStreaming && 'overflow-y-auto scrollbar-hide max-h-36',
-              !isStreaming && 'max-h-36 overflow-y-auto scrollbar-hide',
+              'px-3 py-2 text-[12px] leading-relaxed text-muted-foreground/70 whitespace-pre-wrap break-words',
+              'max-h-40 overflow-y-auto scrollbar-hide',
             )}
           >
             {content}

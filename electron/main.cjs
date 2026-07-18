@@ -129,6 +129,10 @@ function createLazyModule(modulePath) {
 // legacy network devices stay reachable (#1035). MUST run before any module that
 // requires ssh2 — ssh2 destructures createDiffieHellmanGroup at load time.
 require("./bridges/boringSslDhCompat.cjs").installBoringSslDhCompat();
+// Built-in ssh2 hybrid PQ KEX (mlkem768x25519-sha256) needs ML-KEM-768 on
+// globalThis before any connection negotiates it. Load early so algorithm
+// builders can offer the name only when the crypto is actually present.
+require("./bridges/sshBridge/mlkemPreload.cjs").installMlkem768();
 
 // Import bridge modules
 const sshBridge = require("./bridges/sshBridge.cjs");

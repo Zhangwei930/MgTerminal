@@ -165,8 +165,10 @@ export function Combobox({
             <PopoverTrigger asChild disabled={disabled}>
                 <div
                     className={cn(
-                        "flex h-10 w-full items-center rounded-md border border-input bg-background text-sm min-w-0 overflow-hidden",
-                        "hover:bg-secondary/50 transition-colors",
+                        "flex h-10 w-full items-center rounded-lg border border-border/70 bg-background text-sm min-w-0 overflow-hidden",
+                        "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+                        "hover:bg-secondary/40 transition-[border-color,background-color,box-shadow]",
+                        "focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15",
                         "disabled:cursor-not-allowed disabled:opacity-50",
                         triggerClassName
                     )}

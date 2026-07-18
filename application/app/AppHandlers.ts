@@ -862,9 +862,10 @@ export function hasMultipleProtocolsImpl(getCtx: AppContextGetter, host: Host) {
   const { resolveEffectiveHost } = getCtx();
 {
     // Gates the protocol picker (legacy name kept for its existing wiring).
-    // Only prompt when Telnet is available but isn't the host's default protocol;
-    // SSH-only, SSH+Mosh and Telnet-default all connect directly.
+    // Only prompt when Telnet is available but isn't the host's default protocol,
+    // or when RDP is offered; SSH-only, SSH+Mosh and Telnet-default connect directly.
     const effective = resolveEffectiveHost(host);
+    if (effective.rdpEnabled) return true;
     return Boolean(effective.telnetEnabled) && effective.protocol !== 'telnet';
   }
 }
@@ -885,9 +886,35 @@ export function handleHostConnectWithProtocolCheckImpl(getCtx: AppContextGetter,
 }
 
 export function handleProtocolSelectImpl(getCtx: AppContextGetter, protocol: HostProtocol, port: number) {
-  const { handleConnectToHost, protocolSelectHost, setProtocolSelectHost } = getCtx();
+  const { handleConnectToHost, identities, keys, magiesTerminalBridge, protocolSelectHost, resolveHostAuth, setProtocolSelectHost, t, toast } = getCtx();
 {
     if (protocolSelectHost) {
+      if (protocol === 'rdp') {
+        // RDP hands off to the system client instead of opening a terminal tab.
+        const auth = resolveHostAuth({ host: protocolSelectHost, keys, identities });
+        const bridge = magiesTerminalBridge.get();
+        setProtocolSelectHost(null);
+        if (!bridge?.launchRdp) {
+          toast.error(t('rdp.launchUnavailable'));
+          return;
+        }
+        void bridge
+          .launchRdp({
+            hostname: protocolSelectHost.hostname,
+            port,
+            username: auth.username || protocolSelectHost.username,
+            password: auth.password,
+          })
+          .then((result: { success: boolean; error?: string }) => {
+            if (!result?.success) {
+              toast.error(result?.error || t('rdp.launchFailed'));
+            }
+          })
+          .catch((err: unknown) => {
+            toast.error(err instanceof Error ? err.message : t('rdp.launchFailed'));
+          });
+        return;
+      }
       const hostWithProtocol: Host = {
         ...protocolSelectHost,
         protocol: (protocol === 'mosh' || protocol === 'et') ? 'ssh' : protocol,

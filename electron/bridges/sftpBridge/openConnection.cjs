@@ -77,6 +77,7 @@ function createOpenConnectionApi(ctx) {
               jump.legacyAlgorithms ?? options.legacyAlgorithms,
               {
                 skipEcdsaHostKey: jump.skipEcdsaHostKey,
+                preferPostQuantumKex: options.preferPostQuantumKex,
                 algorithmOverrides: jump.algorithmOverrides,
               },
             ),
@@ -666,6 +667,7 @@ function createOpenConnectionApi(ctx) {
           : (options.keepaliveInterval > 0 ? (options.keepaliveCountMax ?? 3) : 0),
         algorithms: buildSftpAlgorithms(options.legacyAlgorithms, {
           skipEcdsaHostKey: options.skipEcdsaHostKey,
+          preferPostQuantumKex: options.preferPostQuantumKex,
           algorithmOverrides: options.algorithmOverrides,
         }),
       };

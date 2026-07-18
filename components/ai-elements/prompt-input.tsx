@@ -192,12 +192,13 @@ export const PromptInputSubmit = forwardRef<HTMLButtonElement, PromptInputSubmit
               variant="ghost"
               disabled={disabled && !isRunning}
               className={cn(
-                'h-8 w-8 rounded-full border p-0 shadow-sm disabled:opacity-100',
+                'h-8 w-8 rounded-full border p-0 shadow-md transition-transform disabled:opacity-100',
+                'active:scale-[0.97]',
                 isRunning
-                  ? 'border-destructive/60 bg-destructive/85 text-destructive-foreground hover:bg-destructive'
+                  ? 'border-destructive/60 bg-destructive/90 text-destructive-foreground hover:bg-destructive'
                   : disabled
-                    ? 'border-border/80 bg-muted/52 text-foreground/72 hover:bg-muted/52'
-                    : 'border-foreground/20 bg-foreground text-background hover:bg-foreground/90',
+                    ? 'border-border/70 bg-muted/55 text-foreground/65 hover:bg-muted/55'
+                    : 'border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90',
                 className,
               )}
               {...props}

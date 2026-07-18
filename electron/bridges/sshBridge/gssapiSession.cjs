@@ -64,6 +64,86 @@ function buildGssapiSshArgs(options = {}) {
 }
 
 /**
+ * Validate a hostname/username destined for the -J ProxyJump list. The list
+ * is comma-separated `user@host:port` tokens, so commas, whitespace and
+ * option-like leading dashes must all be rejected outright.
+ */
+function sanitizeJumpToken(value, kind, label) {
+  const token = String(value || "").trim();
+  if (!token) {
+    if (kind === "hostname") throw new Error(`Jump host ${label} has no hostname.`);
+    return "";
+  }
+  if (token.startsWith("-") || /[\s,@]/.test(token)) {
+    throw new Error(`Jump host ${label} has an invalid ${kind}: ${JSON.stringify(token)}`);
+  }
+  return token;
+}
+
+/**
+ * Loopback TCP relay for HTTP/SOCKS proxies: each accepted connection dials
+ * the real target through the app's proxy stack and pipes bytes both ways,
+ * letting system OpenSSH connect to 127.0.0.1 without proxy support.
+ */
+function createLoopbackProxyRelay(proxy, targetHost, targetPort) {
+  const net = require("net");
+  const { createProxySocket } = require("../proxyUtils.cjs");
+  return new Promise((resolve, reject) => {
+    const server = net.createServer((local) => {
+      createProxySocket(proxy, targetHost, targetPort, { timeoutMs: 30_000 })
+        .then((remote) => {
+          local.pipe(remote);
+          remote.pipe(local);
+          local.on("error", () => remote.destroy());
+          remote.on("error", () => local.destroy());
+          local.on("close", () => remote.destroy());
+          remote.on("close", () => local.destroy());
+        })
+        .catch(() => local.destroy());
+    });
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      server.unref();
+      resolve({
+        port,
+        close: () => {
+          try { server.close(); } catch { /* ignore */ }
+        },
+      });
+    });
+  });
+}
+
+/** Format MagiesTerminal jump hosts as an OpenSSH -J (ProxyJump) argument. */
+function formatProxyJumpArg(jumpHosts) {
+  return jumpHosts
+    .map((hop, index) => {
+      const label = hop?.label || hop?.hostname || `#${index + 1}`;
+      const rawHost = String(hop?.hostname || "").trim();
+      // IPv6 literals carry colons; -J needs them bracketed.
+      const isIpv6 = rawHost.includes(":");
+      const hostname = isIpv6
+        ? rawHost
+        : sanitizeJumpToken(rawHost, "hostname", label);
+      if (isIpv6 && (!rawHost || rawHost.startsWith("-") || /[\s,@[\]]/.test(rawHost))) {
+        throw new Error(`Jump host ${label} has an invalid hostname: ${JSON.stringify(rawHost)}`);
+      }
+      if (!hostname) throw new Error(`Jump host ${label} has no hostname.`);
+      const username = sanitizeJumpToken(hop?.username, "username", label);
+      const port = Number(hop?.port);
+      if (hop?.port !== undefined && hop?.port !== null
+        && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+        throw new Error(`Jump host ${label} has an invalid port: ${hop.port}`);
+      }
+      const hostPart = isIpv6 ? `[${hostname}]` : hostname;
+      const portPart = Number.isInteger(port) && port > 0 && port !== 22 ? `:${port}` : "";
+      return `${username ? `${username}@` : ""}${hostPart}${portPart}`;
+    })
+    .join(",");
+}
+
+/**
  * Build argv for system OpenSSH (GSSAPI and/or post-quantum KEX preference).
  */
 function buildSystemOpenSshArgs(options = {}) {
@@ -91,6 +171,22 @@ function buildSystemOpenSshArgs(options = {}) {
     args.push("-o", `KexAlgorithms=${PQ_KEX_ALGORITHMS}`);
   }
 
+  if (Array.isArray(options.jumpHosts) && options.jumpHosts.length > 0) {
+    args.push("-J", formatProxyJumpArg(options.jumpHosts));
+  }
+
+  if (options.proxy?.type === "command" && options.proxy.command) {
+    const { substituteProxyCommand } = require("../proxyUtils.cjs");
+    args.push("-o", `ProxyCommand=${substituteProxyCommand(options.proxy.command, hostname, port)}`);
+  }
+
+  if (options.hostKeyAlias) {
+    // Loopback proxy relay: keep known_hosts keyed to the real host, and skip
+    // the by-IP check that would always flag 127.0.0.1.
+    args.push("-o", `HostKeyAlias=${String(options.hostKeyAlias).replace(/[\s,]/g, "")}`);
+    args.push("-o", "CheckHostIP=no");
+  }
+
   if (gssapi) {
     args.push(
       "-o", "GSSAPIAuthentication=yes",
@@ -103,9 +199,15 @@ function buildSystemOpenSshArgs(options = {}) {
     );
   } else {
     // General system OpenSSH: allow agent/publickey; avoid hanging password prompts in batch when only keys/agent.
-    const paths = Array.isArray(options.identityFilePaths)
-      ? options.identityFilePaths.filter((p) => typeof p === "string" && p.trim())
+    // -J offers no per-hop options, so jump-hop identity files are added
+    // globally; ssh simply tries each identity on every hop.
+    const hopPaths = Array.isArray(options.jumpHosts)
+      ? options.jumpHosts.flatMap((hop) => Array.isArray(hop?.identityFilePaths) ? hop.identityFilePaths : [])
       : [];
+    const paths = [...new Set(
+      [...(Array.isArray(options.identityFilePaths) ? options.identityFilePaths : []), ...hopPaths]
+        .filter((p) => typeof p === "string" && p.trim()),
+    )];
     for (const identityPath of paths) {
       args.push("-i", identityPath);
     }
@@ -147,19 +249,18 @@ function createStartGssapiSessionApi(ctx) {
    */
   async function startSystemOpenSshSession(event, options = {}) {
     const gssapi = options.authMethod === "gssapi";
-    if (Array.isArray(options.jumpHosts) && options.jumpHosts.length > 0) {
+    const hasJumpHosts = Array.isArray(options.jumpHosts) && options.jumpHosts.length > 0;
+    const hasRelayProxy = options.proxy && options.proxy.type !== "command";
+    if (hasJumpHosts && options.jumpHosts.some((hop) => hop?.proxy)) {
       throw new Error(
-        gssapi
-          ? "GSSAPI/Kerberos auth does not support jump hosts in MagiesTerminal yet. "
-            + "Authenticate to the bastion with GSSAPI, or use another auth method for the chain."
-          : "System OpenSSH transport does not support MagiesTerminal jump hosts yet. "
-            + "Use built-in ssh2 transport or configure ProxyJump in system OpenSSH.",
+        "System OpenSSH transport does not support per-jump-host proxies. "
+        + "Remove the proxy from the jump hop or use the built-in ssh2 transport.",
       );
     }
-    if (options.proxy) {
+    if (hasJumpHosts && hasRelayProxy) {
       throw new Error(
-        "System OpenSSH transport does not support MagiesTerminal HTTP/SOCKS proxies. "
-        + "Configure system OpenSSH ProxyCommand if needed.",
+        "System OpenSSH transport does not support combining jump hosts with an "
+        + "HTTP/SOCKS proxy. Use the built-in ssh2 transport for this host.",
       );
     }
 
@@ -177,7 +278,34 @@ function createStartGssapiSessionApi(ctx) {
     const sessionId = options.sessionId || randomUUID();
     const cols = options.cols || 80;
     const rows = options.rows || 24;
-    const sshArgs = buildSystemOpenSshArgs(options);
+
+    // HTTP/SOCKS proxies: OpenSSH cannot speak them natively, so relay via a
+    // loopback listener that dials through the app's proxy stack. HostKeyAlias
+    // keeps known_hosts keyed to the real destination.
+    let proxyRelay = null;
+    let effectiveOptions = options;
+    if (hasRelayProxy) {
+      proxyRelay = await createLoopbackProxyRelay(
+        options.proxy,
+        String(options.hostname || "").trim(),
+        Number(options.port) > 0 ? Math.trunc(Number(options.port)) : 22,
+      );
+      effectiveOptions = {
+        ...options,
+        proxy: undefined,
+        hostname: "127.0.0.1",
+        port: proxyRelay.port,
+        hostKeyAlias: String(options.hostname || "").trim(),
+      };
+    }
+
+    let sshArgs;
+    try {
+      sshArgs = buildSystemOpenSshArgs(effectiveOptions);
+    } catch (err) {
+      proxyRelay?.close();
+      throw err;
+    }
 
     const { buildTerminalProcessEnv } = require("../httpNetworkProxyBridge.cjs");
     const env = {
@@ -208,6 +336,7 @@ function createStartGssapiSessionApi(ctx) {
         encoding: null,
       });
     } catch (err) {
+      proxyRelay?.close();
       const message = err?.message || String(err);
       throw new Error(`Failed to start system OpenSSH: ${message}`);
     }
@@ -303,6 +432,7 @@ function createStartGssapiSessionApi(ctx) {
     });
 
     proc.onExit((evt) => {
+      proxyRelay?.close();
       try {
         if (logStreamToken && sessionLogStreamManager) {
           sessionLogStreamManager.stopStream(sessionId, logStreamToken);
@@ -347,5 +477,7 @@ module.exports = {
   createStartGssapiSessionApi,
   buildGssapiSshArgs,
   buildSystemOpenSshArgs,
+  formatProxyJumpArg,
+  createLoopbackProxyRelay,
   PQ_KEX_ALGORITHMS,
 };

@@ -9,8 +9,10 @@ export const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
     <div
       ref={ref}
       className={cn(
-        'flex flex-col rounded-[22px] border border-border/65 bg-background transition-[border-color,background-color]',
-        'focus-within:border-primary/45 focus-within:ring-1 focus-within:ring-primary/20',
+        'flex flex-col rounded-[22px] border border-border/65 bg-background transition-[border-color,background-color,box-shadow]',
+        'focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15 focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]',
+        // Keep overflow hidden for rounded corners; glyph room comes from
+        // textarea line-height + padding (not from y:visible which browsers coerce).
         'overflow-hidden',
         className,
       )}
@@ -27,11 +29,14 @@ export const InputGroupTextarea = forwardRef<HTMLTextAreaElement, InputGroupText
     <textarea
       ref={ref}
       className={cn(
-        'w-full resize-none bg-transparent text-[13px] text-foreground/92 selection:bg-primary/25',
-        'placeholder:text-muted-foreground/62 placeholder:font-medium placeholder:text-[13px]',
+        // 13px / 1.55 line-height keeps CJK + Latin descenders fully visible.
+        // Fixed 20px line-height was clipping 中文 and j/g/y in several UI fonts.
+        'w-full resize-none bg-transparent text-[13.5px] text-foreground/92 selection:bg-primary/25',
+        'placeholder:text-muted-foreground/55 placeholder:font-normal placeholder:text-[13.5px]',
         'focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed',
-        'px-4 pt-3.5 pb-2 leading-[20px]',
-        'field-sizing-content min-h-[82px] max-h-52',
+        // Extra right padding for the expand control; generous vertical padding.
+        'box-border px-4 pr-10 pt-3.5 pb-3 leading-[1.55]',
+        'field-sizing-content min-h-[88px] max-h-56 overflow-y-auto',
         className,
       )}
       {...props}
@@ -49,9 +54,9 @@ export const InputGroupAddon = forwardRef<HTMLDivElement, InputGroupAddonProps>(
     <div
       ref={ref}
       className={cn(
-        'flex items-center px-2.5 py-1.5',
+        'flex items-center gap-1 px-3 py-2',
         align === 'block-start' && 'border-b border-border/35 bg-muted/8',
-        align === 'block-end' && 'border-t border-border/60 bg-muted/10',
+        align === 'block-end' && 'border-t border-border/50 bg-muted/[0.12]',
         className,
       )}
       {...props}

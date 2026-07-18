@@ -141,11 +141,11 @@ export const AIChatPanelContent: React.FC<AIChatPanelContentProps> = ({
   const hideInput = isAIPanelDiagnosticPartHidden('input', hiddenParts);
 
   return (
-    <div className="flex flex-col h-full bg-background" data-section="ai-chat-panel">
+    <div className="flex h-full flex-col bg-background" data-section="ai-chat-panel">
       {/* ── Header ── */}
       {!hideHeader && (
         <React.Profiler {...getAIPanelProfilerProps('AIChatPanel.Header')}>
-          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-card/40 px-2.5 py-1.5">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-gradient-to-b from-card/70 to-card/30 px-2.5 py-2 backdrop-blur-[2px]">
             <AgentSelector
               currentAgentId={currentAgentId}
               externalAgents={externalAgents}
@@ -156,7 +156,7 @@ export const AIChatPanelContent: React.FC<AIChatPanelContentProps> = ({
               onRediscover={rediscover}
               onManageAgents={handleOpenSettings}
             />
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5 rounded-lg border border-border/40 bg-background/40 p-0.5">
               <ConversationExport
                 session={activeSession}
                 onExport={handleExport}
@@ -225,30 +225,36 @@ export const AIChatPanelContent: React.FC<AIChatPanelContentProps> = ({
           {/* Recent sessions (Zed-style, shown when no messages) */}
           {messages.length === 0 && historySessions.length > 0 && !hideRecent && (
             <React.Profiler {...getAIPanelProfilerProps('AIChatPanel.Recent')}>
-              <div className="shrink-0 px-4 pb-1">
-                <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-[11px] text-muted-foreground/30 tracking-wide">{t('ai.chat.recent')}</span>
+              <div className="shrink-0 border-t border-border/40 px-4 pb-3 pt-2">
+                <div className="mb-2 flex items-baseline justify-between">
+                  <span className="text-[11px] font-medium tracking-wide text-muted-foreground/45">
+                    {t('ai.chat.recent')}
+                  </span>
                   <button
+                    type="button"
                     onClick={() => setShowHistory(true)}
-                    className="text-[11px] text-muted-foreground/40 transition-colors duration-150 hover:text-muted-foreground cursor-pointer"
+                    className="cursor-pointer text-[11px] text-muted-foreground/45 transition-colors duration-150 hover:text-muted-foreground"
                   >
                     {t('ai.chat.viewAll')}
                   </button>
                 </div>
-                {historySessions.slice(0, 3).map((session) => (
-                  <button
-                    key={session.id}
-                    onClick={() => handleSelectSession(session.id)}
-                    className="flex w-full items-baseline justify-between rounded-md px-1.5 py-1.5 text-left transition-colors duration-150 hover:bg-muted/50 hover:text-foreground cursor-pointer"
-                  >
-                    <span className="truncate pr-4 text-[13px] text-foreground/65">
-                      {session.title || t('ai.chat.untitled')}
-                    </span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground/35">
-                      {formatRelativeTime(new Date(session.updatedAt), t)}
-                    </span>
-                  </button>
-                ))}
+                <div className="space-y-0.5 rounded-xl border border-border/40 bg-card/40 p-1">
+                  {historySessions.slice(0, 3).map((session) => (
+                    <button
+                      key={session.id}
+                      type="button"
+                      onClick={() => handleSelectSession(session.id)}
+                      className="flex w-full cursor-pointer items-baseline justify-between rounded-lg px-2.5 py-2 text-left transition-colors duration-150 hover:bg-muted/50 hover:text-foreground"
+                    >
+                      <span className="truncate pr-4 text-[13px] text-foreground/70">
+                        {session.title || t('ai.chat.untitled')}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground/40">
+                        {formatRelativeTime(new Date(session.updatedAt), t)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </React.Profiler>
           )}

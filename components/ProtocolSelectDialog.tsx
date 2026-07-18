@@ -1,5 +1,6 @@
 import {
 Globe,
+Monitor,
 Terminal as TerminalIcon,
 Wifi
 } from 'lucide-react';
@@ -84,6 +85,18 @@ const ProtocolSelectDialog: React.FC<ProtocolSelectDialogProps> = ({
                 label: 'Telnet',
                 icon: <Globe size={18} />,
                 description: `telnet ${host.hostname}`,
+                enabled: true,
+            });
+        }
+
+        // RDP (if enabled) — launches the system RDP client
+        if (host.rdpEnabled || host.protocols?.some(p => p.protocol === 'rdp' && p.enabled)) {
+            options.push({
+                protocol: 'rdp',
+                port: host.rdpPort || 3389,
+                label: 'RDP',
+                icon: <Monitor size={18} />,
+                description: `rdp ${host.hostname}`,
                 enabled: true,
             });
         }

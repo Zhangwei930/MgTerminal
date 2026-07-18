@@ -554,16 +554,33 @@ html[data-theme-transition] *::after {
   background: linear-gradient(
     90deg,
     currentColor 0%,
-    currentColor 40%,
-    rgba(255, 255, 255, 0.6) 50%,
-    currentColor 60%,
+    currentColor 38%,
+    color-mix(in srgb, currentColor 35%, white) 50%,
+    currentColor 62%,
     currentColor 100%
   );
-  background-size: 200% 100%;
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: thinking-shimmer 1.5s ease-in-out infinite;
+  animation: thinking-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Primary-tinted shimmer for AI activity labels (coordinates with typing dots). */
+.thinking-shimmer--primary {
+  color: hsl(var(--primary) / 0.88);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.55) 0%,
+    hsl(var(--primary) / 0.55) 36%,
+    hsl(var(--primary) / 1) 50%,
+    hsl(var(--primary) / 0.55) 64%,
+    hsl(var(--primary) / 0.55) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 @keyframes thinking-shimmer {
@@ -572,6 +589,97 @@ html[data-theme-transition] *::after {
   }
   100% {
     background-position: -100% center;
+  }
+}
+
+/*
+ * Grok-style rounded-square spinner:
+ * outer plate spins a conic-gradient “arc”; inner core stays put so it reads
+ * as a soft square with a chasing highlight on the border.
+ */
+.ai-square-spinner {
+  /* keep layout box stable while ring rotates */
+}
+
+.ai-square-spinner__ring {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 220deg,
+    hsl(var(--primary) / 0.15) 260deg,
+    hsl(var(--primary) / 0.95) 320deg,
+    hsl(var(--primary) / 0.35) 350deg,
+    transparent 360deg
+  );
+  animation: ai-square-spin 0.85s linear infinite;
+  will-change: transform;
+}
+
+.ai-square-spinner[data-tone='violet'] .ai-square-spinner__ring {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 220deg,
+    rgb(167 139 250 / 0.15) 260deg,
+    rgb(167 139 250 / 0.95) 320deg,
+    rgb(167 139 250 / 0.35) 350deg,
+    transparent 360deg
+  );
+}
+
+.ai-square-spinner__core {
+  /* slightly inset so the spinning ring reads as a 2px frame */
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.35);
+}
+
+@keyframes ai-square-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Gentle sheen across the generating card */
+.ai-activity-sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    hsl(var(--primary) / 0.06) 48%,
+    hsl(var(--primary) / 0.1) 52%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: ai-activity-sheen 2.4s ease-in-out infinite;
+}
+
+@keyframes ai-activity-sheen {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: -100% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-square-spinner__ring,
+  .thinking-shimmer,
+  .thinking-shimmer--primary,
+  .ai-activity-sheen {
+    animation: none !important;
+  }
+  .ai-square-spinner__ring {
+    /* static partial border when motion is reduced */
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.25),
+      hsl(var(--primary) / 0.85),
+      hsl(var(--primary) / 0.25)
+    ) !important;
+  }
+  .thinking-shimmer,
+  .thinking-shimmer--primary {
+    -webkit-text-fill-color: currentColor;
+    background: none;
   }
 }
 
@@ -586,15 +694,22 @@ html[data-theme-transition] *::after {
 }
 
 .glass-panel {
-  background: hsl(var(--secondary) / 0.95);
-  border: 1px solid hsl(var(--border) / 0.8);
-  box-shadow: 0 14px 40px hsl(var(--foreground) / 0.12);
+  background: hsl(var(--secondary) / 0.92);
+  border: 1px solid hsl(var(--border) / 0.65);
+  box-shadow:
+    0 14px 40px hsl(var(--foreground) / 0.1),
+    0 2px 8px hsl(var(--foreground) / 0.04),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .soft-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.55);
-  box-shadow: 0 3px 10px hsl(var(--foreground) / 0.045);
+  box-shadow:
+    0 1px 2px hsl(var(--foreground) / 0.03),
+    0 4px 16px hsl(var(--foreground) / 0.035);
 }
 
 @keyframes session-activity-breathe {

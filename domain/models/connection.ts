@@ -51,7 +51,7 @@ export interface EnvVar {
 }
 
 // Protocol type for connections
-export type HostProtocol = 'ssh' | 'telnet' | 'mosh' | 'et' | 'local' | 'serial';
+export type HostProtocol = 'ssh' | 'telnet' | 'mosh' | 'et' | 'local' | 'serial' | 'rdp';
 export type HostIconMode = 'auto' | 'custom';
 export type HostIconColorMode = 'auto' | 'manual';
 export type HostIconId =
@@ -161,12 +161,14 @@ export interface Host {
   x11Forwarding?: boolean;
   /**
    * Use system OpenSSH client (node-pty) instead of the built-in ssh2 stack.
-   * Required for GSSAPI and for post-quantum KEX preference below.
+   * Required for GSSAPI/Kerberos. Optional for PQ KEX (system OpenSSH also
+   * offers sntrup761 hybrid algorithms not implemented in-process).
    */
   useSystemOpenSsh?: boolean;
   /**
-   * Prefer hybrid post-quantum KEX algorithms supported by system OpenSSH
-   * (e.g. sntrup761x25519 / mlkem768x25519 when available). Implies system OpenSSH.
+   * Prefer hybrid post-quantum KEX. Built-in ssh2 offers mlkem768x25519-sha256
+   * (via patched library + ML-KEM preload) with classical fallback. Combined
+   * with useSystemOpenSsh, system OpenSSH prefers mlkem/sntrup hybrids.
    */
   preferPostQuantumKex?: boolean;
   createdAt?: number; // Timestamp when host was created
@@ -190,6 +192,8 @@ export interface Host {
   moshServerPath?: string; // Custom mosh-server path (e.g., /usr/local/bin/mosh-server)
   etEnabled?: boolean;
   etPort?: number; // EternalTerminal server port (default: 2022)
+  rdpEnabled?: boolean; // Offer RDP (system client launch) for this host
+  rdpPort?: number; // RDP port (default: 3389)
   theme?: string;
   themeOverride?: boolean; // Explicitly override the global terminal theme for this host
   fontFamily?: string; // Terminal font family for this host

@@ -18,6 +18,7 @@ import {
 } from '../ai-elements/conversation';
 import { Message, MessageContent, MessageResponse } from '../ai-elements/message';
 import { ToolCall } from '../ai-elements/tool-call';
+import { AiActivityIndicator } from './AiActivityIndicator';
 import ThinkingBlock from './ThinkingBlock';
 import ToolCallGroup from './ToolCallGroup';
 import {
@@ -252,8 +253,14 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   if (visibleMessages.length === 0 && !isStreaming) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6">
-        <p className="text-[13px] text-muted-foreground/40 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/50 bg-gradient-to-br from-primary/10 to-muted/30 shadow-sm">
+          <SquareTerminal size={22} className="text-primary/70" />
+        </div>
+        <p className="max-w-[16rem] text-center text-[13.5px] font-medium leading-snug text-foreground/70">
+          {t('ai.chat.emptyTitle')}
+        </p>
+        <p className="mt-2 max-w-[18rem] text-center text-[12px] leading-relaxed text-muted-foreground/55">
           {t('ai.chat.emptyHint')}
         </p>
       </div>
@@ -269,13 +276,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   const conversation = (
     <>
-    <Conversation className="flex-1">
-      <ConversationContent className="gap-1.5 px-4 py-2">
+    <Conversation className="flex-1 bg-gradient-to-b from-background via-background to-muted/[0.12]">
+      <ConversationContent>
         {hiddenMessageCount > 0 && (
           <button
             type="button"
             onClick={() => setRenderedTailCount((count) => count + MESSAGE_RENDER_STEP)}
-            className="w-full py-2 text-center text-[12px] text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
+            className="mx-auto mb-1 flex w-fit items-center gap-1.5 rounded-full border border-border/50 bg-card/70 px-3 py-1.5 text-center text-[11.5px] text-muted-foreground/65 shadow-sm hover:border-border hover:text-foreground transition-colors cursor-pointer"
           >
             {t('ai.chat.loadEarlierMessages').replace('{n}', String(hiddenMessageCount))}
           </button>
@@ -360,7 +367,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
             if (groupTotal === 1) {
               return (
-                <div key={`tool-group-${message.id}`} className="py-0.5">
+                <div key={`tool-group-${message.id}`} className="pl-0.5">
                   {renderToolResultItem(toolResults[0])}
                 </div>
               );
@@ -395,14 +402,14 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {/* User attachments (images, files) — fallback to legacy `images` field */}
                 {isUser && !hideAttachments && (message.attachments ?? message.images)?.length && (
-                  <div className="flex gap-1.5 flex-wrap mb-1">
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
                     {(message.attachments ?? message.images)!.map((att, i) => (
                       att.terminalSelection ? (
                         <div
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
-                          className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md bg-muted/20 border border-border/20 text-[11px] text-foreground/70"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-primary/15 bg-background/40 px-2 text-[11px] text-foreground/75"
                         >
-                          <SquareTerminal size={12} className="text-muted-foreground/60 shrink-0" />
+                          <SquareTerminal size={12} className="text-primary/60 shrink-0" />
                           <span className="truncate max-w-[150px]">{att.filename || 'terminal selection'}</span>
                         </div>
                       ) : att.mediaType.startsWith('image/') ? (
@@ -410,13 +417,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
                           src={`data:${att.mediaType};base64,${att.base64Data}`}
                           alt={att.filename || 'image'}
-                          className="max-h-[120px] max-w-[200px] rounded-md object-contain border border-border/20 cursor-pointer hover:opacity-80 transition-opacity"
+                          className="max-h-[120px] max-w-[200px] cursor-pointer rounded-xl border border-border/30 object-contain shadow-sm transition-opacity hover:opacity-90"
                           onClick={() => openPreview(`data:${att.mediaType};base64,${att.base64Data}`, att.filename || 'image')}
                         />
                       ) : (
                         <div
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
-                          className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md bg-muted/20 border border-border/20 text-[11px] text-foreground/70"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border/30 bg-background/40 px-2 text-[11px] text-foreground/75"
                         >
                           <FileText size={12} className="text-muted-foreground/60 shrink-0" />
                           <span className="truncate max-w-[120px]">{att.filename || 'file'}</span>
@@ -428,9 +435,9 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {message.content && (
                   isUser
-                    ? <div className="whitespace-pre-wrap break-words text-[13px] leading-[1.45]">{message.content}</div>
+                    ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.6] text-foreground/90 [overflow-wrap:anywhere]">{message.content}</div>
                     : hideMarkdown
-                      ? <div className="whitespace-pre-wrap break-words text-[13px] leading-[1.45]">{message.content}</div>
+                      ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.65] [overflow-wrap:anywhere]">{message.content}</div>
                       : (
                           <React.Profiler {...getAIPanelProfilerProps('AIChatPanel.Markdown')}>
                             <MessageResponse isAnimating={isThisStreaming}>
@@ -486,23 +493,26 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {/* Status text with shimmer */}
                 {message.statusText && (
-                  <div className="py-1">
-                    <span className="thinking-shimmer text-xs">
-                      {resolveCompactionStatusText(message.statusText, t)}
-                    </span>
+                  <div className="py-0.5">
+                    <AiActivityIndicator
+                      variant="compact"
+                      framed={false}
+                      showIcon={false}
+                      label={resolveCompactionStatusText(message.statusText, t)}
+                    />
                   </div>
                 )}
 
                 {/* Error info */}
                 {message.errorInfo && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-destructive/10 border border-destructive/20 text-sm">
-                    <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-destructive font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  <div className="flex items-start gap-2.5 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium whitespace-pre-wrap break-words text-destructive [overflow-wrap:anywhere]">
                         {message.errorInfo.message}
                       </p>
                       {message.errorInfo.retryable && (
-                        <p className="text-muted-foreground text-xs mt-1">{t('ai.chat.retryHint')}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{t('ai.chat.retryHint')}</p>
                       )}
                     </div>
                   </div>
@@ -586,20 +596,23 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           })}
         {/* Transient compaction status — inline, no banner */}
         {showCompactionStatus && activeCompaction && (
-          <div className="py-1">
-            <span className="thinking-shimmer text-xs text-muted-foreground">
-              {compactionStatusText(activeCompaction.trigger, t)}
-            </span>
-          </div>
+          <AiActivityIndicator
+            variant="compact"
+            framed
+            showIcon
+            label={compactionStatusText(activeCompaction.trigger, t)}
+            className="mb-0.5"
+          />
         )}
 
         {/* Streaming indicator — only when no content and no thinking yet */}
         {isStreaming && !lastAssistantMessage?.content && !lastAssistantMessage?.thinking && (
-          <div className="flex items-center gap-1 py-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:0ms]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:150ms]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:300ms]" />
-          </div>
+          <AiActivityIndicator
+            variant="generating"
+            framed
+            showIcon={false}
+            label={t('ai.chat.generating')}
+          />
         )}
       </ConversationContent>
       <ConversationScrollButton />

@@ -36,25 +36,28 @@ const ToolCallGroup: React.FC<ToolCallGroupProps> = ({
   }, [defaultExpanded]);
 
   return (
-    <div className="min-w-0 rounded-md border border-border/20 bg-muted/5 overflow-hidden">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border/40 bg-muted/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         className={cn(
-          'w-full flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer',
-          'hover:bg-muted/20 transition-colors select-none',
+          'w-full flex items-center gap-2 px-3 py-2 text-xs cursor-pointer',
+          'hover:bg-muted/25 transition-colors select-none',
         )}
       >
         {expanded
           ? <ChevronDown size={12} className="text-muted-foreground/50 shrink-0" />
           : <ChevronRight size={12} className="text-muted-foreground/50 shrink-0" />
         }
-        <span className="text-muted-foreground/70 font-medium">
+        <span className="text-muted-foreground/75 font-medium tracking-wide">
           {t('ai.chat.usedTools', { n: count })}
+        </span>
+        <span className="ml-auto rounded-full bg-muted/50 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground/55">
+          {count}
         </span>
       </button>
       {expanded && (
-        <div className="border-t border-border/20 p-1.5 space-y-1.5">
+        <div className="space-y-1.5 border-t border-border/30 p-2">
           {children}
         </div>
       )}

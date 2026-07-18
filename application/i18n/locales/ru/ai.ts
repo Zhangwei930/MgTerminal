@@ -496,4 +496,10 @@ export const ruAiMessages: Messages = {
   'terminal.layer.hostTree.details.group': 'Группа',
   'terminal.layer.hostTree.details.tags': 'Теги',
   'terminal.layer.hostTree.details.lastConnected': 'Последнее подключение',
+  'ai.chat.emptyTitle': 'Начните диалог',
+  'ai.chat.role.you': 'Вы',
+  'ai.chat.role.assistant': 'Ассистент',
+  'ai.chat.generating': 'Генерация…',
+  'ai.chat.selectModel': 'Выберите модель',
+  'ai.chat.enable': 'Включите ИИ-чат в настройках, чтобы начать',
 };

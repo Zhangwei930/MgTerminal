@@ -417,3 +417,38 @@ for (const [label, buildAlgorithms] of [
     });
   });
 }
+
+// Built-in hybrid PQ KEX preference (mlkem768x25519-sha256).
+{
+  const {
+    buildAlgorithms,
+    BUILTIN_PQ_KEX,
+    isBuiltinPostQuantumKexAvailable,
+  } = require("./sshAlgorithms.cjs");
+  const { installMlkem768 } = require("./sshBridge/mlkemPreload.cjs");
+
+  test("preferPostQuantumKex puts mlkem768x25519-sha256 first when ML-KEM is loaded", () => {
+    installMlkem768();
+    assert.equal(isBuiltinPostQuantumKexAvailable(), true);
+
+    const algorithms = buildAlgorithms(false, { preferPostQuantumKex: true });
+    assert.equal(algorithms.kex[0], BUILTIN_PQ_KEX);
+    // Classical fallbacks must still be present.
+    assert.ok(algorithms.kex.includes("curve25519-sha256"));
+  });
+
+  test("preferPostQuantumKex does not inject PQ into an explicit kex override", () => {
+    installMlkem768();
+    const algorithms = buildAlgorithms(false, {
+      preferPostQuantumKex: true,
+      algorithmOverrides: { kex: ["curve25519-sha256"] },
+    });
+    assert.deepEqual(algorithms.kex, ["curve25519-sha256"]);
+  });
+
+  test("default algorithm list does not advertise PQ without preference", () => {
+    installMlkem768();
+    const algorithms = buildAlgorithms(false);
+    assert.equal(algorithms.kex.includes(BUILTIN_PQ_KEX), false);
+  });
+}

@@ -36,16 +36,18 @@ export const ProductEmptyState: React.FC<ProductEmptyStateProps> = ({
     data-testid="product-empty-state"
   >
     {icon && (
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary/80">
+      <div className="mb-5 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-2xl border border-border/50 bg-gradient-to-b from-secondary to-secondary/60 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03]">
         {icon}
       </div>
     )}
-    <h3 className="mb-2 text-lg font-semibold text-foreground">{title}</h3>
+    <h3 className="mb-2 text-lg font-semibold tracking-tight text-foreground">{title}</h3>
     {description && (
-      <p className="mb-4 max-w-sm text-center text-sm">{description}</p>
+      <p className="mb-5 max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
     )}
     {actions.length > 0 && (
-      <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+      <div className="mb-5 flex flex-wrap items-center justify-center gap-2.5">
         {actions.map((action) => (
           <Button
             key={action.label}
@@ -59,7 +61,7 @@ export const ProductEmptyState: React.FC<ProductEmptyStateProps> = ({
       </div>
     )}
     {hints.length > 0 && (
-      <ul className="max-w-sm space-y-1 text-center text-xs text-muted-foreground/90">
+      <ul className="max-w-sm space-y-1.5 text-center text-xs leading-relaxed text-muted-foreground/85">
         {hints.map((hint) => (
           <li key={hint}>{hint}</li>
         ))}

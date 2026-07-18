@@ -4,7 +4,7 @@
   "description": "MagiesTerminal is a modern SSH manager and terminal app with host grouping, SFTP, keychain, port forwarding, and a rich UI.",
   "homepage": "https://shell.magies.top",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "type": "module",
   "author": {
     "name": "binaricat and MagiesTerminal contributors",
@@ -61,6 +61,7 @@
     "@mdxeditor/editor": "^4.0.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@monaco-editor/react": "^4.7.0",
+    "@noble/post-quantum": "^0.5.4",
     "@openai/codex-sdk": "^0.136.0",
     "@radix-ui/react-collapsible": "1.1.12",
     "@radix-ui/react-context-menu": "2.2.16",

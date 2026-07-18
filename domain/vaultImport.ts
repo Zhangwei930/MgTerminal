@@ -1,4 +1,4 @@
-import { Host, HostChainConfig, HostProtocol } from "./models";
+import { Host, HostChainConfig } from "./models";
 import { sanitizeHost } from "./host";
 import {
   buildVaultHostFromDraft,
@@ -135,7 +135,7 @@ const normalizeGroupPath = (raw: string | undefined): string | undefined => {
 
 const normalizeProtocol = (
   raw: string | undefined,
-): Exclude<HostProtocol, "mosh" | "et"> | undefined => {
+): VaultHostDraftProtocol | undefined => {
   const s = raw?.trim().toLowerCase();
   if (!s) return undefined;
   if (s === "ssh" || s === "ssh2" || s === "ssh-2") return "ssh";
@@ -214,7 +214,7 @@ const looksLikeHostnameToken = (token: string): boolean => {
 
 const parseTarget = (
   raw: string,
-): { hostname: string; username?: string; port?: number; protocol?: Exclude<HostProtocol, "mosh" | "et"> } | null => {
+): { hostname: string; username?: string; port?: number; protocol?: VaultHostDraftProtocol } | null => {
   const trimmed = raw.trim();
   if (!trimmed) return null;
 
@@ -384,7 +384,7 @@ const importFromPuttyReg = (text: string): VaultImportResult => {
     hostname?: string;
     username?: string;
     port?: number;
-    protocol?: Exclude<HostProtocol, "mosh" | "et">;
+    protocol?: VaultHostDraftProtocol;
   };
 
   const sessions: Session[] = [];
@@ -702,7 +702,7 @@ const importFromSecureCrt = (text: string, fileName?: string): VaultImportResult
     hostname?: string;
     username?: string;
     port?: number;
-    protocol?: Exclude<HostProtocol, "mosh" | "et">;
+    protocol?: VaultHostDraftProtocol;
   };
 
   const sessions: Session[] = [];
@@ -854,7 +854,7 @@ const importFromMobaXterm = (text: string): VaultImportResult => {
         ? keyParts.slice(0, -1).join("/")
         : undefined;
 
-    let protocol: Exclude<HostProtocol, "mosh" | "et"> | undefined;
+    let protocol: VaultHostDraftProtocol | undefined;
     let hostname: string | undefined;
     let username: string | undefined;
     let port: number | undefined;

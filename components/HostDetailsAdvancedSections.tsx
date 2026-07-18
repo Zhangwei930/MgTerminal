@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, Forward, Globe, HeartPulse, Link2, Palette, Plus, Router, ShieldAlert, TerminalSquare, Wifi, X, Variable } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Forward, Globe, HeartPulse, Link2, Monitor, Palette, Plus, Router, ShieldAlert, TerminalSquare, Wifi, X, Variable } from "lucide-react";
 import { customThemeStore } from "../application/state/customThemeStore";
 import { clearHostFontSizeOverride, clearHostThemeOverride } from "../domain/terminalAppearance";
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from "../infrastructure/config/fonts";
@@ -229,6 +229,32 @@ export const HostDetailsAdvancedSections: React.FC<HostDetailsAdvancedSectionsPr
           )}
         </HostDetailsSection>
 
+        <HostDetailsSection
+          icon={<Monitor size={14} className="text-muted-foreground" />}
+          title={t("hostDetails.section.rdp")}
+        >
+          <ToggleRow
+            label="RDP"
+            hint={t("hostDetails.rdp.desc")}
+            enabled={!!form.rdpEnabled}
+            onToggle={() => update("rdpEnabled", !form.rdpEnabled)}
+          />
+          {form.rdpEnabled && (
+            <HostDetailsSettingRow label={t("hostDetails.rdp.port")} hint={t("hostDetails.rdp.port.desc")}>
+              <Input
+                type="number"
+                className="w-28"
+                placeholder="3389"
+                value={form.rdpPort ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  update("rdpPort", v === "" ? undefined : Number(v));
+                }}
+              />
+            </HostDetailsSettingRow>
+          )}
+        </HostDetailsSection>
+
         {/* Agent Forwarding */}
         <HostDetailsSection
           icon={<Forward size={14} className="text-muted-foreground" />}
@@ -309,22 +335,14 @@ export const HostDetailsAdvancedSections: React.FC<HostDetailsAdvancedSectionsPr
             hint={t("hostDetails.preferPostQuantumKex.desc")}
             enabled={!!form.preferPostQuantumKex}
             onToggle={() => {
-              const next = !form.preferPostQuantumKex;
-              update("preferPostQuantumKex", next);
-              if (next) update("useSystemOpenSsh", true);
+              update("preferPostQuantumKex", !form.preferPostQuantumKex);
             }}
           />
           <ToggleRow
             label={t("hostDetails.useSystemOpenSsh")}
             hint={t("hostDetails.useSystemOpenSsh.desc")}
-            enabled={!!(form.useSystemOpenSsh || form.preferPostQuantumKex)}
+            enabled={!!form.useSystemOpenSsh}
             onToggle={() => {
-              if (form.preferPostQuantumKex) {
-                // PQ implies system OpenSSH; turning off system also clears PQ.
-                update("preferPostQuantumKex", false);
-                update("useSystemOpenSsh", false);
-                return;
-              }
               update("useSystemOpenSsh", !form.useSystemOpenSsh);
             }}
           />

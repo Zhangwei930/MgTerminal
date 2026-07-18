@@ -111,20 +111,20 @@ export const AsidePanelHeader: React.FC<AsidePanelHeaderProps> = ({
     showBackButton = false,
 }) => {
     return (
-        <div className="px-4 py-3 flex items-center justify-between border-b border-border/50 bg-card/40 app-no-drag shrink-0">
+        <div className="px-4 py-3 flex items-center justify-between border-b border-border/50 bg-gradient-to-b from-card/70 to-card/30 app-no-drag shrink-0">
             <div className="flex items-center gap-2 min-w-0">
                 {showBackButton && onBack && (
                     <button
                         onClick={onBack}
-                        className="p-1 hover:bg-muted rounded-md transition-colors duration-150 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="p-1.5 hover:bg-muted/80 rounded-lg transition-colors duration-150 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                         <ArrowLeft size={18} />
                     </button>
                 )}
                 <div className="min-w-0">
-                    <h3 className="text-sm font-semibold truncate">{title}</h3>
+                    <h3 className="text-sm font-semibold tracking-tight truncate">{title}</h3>
                     {subtitle && (
-                        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
                     )}
                 </div>
             </div>
@@ -132,7 +132,7 @@ export const AsidePanelHeader: React.FC<AsidePanelHeaderProps> = ({
                 {actions}
                 <button
                     onClick={onClose}
-                    className="p-1.5 hover:bg-muted rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="p-1.5 hover:bg-muted/80 rounded-lg transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                     <X size={18} />
                 </button>
@@ -161,7 +161,7 @@ export const AsidePanelFooter: React.FC<{ children: ReactNode; className?: strin
     className,
 }) => {
     return (
-        <div className={cn("px-4 py-3 border-t border-border/60 shrink-0", className)}>
+        <div className={cn("px-4 py-3 border-t border-border/50 bg-card/20 shrink-0", className)}>
             {children}
         </div>
     );
@@ -179,7 +179,7 @@ export const AsideActionMenu: React.FC<AsideActionMenuProps> = ({ children }) =>
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button className="p-1.5 hover:bg-muted rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                <button className="p-1.5 hover:bg-muted/80 rounded-lg transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                     <MoreVertical size={18} />
                 </button>
             </PopoverTrigger>
@@ -213,10 +213,10 @@ export const AsideActionMenuItem: React.FC<{
         <button
             onClick={() => invokeAsideActionMenuItemClick(closeMenu, onClick)}
             className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 variant === 'destructive'
                     ? "text-destructive hover:bg-destructive/10"
-                    : "hover:bg-muted"
+                    : "hover:bg-muted/80"
             )}
         >
             {icon}
@@ -313,8 +313,8 @@ export const AsidePanelStack: React.FC<AsidePanelStackProps> = ({
         <AsidePanelContext.Provider value={{ push, pop, replace, clear, canGoBack, currentItem }}>
             <div className={cn(
                 layout === 'inline'
-                    ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/60 bg-background flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_32px_hsl(var(--foreground)/0.08)]"
-                    : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/60 bg-background z-30 flex flex-col app-no-drag overflow-hidden",
+                    ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/55 bg-background/98 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_40px_hsl(var(--foreground)/0.07)]"
+                    : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/55 bg-background/98 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_36px_hsl(var(--foreground)/0.08)]",
                 layout === 'overlay' && width,
                 className
             )}
@@ -408,8 +408,8 @@ export const AsidePanel: React.FC<AsidePanelProps> = ({
     return (
         <div className={cn(
             layout === 'inline'
-                ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/60 bg-background flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_32px_hsl(var(--foreground)/0.08)]"
-                : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/60 bg-background z-30 flex flex-col app-no-drag overflow-hidden",
+                ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/55 bg-background/98 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_40px_hsl(var(--foreground)/0.07)]"
+                : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/55 bg-background/98 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_36px_hsl(var(--foreground)/0.08)]",
             layout === 'overlay' && width,
             isResizing && layout === 'inline' && 'transition-none',
             className

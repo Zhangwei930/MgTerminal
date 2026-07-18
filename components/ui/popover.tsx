@@ -59,7 +59,8 @@ const PopoverContent = React.forwardRef<
           visibility: isPositioned ? 'visible' : 'hidden',
         }}
         className={cn(
-          "z-[999999] rounded-md border border-border/60 bg-popover p-4 text-popover-foreground shadow-md outline-none pointer-events-auto",
+          "z-[999999] rounded-xl border border-border/55 bg-popover/95 p-4 text-popover-foreground outline-none pointer-events-auto",
+          "shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className
         )}

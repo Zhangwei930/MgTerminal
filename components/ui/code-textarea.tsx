@@ -44,9 +44,10 @@ const CodeTextarea = React.forwardRef<HTMLTextAreaElement, CodeTextareaProps>(
           ref={ref}
           value={value}
           className={cn(
-            "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-5",
-            "placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-            "whitespace-pre",
+            "flex min-h-[80px] w-full rounded-lg border border-border/70 bg-background px-3 py-2 font-mono text-xs leading-5",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+            "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/15",
+            "disabled:cursor-not-allowed disabled:opacity-50 whitespace-pre",
             className,
           )}
           spellCheck={false}
@@ -63,15 +64,16 @@ const CodeTextarea = React.forwardRef<HTMLTextAreaElement, CodeTextareaProps>(
     return (
       <div
         className={cn(
-          "flex w-full overflow-hidden rounded-md border border-input bg-background transition-colors",
-          "focus-within:border-ring",
+          "flex w-full overflow-hidden rounded-lg border border-border/70 bg-background transition-[border-color,box-shadow]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15",
           wrapperClassName,
         )}
       >
         <div
           ref={gutterRef}
           aria-hidden
-          className="shrink-0 overflow-hidden border-r border-border/60 bg-muted/30 py-2 pl-2 pr-1.5 select-none"
+          className="shrink-0 overflow-hidden border-r border-border/50 bg-muted/25 py-2 pl-2 pr-1.5 select-none"
           style={{ width: `${gutterWidthCh}ch` }}
         >
           <pre className="font-mono text-[11px] leading-5 text-muted-foreground text-right m-0">

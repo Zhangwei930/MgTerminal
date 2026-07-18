@@ -1,5 +1,21 @@
 # Changelog
 
+
+## [0.5.2] - 2026-07-18
+
+### 功能
+- **本地优先团队 Vault**：仅元数据主机清单包分享、角色（owner/editor/viewer）与 HMAC 签名审计；密码与私钥永不离开本机
+- **会话跟随 WAN 中继**：TCP NDJSON 中继支持 NAT 后协作观看；可内嵌本机中继或自建 `scripts/follow-relay.cjs`
+- **设备 Passkey 解锁 Vault**：WebAuthn 平台认证器（Touch ID / Windows Hello / 安全密钥）主进程校验；非云端多设备同步
+- **内置 ssh2 混合后量子 KEX**：优先 `mlkem768x25519-sha256`，服务端不支持时回退经典算法
+- **RDP 主机支持**：Vault 一键拉起系统远程桌面客户端（Windows mstsc、macOS Windows App、Linux xfreerdp）
+- **系统 OpenSSH 跳板与代理**：跳板链与 HTTP/SOCKS 代理可用于系统 OpenSSH 会话
+
+### 优化
+- **全局 UI 组件升级**：按钮、输入、浮层、侧栏、空状态、Toast 等统一圆角/阴影/焦点环
+- **AI 侧栏体验**：问答布局、模型/权限控件、思考指示器（方块旋转）与输入排版
+- **更新日志对话框重设计**：按版本折叠、分类着色、跟随界面语言
+
 ## [0.5.0] - 2026-07-17
 
 ### 功能
@@ -11,7 +27,10 @@
 - **端口转发实时通道视图**：本地/远程/动态转发的逐连接来源、目标与流量字节统计
 - **脚本 onOutput 触发动作扩展**：命中输出模式可选桌面通知、提示音、标记标签页、开始会话记录
 - **安全粘贴与精确广播**：多行粘贴延迟/等待提示符/危险命令确认；广播可精确指定工作区/选定/分组/窗口
-- **系统 OpenSSH 通道增强**：GSSAPI/Kerberos 与后量子（PQ）算法经系统 OpenSSH 支持
+- **系统 OpenSSH 通道增强**：GSSAPI/Kerberos 与后量子（PQ）算法经系统 OpenSSH 支持；跳板链与 HTTP/SOCKS 代理可用
+- **内置 ssh2 混合后量子 KEX**：优先协商 `mlkem768x25519-sha256`（ML-KEM-768 + X25519），服务端不支持时回退经典算法；无需强制走系统 ssh
+- **RDP 主机支持**：Vault 主机可启用 RDP，一键启动系统远程桌面客户端（Windows mstsc、macOS Windows App、Linux xfreerdp）
+- **更新日志跟随界面语言**：应用内 Changelog 按当前 UI 语言展示（10 种语言）
 
 ### Windows ARM64
 - **win-arm64 安装包补齐 mosh / ET 捆绑**：MoshMagies 0.1.9 与 EternalTerminal 6.2.10 首发 Windows arm64 原生二进制

@@ -14,7 +14,12 @@ const MessageResponse = lazy(() =>
 );
 
 const PlainTextFallback = ({ children, className }: LazyMessageResponseProps) => (
-  <div className={cn('size-full whitespace-pre-wrap break-words', className)}>
+  <div
+    className={cn(
+      'size-full whitespace-pre-wrap break-words text-[13.5px] leading-[1.65] [overflow-wrap:anywhere]',
+      className,
+    )}
+  >
     {children}
   </div>
 );

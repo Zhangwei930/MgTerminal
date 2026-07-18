@@ -975,4 +975,17 @@ export const ruTerminalMessages: Messages = {
   'vault.hosts.empty.hint.connect': 'Add a host, then Connect or press the quick switcher',
   'vault.hosts.empty.hint.sftp': 'After connect, open SFTP for files and editor',
 
+  'terminal.follow.lan.tab': 'LAN',
+  'terminal.follow.lan.desc': 'Одноранговая сеть в локальной сети. Устройства должны видеть IP хоста.',
+  'terminal.follow.wan.tab': 'WAN / Реле',
+  'terminal.follow.wan.desc': 'Хост и зрители выходят на TCP-реле (удобно за NAT). Для теста — встроенное локальное реле; в проде — VPS с scripts/follow-relay.cjs.',
+  'terminal.follow.wan.create': 'Создать WAN-приглашение',
+  'terminal.follow.wan.created': 'WAN-приглашение готово',
+  'terminal.follow.wan.inviteTitle': 'WAN-приглашение на совместный просмотр',
+  'terminal.follow.wan.customRelay': 'Свой хост реле',
+  'terminal.follow.wan.customRelayHint': 'Иначе MagiesTerminal запустит встроенное локальное реле.',
+  'terminal.follow.wan.relayHostPlaceholder': 'relay.example.com',
+  'terminal.follow.wan.localRelayBadge': 'локальное реле',
+  'terminal.follow.wan.shareHint': 'Поделитесь строкой приглашения. Зрителям нужен доступ к host:port реле (при необходимости пробросьте порты).',
+  'terminal.follow.wan.error.create': 'Не удалось создать WAN-приглашение',
 };

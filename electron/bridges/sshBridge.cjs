@@ -558,6 +558,9 @@ async function connectThroughChain(event, options, jumpHosts, targetHost, target
           jump.legacyAlgorithms ?? options.legacyAlgorithms,
           {
             skipEcdsaHostKey: jump.skipEcdsaHostKey,
+            // Prefer PQ on every hop when the leaf asks for it; classical
+            // algorithms remain as fallback for bastions without hybrid KEX.
+            preferPostQuantumKex: options.preferPostQuantumKex,
             algorithmOverrides: jump.algorithmOverrides,
           },
         ),
@@ -1000,12 +1003,14 @@ const gssapiSessionApi = createStartGssapiSessionApi({
 const { startGssapiSshSession } = gssapiSessionApi;
 
 async function startSSHSessionWrapper(event, options) {
-  // System OpenSSH path: GSSAPI/Kerberos and/or post-quantum KEX preference.
-  // Built-in ssh2 has neither GSSAPI nor hybrid ML-KEM/sntrup KEX.
+  // System OpenSSH path: GSSAPI/Kerberos and/or explicit system-ssh toggle.
+  // Built-in ssh2 now supports hybrid ML-KEM PQ KEX (mlkem768x25519-sha256)
+  // via the patched library + @noble/post-quantum preload, so preferPostQuantumKex
+  // alone stays on the built-in path. System OpenSSH still covers GSSAPI and
+  // sntrup761 (not implemented in-process).
   if (
     options?.authMethod === "gssapi"
     || options?.useSystemOpenSsh
-    || options?.preferPostQuantumKex
   ) {
     return await startGssapiSshSession(event, {
       ...options,

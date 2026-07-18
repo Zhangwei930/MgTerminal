@@ -482,12 +482,14 @@ export const TerminalComposeBar: React.FC<TerminalComposeBarProps> = ({
           <textarea
             ref={textareaRef}
             className={cn(
-              'flex-1 min-w-0 min-h-0 h-full resize-none bg-transparent border-none px-0 py-0',
-              'text-xs font-mono leading-relaxed outline-none',
+              'flex-1 min-w-0 min-h-0 h-full resize-none bg-transparent border-none px-0.5 py-0.5',
+              // Slightly larger mono + relaxed leading so CJK/descenders are not clipped.
+              'text-[12.5px] font-mono leading-[1.55] outline-none',
               'placeholder:opacity-70 overflow-y-auto',
             )}
             style={{ color: theme.resolvedFg }}
             placeholder={t('terminal.composeBar.placeholder')}
+            spellCheck={false}
             onKeyDown={handleKeyDown}
             onCompositionStart={() => { isComposingRef.current = true; }}
             onCompositionEnd={() => { isComposingRef.current = false; }}

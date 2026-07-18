@@ -20,14 +20,16 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, disabled, ari
     disabled={disabled}
     onClick={() => onChange(!checked)}
     className={cn(
-      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-      checked ? "bg-primary" : "bg-input",
+      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent",
+      "transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      checked ? "bg-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" : "bg-input/90",
     )}
   >
     <span
       className={cn(
-        "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-        checked ? "translate-x-4" : "translate-x-0",
+        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-md ring-0 transition-transform duration-200 ease-out",
+        checked ? "translate-x-5" : "translate-x-0",
       )}
     />
   </button>
@@ -56,7 +58,10 @@ export const Select: React.FC<SelectProps> = ({
     <SelectPrimitive.Root value={value} onValueChange={onChange} disabled={disabled}>
       <SelectPrimitive.Trigger
         className={cn(
-          "flex h-9 max-w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:min-w-0 [&>span]:truncate [&>span]:whitespace-nowrap",
+          "flex h-9 max-w-full items-center justify-between rounded-lg border border-border/70 bg-background px-3 py-1 text-sm",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-[border-color,box-shadow]",
+          "focus-visible:outline-none focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/15",
+          "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:min-w-0 [&>span]:truncate [&>span]:whitespace-nowrap",
           fitSelectedText && "min-w-max",
           className,
         )}
@@ -73,7 +78,7 @@ export const Select: React.FC<SelectProps> = ({
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
-          className="z-[200000] max-h-80 w-max max-w-[min(24rem,var(--radix-select-content-available-width))] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
+          className="z-[200000] max-h-80 w-max max-w-[min(24rem,var(--radix-select-content-available-width))] overflow-hidden rounded-xl border border-border/55 bg-popover/95 text-popover-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
           position="popper"
           sideOffset={4}
           style={{ minWidth: "max(12rem, var(--radix-select-trigger-width))" }}
@@ -81,12 +86,12 @@ export const Select: React.FC<SelectProps> = ({
           <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
             <ChevronUp className="h-4 w-4" />
           </SelectPrimitive.ScrollUpButton>
-          <SelectPrimitive.Viewport className="p-1">
+          <SelectPrimitive.Viewport className="p-1.5">
             {options.map((opt) => (
               <SelectPrimitive.Item
                 key={opt.value}
                 value={opt.value}
-                className="relative flex w-full min-w-0 cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                className="relative flex w-full min-w-0 cursor-default select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
               >
                 <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                   <SelectPrimitive.ItemIndicator>
@@ -114,7 +119,11 @@ export const Select: React.FC<SelectProps> = ({
 export const SectionHeader: React.FC<{ title: string; className?: string }> = ({
   title,
   className,
-}) => <h3 className={cn("text-sm font-semibold text-foreground mb-3", className)}>{title}</h3>;
+}) => (
+  <h3 className={cn("mb-3 text-sm font-semibold tracking-tight text-foreground", className)}>
+    {title}
+  </h3>
+);
 
 /** Section title row → content gap (shared across settings pages). */
 export const settingsSectionGapClassName = "gap-2";
@@ -137,7 +146,7 @@ export const SettingsSection: React.FC<{
       >
         <div className="flex min-w-0 items-center gap-2">
           {leading}
-          {title ? <h3 className="text-sm font-semibold text-foreground">{title}</h3> : null}
+          {title ? <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3> : null}
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
       </div>
@@ -146,7 +155,8 @@ export const SettingsSection: React.FC<{
   </section>
 );
 
-export const settingCardClassName = "rounded-lg border bg-card";
+export const settingCardClassName =
+  "rounded-xl border border-border/60 bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] ring-1 ring-inset ring-white/[0.02]";
 
 interface SettingCardProps {
   children: React.ReactNode;
@@ -167,7 +177,7 @@ export const SettingCard: React.FC<SettingCardProps> = ({
     className={cn(
       settingCardClassName,
       padded ? "p-4" : "px-4",
-      divided && "space-y-0 divide-y divide-border",
+      divided && "space-y-0 divide-y divide-border/60",
       className,
     )}
   >

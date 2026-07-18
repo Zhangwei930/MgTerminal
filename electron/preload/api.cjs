@@ -625,6 +625,11 @@ function createPreloadApi(ctx) {
   followLanViewerInput: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerInput", payload),
   followLanViewerRequestControl: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerRequestControl", payload),
   followLanViewerDisconnect: (payload) => ipcRenderer.invoke("magiesTerminal:follow:lanViewerDisconnect", payload),
+  // WAN follow (TCP relay)
+  followWanCreateInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:wanCreateInvite", payload),
+  followWanStopInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:wanStopInvite", payload),
+  followWanDecodeInvite: (payload) => ipcRenderer.invoke("magiesTerminal:follow:wanDecodeInvite", payload),
+  followWanStartLocalRelay: () => ipcRenderer.invoke("magiesTerminal:follow:wanStartLocalRelay"),
   onFollowLanClientEvent: (cb) => {
     const handler = (_event, payload) => cb(payload);
     ipcRenderer.on("magiesTerminal:follow:lanClientEvent", handler);
@@ -876,6 +881,10 @@ function createPreloadApi(ctx) {
     return () => {
       hostHealthProgressListeners.delete(cb);
     };
+  },
+  // RDP: launch the system RDP client for a vault host
+  launchRdp: async (options) => {
+    return ipcRenderer.invoke("magiesTerminal:rdp:launch", options);
   },
   // Connection diagnostics ("Test Connection")
   runConnectionDiagnostics: async (options) => {
@@ -1139,6 +1148,13 @@ function createPreloadApi(ctx) {
   vaultUnlockWithPin: (pin) => ipcRenderer.invoke("magiesTerminal:vault:unlockWithPin", pin),
   vaultUnlockWithPlatform: (payload) =>
     ipcRenderer.invoke("magiesTerminal:vault:unlockWithPlatform", payload),
+  vaultBeginWebAuthnChallenge: (payload) =>
+    ipcRenderer.invoke("magiesTerminal:vault:beginWebAuthnChallenge", payload),
+  vaultCompleteWebAuthnRegistration: (payload) =>
+    ipcRenderer.invoke("magiesTerminal:vault:completeWebAuthnRegistration", payload),
+  vaultUnlockWithWebAuthn: (payload) =>
+    ipcRenderer.invoke("magiesTerminal:vault:unlockWithWebAuthn", payload),
+  vaultClearWebAuthn: () => ipcRenderer.invoke("magiesTerminal:vault:clearWebAuthn"),
   vaultLock: () => ipcRenderer.invoke("magiesTerminal:vault:lock"),
   vaultConfigureUnlock: (input) => ipcRenderer.invoke("magiesTerminal:vault:configureUnlock", input),
   vaultAdoptLegacyUnlockConfig: (legacy) =>

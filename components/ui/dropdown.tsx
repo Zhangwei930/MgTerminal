@@ -260,7 +260,9 @@ const DropdownContent: React.FC<DropdownContentProps> = ({
     <div
       ref={contentRef}
       className={cn(
-        "fixed z-[999999] rounded-md border border-border/60 bg-popover p-1 text-popover-foreground shadow-md",
+        "fixed z-[999999] rounded-xl border border-border/55 bg-popover/95 p-1.5 text-popover-foreground",
+        "shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)]",
+        "ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm",
         className,
       )}
       onMouseEnter={onMouseEnter}

@@ -74,7 +74,7 @@ export const SftpMoveToDialog: React.FC<SftpMoveToDialogProps> = ({
               className={moveToError ? 'border-destructive' : undefined}
             />
             {moveToSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-48 overflow-y-auto rounded-xl border border-border/55 bg-popover/95 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm">
                 {moveToSuggestions.map((suggestion, i) => (
                   <div
                     key={suggestion}

@@ -24,6 +24,23 @@ const PIN_MIN_LEN = 4;
 const PIN_MAX_LEN = 12;
 const DERIVED_KEY_BYTES = 32;
 
+function normalizeWebAuthnCredential(value) {
+  if (!value || typeof value !== "object") return undefined;
+  if (typeof value.credentialId !== "string" || !value.credentialId) return undefined;
+  if (typeof value.publicKeySpki !== "string" || !value.publicKeySpki) return undefined;
+  if (typeof value.rpId !== "string" || !value.rpId) return undefined;
+  return {
+    credentialId: value.credentialId,
+    publicKeySpki: value.publicKeySpki,
+    rpId: value.rpId,
+    algorithm: Number.isFinite(Number(value.algorithm)) ? Number(value.algorithm) : -7,
+    createdAt: Number(value.createdAt) || Date.now(),
+    transports: Array.isArray(value.transports)
+      ? value.transports.filter((t) => typeof t === "string")
+      : undefined,
+  };
+}
+
 function normalizeConfig(value) {
   if (!value || typeof value !== "object") return { enabled: false };
   const enabled = value.enabled === true;
@@ -35,7 +52,8 @@ function normalizeConfig(value) {
       ? Math.max(MIN_PIN_ITERATIONS, Math.floor(rawIterations))
       : DEFAULT_PIN_ITERATIONS)
     : undefined;
-  return { enabled, pinHash, pinSalt, pinIterations };
+  const webauthn = normalizeWebAuthnCredential(value.webauthn);
+  return { enabled, pinHash, pinSalt, pinIterations, webauthn };
 }
 
 function validatePin(pin) {
@@ -117,10 +135,17 @@ function createVaultUnlockGate(options = {}) {
   const isLocked = () => config.enabled === true && !sessionUnlocked;
   const hasPin = () => Boolean(config.enabled && config.pinHash && config.pinSalt);
 
+  /** @type {Map<string, { challenge: string, purpose: string, expiresAt: number }>} */
+  const webauthnChallenges = new Map();
+
+  const hasWebAuthn = () => Boolean(config.enabled && config.webauthn?.credentialId);
+
   const status = () => ({
     enabled: config.enabled === true,
     locked: isLocked(),
     hasPin: hasPin(),
+    hasWebAuthn: hasWebAuthn(),
+    webauthnCredentialId: config.webauthn?.credentialId || null,
   });
 
   const assertUnlocked = () => {
@@ -156,6 +181,107 @@ function createVaultUnlockGate(options = {}) {
     return { success: true };
   };
 
+  const beginWebAuthnChallenge = (purpose = "assert") => {
+    if (!config.enabled && purpose === "assert") {
+      return { success: false, error: "not_enabled" };
+    }
+    if (purpose === "assert" && !hasWebAuthn()) {
+      return { success: false, error: "webauthn_unavailable" };
+    }
+    const challengeId = crypto.randomBytes(8).toString("base64url");
+    const challenge = crypto.randomBytes(32).toString("base64url");
+    const expiresAt = Date.now() + 120_000;
+    webauthnChallenges.set(challengeId, { challenge, purpose, expiresAt });
+    // GC expired
+    for (const [id, c] of webauthnChallenges) {
+      if (c.expiresAt <= Date.now()) webauthnChallenges.delete(id);
+    }
+    return {
+      success: true,
+      challengeId,
+      challenge,
+      expiresAt,
+      purpose,
+      rpId: config.webauthn?.rpId || "localhost",
+      credential: config.webauthn || null,
+    };
+  };
+
+  const completeWebAuthnRegistration = (payload) => {
+    if (!config.enabled) {
+      // Registration requires unlock feature to already be enabled (PIN path).
+      return { success: false, error: "not_enabled" };
+    }
+    const challengeEntry = webauthnChallenges.get(payload?.challengeId);
+    if (!challengeEntry || challengeEntry.purpose !== "register") {
+      return { success: false, error: "challenge_invalid" };
+    }
+    if (challengeEntry.expiresAt <= Date.now()) {
+      webauthnChallenges.delete(payload.challengeId);
+      return { success: false, error: "challenge_expired" };
+    }
+    webauthnChallenges.delete(payload.challengeId);
+    // Registration attestation full verify is heavy; for local-first MVP we
+    // trust the renderer only after it proves it can produce a credential for
+    // our challenge id, and we store the SPKI it extracted via getPublicKey().
+    // Assertion path always verifies signature in main.
+    if (payload?.challenge !== challengeEntry.challenge) {
+      return { success: false, error: "challenge_mismatch" };
+    }
+    const cred = normalizeWebAuthnCredential({
+      credentialId: payload?.credentialId,
+      publicKeySpki: payload?.publicKeySpki,
+      rpId: payload?.rpId || "localhost",
+      algorithm: payload?.algorithm,
+      createdAt: Date.now(),
+      transports: payload?.transports,
+    });
+    if (!cred) return { success: false, error: "credential_invalid" };
+    config = { ...config, webauthn: cred };
+    sessionUnlocked = true;
+    persist();
+    return { success: true, status: status() };
+  };
+
+  const unlockWithWebAuthn = (payload) => {
+    if (!config.enabled) {
+      sessionUnlocked = true;
+      return { success: true };
+    }
+    if (!hasWebAuthn()) return { success: false, error: "webauthn_unavailable" };
+    const challengeEntry = webauthnChallenges.get(payload?.challengeId);
+    if (!challengeEntry || challengeEntry.purpose !== "assert") {
+      return { success: false, error: "challenge_invalid" };
+    }
+    if (challengeEntry.expiresAt <= Date.now()) {
+      webauthnChallenges.delete(payload.challengeId);
+      return { success: false, error: "challenge_expired" };
+    }
+    webauthnChallenges.delete(payload.challengeId);
+
+    // Lazy-load domain verifier (compiled via require from project root is not
+    // available as TS — inline ES256 verify here to stay CommonJS-only).
+    const ok = verifyAssertionEs256({
+      publicKeySpki: config.webauthn.publicKeySpki,
+      authenticatorDataB64: payload?.authenticatorData,
+      clientDataJSONB64: payload?.clientDataJSON,
+      signatureB64: payload?.signature,
+      expectedChallenge: challengeEntry.challenge,
+      expectedRpId: config.webauthn.rpId,
+    });
+    if (!ok) return { success: false, error: "assertion_invalid" };
+    sessionUnlocked = true;
+    return { success: true };
+  };
+
+  const clearWebAuthn = () => {
+    if (!config.enabled) return { success: true, status: status() };
+    const { webauthn: _drop, ...rest } = config;
+    config = rest;
+    persist();
+    return { success: true, status: status() };
+  };
+
   const lock = () => {
     if (config.enabled) sessionUnlocked = false;
     return status();
@@ -176,6 +302,8 @@ function createVaultUnlockGate(options = {}) {
       pinHash: hashed.pinHash,
       pinSalt: hashed.pinSalt,
       pinIterations: hashed.pinIterations,
+      // Preserve existing WebAuthn credential across PIN reconfigure when present.
+      webauthn: config.webauthn,
     };
     // Configuring implies the user is present now.
     sessionUnlocked = true;
@@ -204,10 +332,49 @@ function createVaultUnlockGate(options = {}) {
     assertUnlocked,
     unlockWithPin,
     unlockWithPlatform,
+    beginWebAuthnChallenge,
+    completeWebAuthnRegistration,
+    unlockWithWebAuthn,
+    clearWebAuthn,
     lock,
     configure,
     adoptLegacyConfig,
   };
+}
+
+function verifyAssertionEs256(input) {
+  try {
+    const clientData = Buffer.from(input.clientDataJSONB64, "base64url");
+    const client = JSON.parse(clientData.toString("utf8"));
+    if (client.type !== "webauthn.get") return false;
+    if (client.challenge !== input.expectedChallenge) return false;
+    if (typeof client.origin !== "string" || !client.origin) return false;
+    const prefixes = [
+      "file://", "app://", "http://localhost", "https://localhost", "http://127.0.0.1",
+    ];
+    if (!prefixes.some((p) => client.origin.startsWith(p) || client.origin === p)) {
+      if (!/magies|electron/i.test(client.origin)) return false;
+    }
+    const authData = Buffer.from(input.authenticatorDataB64, "base64url");
+    if (authData.length < 37) return false;
+    const rpHash = authData.subarray(0, 32);
+    const expectedRpHash = crypto.createHash("sha256").update(input.expectedRpId).digest();
+    if (!crypto.timingSafeEqual(rpHash, expectedRpHash)) return false;
+    const flags = authData[32];
+    if ((flags & 0x01) === 0) return false;
+    if ((flags & 0x04) === 0) return false;
+    const clientHash = crypto.createHash("sha256").update(clientData).digest();
+    const signed = Buffer.concat([authData, clientHash]);
+    const signature = Buffer.from(input.signatureB64, "base64url");
+    const key = crypto.createPublicKey({
+      key: Buffer.from(input.publicKeySpki, "base64url"),
+      format: "der",
+      type: "spki",
+    });
+    return crypto.verify("sha256", signed, key, signature);
+  } catch {
+    return false;
+  }
 }
 
 function registerHandlers(ipcMain, gate) {
@@ -216,6 +383,13 @@ function registerHandlers(ipcMain, gate) {
   ipcMain.handle("magiesTerminal:vault:unlockWithPin", (_event, pin) => gate.unlockWithPin(pin));
   ipcMain.handle("magiesTerminal:vault:unlockWithPlatform", (_event, payload) =>
     gate.unlockWithPlatform(payload?.reason));
+  ipcMain.handle("magiesTerminal:vault:beginWebAuthnChallenge", (_event, payload) =>
+    gate.beginWebAuthnChallenge(payload?.purpose || "assert"));
+  ipcMain.handle("magiesTerminal:vault:completeWebAuthnRegistration", (_event, payload) =>
+    gate.completeWebAuthnRegistration(payload));
+  ipcMain.handle("magiesTerminal:vault:unlockWithWebAuthn", (_event, payload) =>
+    gate.unlockWithWebAuthn(payload));
+  ipcMain.handle("magiesTerminal:vault:clearWebAuthn", () => gate.clearWebAuthn());
   ipcMain.handle("magiesTerminal:vault:lock", () => gate.lock());
   ipcMain.handle("magiesTerminal:vault:configureUnlock", (_event, input) => gate.configure(input));
   ipcMain.handle("magiesTerminal:vault:adoptLegacyUnlockConfig", (_event, legacy) =>

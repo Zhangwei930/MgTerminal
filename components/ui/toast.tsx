@@ -127,10 +127,12 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: string) => voi
                 <div
                     key={t.id}
                     className={cn(
-                        "flex items-start gap-3 p-3 rounded-lg border shadow-lg",
-                        "bg-card animate-in slide-in-from-right-5 fade-in duration-200",
+                        "flex items-start gap-3 p-3.5 rounded-xl border border-border/55",
+                        "bg-card/95 shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)]",
+                        "ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm",
+                        "animate-in slide-in-from-right-5 fade-in duration-200",
                         TOAST_STYLES[t.type],
-                        t.onClick && "cursor-pointer hover:opacity-90 transition-opacity"
+                        t.onClick && "cursor-pointer hover:opacity-95 transition-opacity"
                     )}
                     onClick={() => handleToastClick(t)}
                     role={t.onClick ? "button" : undefined}
@@ -150,7 +152,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: string) => voi
                     </div>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDismiss(t.id); }}
-                        className="flex-shrink-0 p-1 rounded hover:bg-secondary/80 transition-colors"
+                        className="flex-shrink-0 rounded-md p-1 transition-colors hover:bg-secondary/80"
                     >
                         <X className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>

@@ -600,6 +600,7 @@ function createStartSessionApi(ctx) {
           tryKeyboard: true,
           algorithms: buildAlgorithms(options.legacyAlgorithms, {
             skipEcdsaHostKey: options.skipEcdsaHostKey,
+            preferPostQuantumKex: options.preferPostQuantumKex,
             algorithmOverrides: options.algorithmOverrides,
           }),
         };
@@ -609,6 +610,7 @@ function createStartSessionApi(ctx) {
           port: options.port || 22,
           legacyAlgorithms: !!options.legacyAlgorithms,
           skipEcdsaHostKey: !!options.skipEcdsaHostKey,
+          preferPostQuantumKex: !!options.preferPostQuantumKex,
           hasAlgorithmOverrides: !!options.algorithmOverrides,
         }, log);
 

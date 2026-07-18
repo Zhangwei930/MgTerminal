@@ -793,12 +793,12 @@ export const ruVaultMessages: Messages = {
   'hostDetails.section.terminalBehavior': 'Поведение терминала',
   'hostDetails.lineTimestamps': 'Показывать время вывода',
   'hostDetails.lineTimestamps.desc': 'Показывать локальное время рядом с видимыми строками вывода для этого хоста, не изменяя текст терминала.',
-  'hostDetails.preferPostQuantumKex': 'Предпочитать постквантовый KEX (системный OpenSSH)',
+  'hostDetails.preferPostQuantumKex': 'Предпочитать постквантовый KEX',
   'hostDetails.preferPostQuantumKex.desc':
-    'Использовать системный клиент OpenSSH и предпочитать гибридный постквантовый обмен ключами (mlkem768x25519 / sntrup761x25519 при поддержке). При отказе сервера — откат к классическому KEX. Встроенный ssh2 не поддерживает гибридный PQ KEX.',
+    'Предпочитать гибридный постквантовый обмен ключами. Встроенный стек использует mlkem768x25519-sha256 с откатом к классическому KEX. При включённом системном OpenSSH также предлагаются гибриды sntrup761, если платформенный ssh их поддерживает.',
   'hostDetails.useSystemOpenSsh': 'Использовать транспорт системного OpenSSH',
   'hostDetails.useSystemOpenSsh.desc':
-    'Запускать платформенный ssh вместо встроенного стека ssh2 MagiesTerminal. Нужно для GSSAPI и предпочтения постквантового KEX. Jump-хосты и прокси MagiesTerminal на этом пути не поддерживаются.',
+    'Запускать платформенный ssh вместо встроенного стека ssh2 MagiesTerminal. Нужно для GSSAPI/Kerberos. Jump-хосты идут через OpenSSH ProxyJump; HTTP/SOCKS-прокси ретранслируются приложением (не сочетаются с jump-хостами).',
   'hostDetails.legacyAlgorithms': 'Разрешить устаревшие алгоритмы',
   'hostDetails.legacyAlgorithms.desc': 'Включить устаревшие SSH-алгоритмы (diffie-hellman-group1, ssh-dss, 3des-cbc и т. д.) для подключения к старому сетевому оборудованию.',
   'hostDetails.legacyAlgorithms.warning': 'У этих алгоритмов есть известные слабые места безопасности. Включайте только для устаревших устройств, которые не поддерживают современную криптографию.',
@@ -926,6 +926,12 @@ export const ruVaultMessages: Messages = {
   'hostDetails.section.et': 'EternalTerminal',
   'hostDetails.et.port': 'Порт сервера ET',
   'hostDetails.et.port.desc': 'Порт, который слушает etserver (по умолчанию 2022)',
+  'hostDetails.section.rdp': 'RDP',
+  'hostDetails.rdp.desc': 'Открывает удалённый рабочий стол в системном RDP-клиенте (mstsc / Windows App / xfreerdp)',
+  'hostDetails.rdp.port': 'Порт RDP',
+  'hostDetails.rdp.port.desc': 'Порт службы удалённого рабочего стола (по умолчанию 3389)',
+  'rdp.launchFailed': 'Не удалось запустить RDP-клиент',
+  'rdp.launchUnavailable': 'Запуск RDP недоступен в этой сборке',
 
 
   'hostDetails.testConnection': 'Проверить подключение',
@@ -933,7 +939,7 @@ export const ruVaultMessages: Messages = {
   'hostDetails.credential.agent': 'SSH-агент',
   'hostDetails.credential.gssapi': 'GSSAPI / Kerberos',
   'hostDetails.credential.gssapiHint':
-    'Использует системный OpenSSH с GSSAPIAuthentication (кеш Kerberos-билетов). Нужен действующий TGT (например, kinit). Jump-хосты и прокси MagiesTerminal на этом пути не поддерживаются.',
+    'Использует системный OpenSSH с GSSAPIAuthentication (кеш Kerberos-билетов). Нужен действующий TGT (например, kinit). Jump-хосты идут через OpenSSH ProxyJump, поэтому Kerberos SSO действует на каждом переходе.',
   'hostDetails.agent.loading': 'Чтение ключей агента…',
   'hostDetails.agent.unavailable': 'SSH-агент не найден. Запустите ssh-agent и повторите попытку.',
   'hostDetails.agent.empty': 'В SSH-агенте нет ключей. Добавьте ключ командой ssh-add.',

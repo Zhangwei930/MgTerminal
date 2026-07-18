@@ -3,7 +3,7 @@ import { sanitizeHost } from './host';
 
 const DEFAULT_SSH_PORT = 22;
 
-export type VaultHostDraftProtocol = Exclude<HostProtocol, 'mosh' | 'et' | 'serial'>;
+export type VaultHostDraftProtocol = Exclude<HostProtocol, 'mosh' | 'et' | 'serial' | 'rdp'>;
 
 export interface VaultHostDraft {
   label?: unknown;

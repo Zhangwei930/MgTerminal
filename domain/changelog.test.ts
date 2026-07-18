@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseChangelog } from "./changelog.ts";
+import {
+  classifyChangelogSection,
+  countChangelogItems,
+  parseChangelog,
+  parseChangelogItem,
+} from "./changelog.ts";
 
 const SAMPLE = `# Changelog
 
@@ -47,4 +52,35 @@ test("parseChangelog groups items under section titles", () => {
 
 test("parseChangelog ignores preamble and returns empty for no versions", () => {
   assert.deepEqual(parseChangelog("# Changelog\n\nnothing here\n"), []);
+});
+
+test("parseChangelogItem splits bold title and body", () => {
+  assert.deepEqual(
+    parseChangelogItem("**RDP host support**: launch system client"),
+    {
+      title: "RDP host support",
+      body: "launch system client",
+      raw: "**RDP host support**: launch system client",
+    },
+  );
+  assert.deepEqual(parseChangelogItem("plain bullet without bold"), {
+    body: "plain bullet without bold",
+    raw: "plain bullet without bold",
+  });
+  assert.equal(parseChangelogItem("**Only title**").title, "Only title");
+  assert.equal(parseChangelogItem("**Only title**").body, "");
+});
+
+test("classifyChangelogSection maps localized titles", () => {
+  assert.equal(classifyChangelogSection("Features"), "features");
+  assert.equal(classifyChangelogSection("功能"), "features");
+  assert.equal(classifyChangelogSection("修复"), "fixes");
+  assert.equal(classifyChangelogSection("安全"), "security");
+  assert.equal(classifyChangelogSection("Windows ARM64"), "platform");
+  assert.equal(classifyChangelogSection("优化"), "improvements");
+});
+
+test("countChangelogItems sums section bullets", () => {
+  const [first] = parseChangelog(SAMPLE);
+  assert.equal(countChangelogItems(first), 3);
 });

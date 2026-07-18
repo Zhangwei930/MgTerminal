@@ -10,9 +10,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          // Use items-center + explicit leading instead of py-2 so descenders
-          // (j/g/y/p) are not clipped inside the fixed h-10 box.
-          "flex h-10 w-full items-center rounded-md border border-input bg-background px-3 text-sm leading-5 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          // Fixed-height single-line: leading that fits h-10; descenders stay visible.
+          "flex h-10 w-full items-center rounded-lg border border-border/70 bg-background px-3 text-sm leading-[1.4]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+          "placeholder:text-muted-foreground/65",
+          "transition-[border-color,box-shadow,background-color] duration-150",
+          "focus-visible:outline-none focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/15",
+          "disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}

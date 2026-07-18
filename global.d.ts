@@ -97,7 +97,7 @@ declare global {
     authMethod?: 'password' | 'key' | 'certificate' | 'agent' | 'gssapi';
     /** Force system OpenSSH transport (node-pty). */
     useSystemOpenSsh?: boolean;
-    /** Prefer hybrid PQ KEX via system OpenSSH (implies useSystemOpenSsh). */
+    /** Prefer hybrid PQ KEX (built-in mlkem768x25519; system OpenSSH also sntrup). */
     preferPostQuantumKex?: boolean;
     agentForwarding?: boolean;
     // Preferred SSH agent identity (SHA256 fingerprint); restricts agent auth

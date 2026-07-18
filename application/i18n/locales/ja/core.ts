@@ -151,6 +151,8 @@ export const jaCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'クラッシュログ',
   'settings.system.crashLogs.description': 'メインプロセスのエラーログを表示し、予期しない動作の診断に役立てます。',
+  'settings.system.crashLogs.telemetryLabel': '匿名クラッシュレポート',
+  'settings.system.crashLogs.telemetryDescription': '既定ではオフです。有効にすると、サニタイズされたクラッシュ概要（パス・ユーザー名・ホスト名・セッションデータを含まない）が MagiesTerminal チームに送信され、クラッシュの修正に役立てられます。',
   'settings.system.crashLogs.noLogs': 'クラッシュログが見つかりません。',
   'settings.system.crashLogs.entries': '{count} 件のエントリ',
   'settings.system.crashLogs.clear': 'すべてのログを削除',

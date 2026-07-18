@@ -3,6 +3,7 @@
 let bridgesRegistered = false;
 let cloudSyncSessionPassword = null;
 const { readClipboardFiles, readClipboardImage } = require("../bridges/clipboardFiles.cjs");
+const crashTelemetryBridge = require("../bridges/crashTelemetryBridge.cjs");
 const { TRANSFER_CHUNK_SIZE, TRANSFER_CONCURRENCY } = require("../bridges/transferLimits.cjs");
 
 const excludedFigSpecPrefixes = ["aws", "gcloud", "az"];
@@ -179,7 +180,8 @@ function createBridgeRegistrar(context) {
     globalShortcutBridge.init(deps);
     aiBridge.init(deps);
     crashLogBridge.init(deps);
-  
+    crashTelemetryBridge.init({ app });
+
     // Initialize compress upload bridge with transferBridge dependency
     compressUploadBridge.init({
       ...deps,
@@ -263,6 +265,7 @@ function createBridgeRegistrar(context) {
     aiBridge.registerHandlers(ipcMain);
     httpNetworkProxyBridge.registerHandlers(ipcMain, electronModule);
     crashLogBridge.registerHandlers(ipcMain);
+    crashTelemetryBridge.registerHandlers(ipcMain);
     vaultBackupBridge.registerHandlers(ipcMain, electronModule);
   
     // ZMODEM cancel handler

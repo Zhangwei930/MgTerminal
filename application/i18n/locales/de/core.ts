@@ -151,6 +151,8 @@ export const deCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'Absturzprotokolle',
   'settings.system.crashLogs.description': 'Fehlerprotokolle des Hauptprozesses anzeigen, um unerwartetes Verhalten zu diagnostizieren.',
+  'settings.system.crashLogs.telemetryLabel': 'Anonyme Absturzberichte',
+  'settings.system.crashLogs.telemetryDescription': 'Standardmäßig aus. Wenn aktiviert, werden bereinigte Absturzzusammenfassungen (ohne Pfade, Benutzernamen, Hostnamen oder Sitzungsdaten) an das MagiesTerminal-Team gesendet, um Abstürze schneller zu beheben.',
   'settings.system.crashLogs.noLogs': 'Keine Absturzprotokolle gefunden.',
   'settings.system.crashLogs.entries': '{count} Einträge',
   'settings.system.crashLogs.clear': 'Alle Protokolle löschen',

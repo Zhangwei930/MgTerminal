@@ -10,3 +10,10 @@ compatibility_date = "2026-07-01"
 routes = [
   { pattern = "dl.magies.top/*", zone_name = "magies.top" },
 ]
+
+# Opt-in anonymous crash telemetry (POST /crash-report). Without this
+# binding the endpoint answers 501 and the app silently drops reports.
+# Uncomment to enable (free plan includes Workers Analytics Engine):
+# [[analytics_engine_datasets]]
+# binding = "CRASH_REPORTS"
+# dataset = "mgterminal_crash_reports"

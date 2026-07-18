@@ -1036,6 +1036,10 @@ function createPreloadApi(ctx) {
     ipcRenderer.invoke("magiesTerminal:crashLogs:clear"),
   openCrashLogsDir: () =>
     ipcRenderer.invoke("magiesTerminal:crashLogs:openDir"),
+  getCrashTelemetry: () =>
+    ipcRenderer.invoke("magiesTerminal:crashTelemetry:get"),
+  setCrashTelemetry: (enabled) =>
+    ipcRenderer.invoke("magiesTerminal:crashTelemetry:set", { enabled }),
 
   // Global Toggle Hotkey (Quake Mode)
   registerGlobalHotkey: (hotkey) =>

@@ -292,6 +292,8 @@ export const enCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'Crash Logs',
   'settings.system.crashLogs.description': 'View error logs from the main process to help diagnose unexpected behavior.',
+  'settings.system.crashLogs.telemetryLabel': 'Anonymous crash reports',
+  'settings.system.crashLogs.telemetryDescription': 'Off by default. When enabled, sanitized crash summaries (no paths, usernames, hostnames, or session data) are sent to the MagiesTerminal team to help fix crashes faster.',
   'settings.system.crashLogs.noLogs': 'No crash logs found.',
   'settings.system.crashLogs.entries': '{count} entries',
   'settings.system.crashLogs.clear': 'Clear all logs',

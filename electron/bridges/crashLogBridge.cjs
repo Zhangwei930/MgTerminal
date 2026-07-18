@@ -132,6 +132,12 @@ function captureError(source, err, extra) {
     const entry = buildEntry(source, err, extra);
     const filePath = path.join(dir, todayFileName());
     fs.appendFileSync(filePath, JSON.stringify(entry) + "\n", "utf-8");
+    // Opt-in anonymous telemetry (no-op unless the user enabled it).
+    try {
+      void require("./crashTelemetryBridge.cjs").reportCrashEntry(entry);
+    } catch {
+      // Telemetry must never interfere with local crash logging.
+    }
   } catch {
     // Never throw from the crash logger itself.
   }

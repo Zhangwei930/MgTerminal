@@ -160,6 +160,8 @@ export const frCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'Journaux de plantage',
   'settings.system.crashLogs.description': 'Consultez les journaux d’erreur du processus principal pour diagnostiquer un comportement inattendu.',
+  'settings.system.crashLogs.telemetryLabel': 'Rapports de plantage anonymes',
+  'settings.system.crashLogs.telemetryDescription': 'Désactivé par défaut. Une fois activé, des résumés de plantage assainis (sans chemins, noms d’utilisateur, noms d’hôte ni données de session) sont envoyés à l’équipe MagiesTerminal pour corriger les plantages plus vite.',
   'settings.system.crashLogs.noLogs': 'Aucun journal de plantage trouvé.',
   'settings.system.crashLogs.entries': '{count} entrées',
   'settings.system.crashLogs.clear': 'Effacer tous les journaux',

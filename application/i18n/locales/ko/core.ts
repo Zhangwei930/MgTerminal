@@ -151,6 +151,8 @@ export const koCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': '충돌 로그',
   'settings.system.crashLogs.description': '예기치 않은 동작을 진단하는 데 도움이 되도록 메인 프로세스의 오류 로그를 봅니다.',
+  'settings.system.crashLogs.telemetryLabel': '익명 충돌 보고서',
+  'settings.system.crashLogs.telemetryDescription': '기본적으로 꺼져 있습니다. 활성화하면 경로, 사용자 이름, 호스트 이름, 세션 데이터가 제거된 충돌 요약이 MagiesTerminal 팀에 전송되어 충돌을 더 빠르게 수정하는 데 도움이 됩니다.',
   'settings.system.crashLogs.noLogs': '충돌 로그를 찾을 수 없습니다.',
   'settings.system.crashLogs.entries': '{count}개 항목',
   'settings.system.crashLogs.clear': '모든 로그 지우기',

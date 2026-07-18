@@ -182,6 +182,8 @@ export const ruCoreMessages: Messages = {
   // Settings > System > Crash Logs
   'settings.system.crashLogs.title': 'Журналы сбоев',
   'settings.system.crashLogs.description': 'Просмотр журналов ошибок основного процесса для диагностики неожиданного поведения.',
+  'settings.system.crashLogs.telemetryLabel': 'Анонимные отчёты о сбоях',
+  'settings.system.crashLogs.telemetryDescription': 'По умолчанию выключено. При включении очищенные сводки о сбоях (без путей, имён пользователей, имён хостов и данных сеансов) отправляются команде MagiesTerminal для более быстрого исправления сбоев.',
   'settings.system.crashLogs.noLogs': 'Журналы сбоев не найдены.',
   'settings.system.crashLogs.entries': 'Записей: {count}',
   'settings.system.crashLogs.clear': 'Очистить все журналы',

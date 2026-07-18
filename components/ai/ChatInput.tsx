@@ -522,12 +522,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
     : (selectedThinking ? 'max-w-[148px]' : 'max-w-[82px]');
   const hasModelPicker = hasProviderSwitcher || (modelPresets.length > 0 && !!onModelSelect);
   const popoverMaxWidth = hasProviderSwitcher ? PROVIDER_PICKER_MAX_WIDTH : MODEL_PICKER_MAX_WIDTH;
-  const chipClassName =
-    'inline-flex h-6 items-center gap-1 rounded-full px-1.5 text-[10.5px] text-foreground/72';
+  // Shared toolbar chip: bordered pill with soft fill so model/permission
+  // controls read as interactive controls, not plain text labels.
+  const chipClassName = [
+    'inline-flex h-7 items-center gap-1.5 rounded-full border border-border/55',
+    'bg-muted/20 px-2 text-[11px] font-medium text-foreground/78',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+    'transition-colors hover:border-border hover:bg-muted/35 hover:text-foreground',
+  ].join(' ');
   const selectedSkillChipClassName =
-    'inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/18 bg-primary/8 pl-2.5 pr-1.5 text-[11px] font-medium text-foreground/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
-  const iconButtonClassName =
-    'h-6 w-6 shrink-0 rounded-full bg-transparent text-foreground/62 hover:bg-muted/24 hover:text-foreground';
+    'inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/22 bg-primary/10 pl-2.5 pr-1.5 text-[11px] font-medium text-foreground/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
+  const iconButtonClassName = [
+    'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+    'border border-transparent text-foreground/65',
+    'hover:border-border/50 hover:bg-muted/30 hover:text-foreground',
+    'transition-colors',
+  ].join(' ');
+  const menuShellClassName =
+    'fixed z-[1000] overflow-hidden rounded-xl border border-border/55 bg-popover/95 shadow-xl backdrop-blur-sm py-1';
+  const menuItemClassName =
+    'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors cursor-pointer hover:bg-muted/35';
+  const menuSectionLabelClassName =
+    'px-3 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/45';
 
   return (
     <div className="shrink-0 px-4 pb-4 pt-1">
@@ -535,13 +551,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
       <PromptInput onSubmit={handleSubmit} className="block">
         {/* File attachment chips */}
         {files.length > 0 && (
-          <div className="flex gap-1.5 px-3 pt-2 pb-0.5 flex-wrap">
+          <div className="flex flex-wrap gap-1.5 px-3 pt-2.5 pb-1">
             {files.map((file) => (
               <div
                 key={file.id}
                 className={[
-                  "inline-flex items-center gap-1 pl-1.5 pr-1 rounded-md bg-muted/30 border border-border/30 text-[11px] text-foreground/70 group",
-                  file.terminalSelection ? "h-6 max-w-[260px]" : "h-6",
+                  "group inline-flex items-center gap-1.5 rounded-lg border border-border/40 bg-muted/25 pl-1.5 pr-1 text-[11px] text-foreground/75",
+                  file.terminalSelection ? "h-7 max-w-[260px]" : "h-7",
                 ].join(" ")}
               >
                 {file.terminalSelection ? (
@@ -737,8 +753,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
         )}
 
         {/* Footer toolbar */}
-        <PromptInputFooter className="gap-1.5 border-t-0 bg-transparent px-3 pb-2 pt-0">
-          <PromptInputTools className="gap-1 min-w-0">
+        <PromptInputFooter className="gap-2 border-t-0 bg-transparent px-3 pb-2.5 pt-1">
+          <PromptInputTools className="min-w-0 gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -757,7 +773,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   aria-label={t('ai.chat.attach')}
                   aria-expanded={showAttachMenu}
                 >
-                  <Plus size={13} />
+                  <Plus size={14} />
                 </button>
               </TooltipTrigger>
               <TooltipContent>{t('ai.chat.attach')}</TooltipContent>
@@ -768,49 +784,57 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 <div className="fixed inset-0 z-[999] cursor-default" onClick={closeAllMenus} />
                 <div
                   role="menu"
-                  className="fixed z-[1000] min-w-[170px] rounded-lg border border-border/50 bg-popover shadow-lg py-1"
+                  className={`${menuShellClassName} min-w-[200px]`}
                   style={{ left: menuPos.left, bottom: menuPos.bottom }}
                 >
-                  <div className="px-3 py-1 text-[10px] text-muted-foreground/40 tracking-wide">{t('ai.chat.menuContext')}</div>
+                  <div className={menuSectionLabelClassName}>{t('ai.chat.menuContext')}</div>
                   <button
                     type="button"
                     role="menuitem"
                     onClick={() => { fileInputRef.current?.setAttribute('accept', '*/*'); fileInputRef.current?.click(); closeAllMenus(); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer whitespace-nowrap"
+                    className={`${menuItemClassName} whitespace-nowrap`}
                   >
-                    <FileText size={13} className="text-muted-foreground/60" />
-                    <span className="text-foreground/85">{t('ai.chat.menuFiles')}</span>
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted/40">
+                      <FileText size={13} className="text-muted-foreground/70" />
+                    </span>
+                    <span className="text-foreground/88">{t('ai.chat.menuFiles')}</span>
                   </button>
                   <button
                     type="button"
                     role="menuitem"
                     onClick={() => { fileInputRef.current?.setAttribute('accept', 'image/*'); fileInputRef.current?.click(); closeAllMenus(); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer whitespace-nowrap"
+                    className={`${menuItemClassName} whitespace-nowrap`}
                   >
-                    <ImageIcon size={13} className="text-muted-foreground/60" />
-                    <span className="text-foreground/85">{t('ai.chat.menuImage')}</span>
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted/40">
+                      <ImageIcon size={13} className="text-muted-foreground/70" />
+                    </span>
+                    <span className="text-foreground/88">{t('ai.chat.menuImage')}</span>
                   </button>
                   <button
                     type="button"
                     role="menuitem"
                     aria-label="Mention host"
                     onClick={() => openInputPanelMenu('atMention')}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer whitespace-nowrap"
+                    className={`${menuItemClassName} whitespace-nowrap`}
                   >
-                    <AtSign size={13} className="text-muted-foreground/60" />
-                    <span className="flex-1 text-foreground/85">{t('ai.chat.menuMentionHost')}</span>
-                    {hosts.length > 0 && <ChevronRight size={10} className="text-muted-foreground/50" />}
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted/40">
+                      <AtSign size={13} className="text-muted-foreground/70" />
+                    </span>
+                    <span className="flex-1 text-foreground/88">{t('ai.chat.menuMentionHost')}</span>
+                    {hosts.length > 0 && <ChevronRight size={11} className="text-muted-foreground/45" />}
                   </button>
                   <button
                     type="button"
                     role="menuitem"
                     aria-label={t('ai.chat.slashCommands')}
                     onClick={() => openInputPanelMenu('slashCommand')}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer whitespace-nowrap"
+                    className={`${menuItemClassName} whitespace-nowrap`}
                   >
-                    <MessageSquare size={13} className="text-muted-foreground/60" />
-                    <span className="flex-1 text-foreground/85">{t('ai.chat.menuSlashCommands')}</span>
-                    <ChevronRight size={10} className="text-muted-foreground/50" />
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-muted/40">
+                      <MessageSquare size={13} className="text-muted-foreground/70" />
+                    </span>
+                    <span className="flex-1 text-foreground/88">{t('ai.chat.menuSlashCommands')}</span>
+                    <ChevronRight size={11} className="text-muted-foreground/45" />
                   </button>
                 </div>
               </>,
@@ -838,17 +862,17 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   closeAllMenus();
                 }
               }}
-              className={`${chipClassName} min-w-0 ${hasModelPicker ? 'cursor-pointer hover:bg-muted/24 transition-colors' : ''}`}
+              className={`${chipClassName} min-w-0 ${hasModelPicker ? 'cursor-pointer' : 'cursor-default opacity-90'}`}
               aria-label={hasProviderSwitcher ? 'Select provider and model' : 'Select model'}
               aria-expanded={showModelPicker}
             >
               {hasProviderSwitcher && selectedSwitcherProvider ? (
                 <ProviderIconBadge provider={selectedSwitcherProvider} size="xs" />
               ) : (
-                <Cpu size={11} className="text-muted-foreground/64" />
+                <Cpu size={12} className="text-primary/65 shrink-0" />
               )}
               <span className={`truncate min-w-0 ${modelChipMaxWidth}`}>{modelLabel}</span>
-              {hasModelPicker && <ChevronDown size={9} className="text-muted-foreground/50" />}
+              {hasModelPicker && <ChevronDown size={10} className="text-muted-foreground/50 shrink-0" />}
             </button>
             {showModelPicker && hasModelPicker && menuPos && createPortal(
 <>
@@ -857,12 +881,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <div
               role="listbox"
                   aria-label={hasProviderSwitcher ? 'Select provider and model' : 'Select model'}
-                  className="fixed z-[1000] w-max min-w-[160px] rounded-lg border border-border/50 bg-popover shadow-lg py-1"
+                  className={`${menuShellClassName} w-max min-w-[200px]`}
                   style={{ left: menuPos.left, bottom: menuPos.bottom, maxWidth: popoverMaxWidth }}
                   onMouseLeave={() => setHoveredModelId(null)}
                 >
+                  <div className={menuSectionLabelClassName}>
+                    {hasProviderSwitcher ? t('ai.chat.selectProvider') : t('ai.chat.selectModel')}
+                  </div>
                   {hasProviderSwitcher ? (
-                    <div className="min-w-[260px] max-h-[320px] overflow-y-auto">
+                    <div className="min-w-[280px] max-h-[320px] overflow-y-auto">
                       {providerSwitcher!.providers.map((p) => {
                         const isSelected = providerSwitcher!.selectedProviderId === p.id;
                         const defaultModel = p.defaultModel?.trim() ?? '';
@@ -889,20 +916,22 @@ const ChatInput: React.FC<ChatInputProps> = ({
                               providerSwitcher!.onSelect(p.id, defaultModel);
                               closeAllMenus();
                             }}
-                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${
+                            className={`${menuItemClassName} ${
+                              isSelected ? 'bg-primary/[0.07]' : ''
+                            } ${
                               disabled
-                                ? 'opacity-55 cursor-not-allowed'
-                                : 'hover:bg-muted/30 cursor-pointer'
+                                ? 'opacity-55 cursor-not-allowed hover:bg-transparent'
+                                : ''
                             }`}
                           >
                             <ProviderIconBadge provider={p} size="md" />
                             <div className="flex-1 min-w-0">
-                              <div className="truncate text-[12px] text-foreground/85">{p.name}</div>
-                              <div className={`truncate text-[10.5px] ${hasModel ? 'text-muted-foreground/70 font-mono' : 'text-muted-foreground/55 italic'}`}>
+                              <div className="truncate text-[12.5px] font-medium text-foreground/88">{p.name}</div>
+                              <div className={`truncate text-[11px] ${hasModel ? 'text-muted-foreground/65 font-mono' : 'text-muted-foreground/50 italic'}`}>
                                 {modelCaption}
                               </div>
                             </div>
-                            {isSelected && <Check size={12} className="text-primary shrink-0" />}
+                            {isSelected && <Check size={13} className="text-primary shrink-0" />}
                           </button>
                         );
                       })}
@@ -933,20 +962,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             }
                             setHoveredModelId(showThinkingLevels ? null : preset.id);
                           }}
-                          className="w-full min-w-0 flex items-center gap-1.5 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer"
+                          className={`${menuItemClassName} min-w-0 ${isSelected ? 'bg-primary/[0.07]' : ''}`}
                         >
-                          {isSelected ? <Check size={11} className="text-primary shrink-0" /> : <span className="w-[11px] shrink-0" />}
-                          <span className="flex-1 min-w-0 truncate text-foreground/85">{preset.name}</span>
+                          {isSelected ? <Check size={12} className="text-primary shrink-0" /> : <span className="w-3 shrink-0" />}
+                          <span className="flex-1 min-w-0 truncate font-medium text-foreground/88">{preset.name}</span>
                           {hasThinking && (
                             <ChevronRight
-                              size={10}
+                              size={11}
                               className={`text-muted-foreground/50 shrink-0 transition-transform ${showThinkingLevels ? 'rotate-90' : ''}`}
                             />
                           )}
                         </button>
                         {/* Inline thinking levels — flyout submenus get clipped by overflow-y-auto above. */}
                         {showThinkingLevels && (
-                          <div role="listbox" aria-label="Thinking level" className="border-t border-border/30 bg-muted/10 py-0.5">
+                          <div role="listbox" aria-label="Thinking level" className="border-t border-border/35 bg-muted/15 py-1">
                             {preset.thinkingLevels!.map(level => {
                               const fullId = `${preset.id}/${level}`;
                               const isLevelSelected = selectedModelId === fullId;
@@ -971,9 +1000,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                       closeAllMenus();
                                     }
                                   }}
-                                  className="w-full flex items-center gap-1.5 pl-7 pr-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer whitespace-nowrap"
+                                  className={`${menuItemClassName} pl-8 whitespace-nowrap ${isLevelSelected ? 'bg-primary/[0.07]' : ''}`}
                                 >
-                                  {isLevelSelected ? <Check size={11} className="text-primary shrink-0" /> : <span className="w-[11px] shrink-0" />}
+                                  {isLevelSelected ? <Check size={12} className="text-primary shrink-0" /> : <span className="w-3 shrink-0" />}
                                   <span className="text-foreground/85">{formatThinkingLabel(level)}</span>
                                 </button>
                               );
@@ -1006,19 +1035,25 @@ const ChatInput: React.FC<ChatInputProps> = ({
                           closeAllMenus();
                         }
                       }}
-                      className={`${chipClassName} shrink-0 cursor-pointer hover:bg-muted/24 transition-colors`}
+                      className={`${chipClassName} shrink-0 cursor-pointer ${
+                        permissionMode === 'observer'
+                          ? 'border-blue-500/25 bg-blue-500/[0.08]'
+                          : permissionMode === 'confirm'
+                            ? 'border-amber-500/25 bg-amber-500/[0.08]'
+                            : 'border-emerald-500/25 bg-emerald-500/[0.08]'
+                      }`}
                       aria-label={t('ai.safety.permissionMode')}
                       aria-expanded={showPermPicker}
                     >
-                      {permissionMode === 'observer' && <Eye size={11} className="text-blue-400/70" />}
-                      {permissionMode === 'confirm' && <ShieldCheck size={11} className="text-yellow-400/70" />}
-                      {permissionMode === 'auto' && <Zap size={11} className="text-green-400/70" />}
-                      <span className="truncate max-w-[72px]">
+                      {permissionMode === 'observer' && <Eye size={12} className="text-blue-400 shrink-0" />}
+                      {permissionMode === 'confirm' && <ShieldCheck size={12} className="text-amber-400 shrink-0" />}
+                      {permissionMode === 'auto' && <Zap size={12} className="text-emerald-400 shrink-0" />}
+                      <span className="truncate max-w-[88px]">
                         {permissionMode === 'observer' && t('ai.chat.permObserver')}
                         {permissionMode === 'confirm' && t('ai.chat.permConfirm')}
                         {permissionMode === 'auto' && t('ai.chat.permAuto')}
                       </span>
-                      <ChevronDown size={9} className="text-muted-foreground/50" />
+                      <ChevronDown size={10} className="text-muted-foreground/50 shrink-0" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{t('ai.safety.permissionMode')}</TooltipContent>
@@ -1029,15 +1064,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
                     <div className="fixed inset-0 z-[999] cursor-default" onClick={closeAllMenus} />
                     <div
                       role="listbox"
-                      aria-label="Permission mode"
-                      className="fixed z-[1000] min-w-[180px] rounded-lg border border-border/50 bg-popover shadow-lg py-1"
+                      aria-label={t('ai.safety.permissionMode')}
+                      className={`${menuShellClassName} min-w-[220px]`}
                       style={{ left: menuPos.left, bottom: menuPos.bottom }}
                     >
+                      <div className={menuSectionLabelClassName}>{t('ai.safety.permissionMode')}</div>
                       {([
-                        { mode: 'auto' as const, icon: Zap, color: 'text-green-400/70', label: t('ai.chat.permAuto'), desc: t('ai.chat.permAutoDesc') },
-                        { mode: 'confirm' as const, icon: ShieldCheck, color: 'text-yellow-400/70', label: t('ai.chat.permConfirm'), desc: t('ai.chat.permConfirmDesc') },
-                        { mode: 'observer' as const, icon: Eye, color: 'text-blue-400/70', label: t('ai.chat.permObserver'), desc: t('ai.chat.permObserverDesc') },
-                      ]).map(({ mode, icon: Icon, color, label, desc }) => (
+                        { mode: 'auto' as const, icon: Zap, color: 'text-emerald-400', bg: 'bg-emerald-500/12 border-emerald-500/25', label: t('ai.chat.permAuto'), desc: t('ai.chat.permAutoDesc') },
+                        { mode: 'confirm' as const, icon: ShieldCheck, color: 'text-amber-400', bg: 'bg-amber-500/12 border-amber-500/25', label: t('ai.chat.permConfirm'), desc: t('ai.chat.permConfirmDesc') },
+                        { mode: 'observer' as const, icon: Eye, color: 'text-blue-400', bg: 'bg-blue-500/12 border-blue-500/25', label: t('ai.chat.permObserver'), desc: t('ai.chat.permObserverDesc') },
+                      ]).map(({ mode, icon: Icon, color, bg, label, desc }) => (
                         <button
                           key={mode}
                           type="button"
@@ -1047,16 +1083,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
                             onPermissionModeChange(mode);
                             closeAllMenus();
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] hover:bg-muted/30 transition-colors cursor-pointer"
+                          className={`${menuItemClassName} ${permissionMode === mode ? 'bg-muted/40' : ''}`}
                         >
                           {permissionMode === mode
-                            ? <Check size={11} className="text-primary shrink-0" />
-                            : <span className="w-[11px] shrink-0" />
+                            ? <Check size={12} className="text-primary shrink-0" />
+                            : <span className="w-3 shrink-0" />
                           }
-                          <Icon size={12} className={`${color} shrink-0`} />
+                          <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${bg}`}>
+                            <Icon size={13} className={color} />
+                          </span>
                           <div className="flex-1 min-w-0">
-                            <div className="text-foreground/85">{label}</div>
-                            <div className="text-[10px] text-muted-foreground/40 leading-tight">{desc}</div>
+                            <div className="font-medium text-foreground/88">{label}</div>
+                            <div className="text-[11px] leading-snug text-muted-foreground/55">{desc}</div>
                           </div>
                         </button>
                       ))}

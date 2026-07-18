@@ -227,13 +227,17 @@ export const ToolCall = ({
       ref={cardRef}
       tabIndex={isPendingApproval ? 0 : undefined}
       onKeyDown={isPendingApproval ? handleKeyDown : undefined}
-      className={cn('min-w-0 rounded-md border overflow-hidden text-[12px] outline-none', borderClass, className)}
+      className={cn(
+        'min-w-0 overflow-hidden rounded-xl border text-[12px] outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]',
+        borderClass,
+        className,
+      )}
       {...props}
     >
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/20 transition-colors cursor-pointer"
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 transition-colors hover:bg-muted/20"
       >
         {expanded
           ? <ChevronDown size={12} className="text-muted-foreground/40 shrink-0" />
@@ -283,15 +287,15 @@ export const ToolCall = ({
 
           {/* Inline approval buttons */}
           {isPendingApproval && (
-            <div className="min-w-0 px-3 py-2 border-t border-border/20">
-              <p className="mb-2 text-[10px] leading-snug text-muted-foreground/40">
+            <div className="min-w-0 border-t border-yellow-500/20 bg-yellow-500/[0.03] px-3 py-2.5">
+              <p className="mb-2.5 text-[11px] leading-snug text-muted-foreground/60">
                 {t('ai.chat.toolApprovalHint')}
               </p>
               <div className="flex w-full min-w-0 items-stretch gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 min-w-0 flex-1 gap-1 px-1.5 text-[11px] font-normal border-red-500/25 text-red-400/90 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40"
+                  className="h-8 min-w-0 flex-1 gap-1 rounded-lg border-red-500/30 px-1.5 text-[11px] font-medium text-red-400/90 hover:border-red-500/45 hover:bg-red-500/10 hover:text-red-400"
                   onClick={handleReject}
                 >
                   <X size={12} className="shrink-0" />
@@ -301,7 +305,7 @@ export const ToolCall = ({
                   ref={approveBtnRef}
                   variant="outline"
                   size="sm"
-                  className="h-7 min-w-0 flex-1 gap-1 px-1.5 text-[11px] font-normal border-green-500/25 text-green-400/90 hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/40"
+                  className="h-8 min-w-0 flex-1 gap-1 rounded-lg border-emerald-500/30 px-1.5 text-[11px] font-medium text-emerald-400/90 hover:border-emerald-500/45 hover:bg-emerald-500/10 hover:text-emerald-400"
                   onClick={handleApproveOnce}
                 >
                   <Check size={12} className="shrink-0" />
@@ -310,7 +314,7 @@ export const ToolCall = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 min-w-0 flex-1 gap-1 px-1.5 text-[11px] font-normal border-green-500/35 text-green-300/95 hover:bg-green-500/10 hover:text-green-300 hover:border-green-500/50"
+                  className="h-8 min-w-0 flex-1 gap-1 rounded-lg border-emerald-500/40 px-1.5 text-[11px] font-medium text-emerald-300/95 hover:border-emerald-500/55 hover:bg-emerald-500/12 hover:text-emerald-300"
                   onClick={handleAlwaysAllow}
                 >
                   <Check size={12} className="shrink-0" />

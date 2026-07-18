@@ -10,6 +10,15 @@ const {
   ENC_PREFIX_V2,
 } = require('./credentialBridge.cjs');
 
+/** Trusted IPC event stub so sender-guarded handlers can run in unit tests. */
+const trustedEvent = {
+  sender: {
+    isDestroyed: () => false,
+    getType: () => 'window',
+    getURL: () => 'file:///index.html',
+  },
+};
+
 function registerCredentialHandlers(safeStorage, options = {}) {
   const handlers = new Map();
   registerHandlers({
@@ -17,6 +26,19 @@ function registerCredentialHandlers(safeStorage, options = {}) {
       handlers.set(channel, handler);
     },
   }, { safeStorage }, options);
+  // Default null events (legacy call style) to a trusted sender for encrypt/decrypt.
+  const rawGet = handlers.get.bind(handlers);
+  handlers.get = (channel) => {
+    const handler = rawGet(channel);
+    if (!handler) return handler;
+    if (
+      channel === 'magiesTerminal:credentials:encrypt'
+      || channel === 'magiesTerminal:credentials:decrypt'
+    ) {
+      return (event, ...args) => handler(event ?? trustedEvent, ...args);
+    }
+    return handler;
+  };
   return handlers;
 }
 

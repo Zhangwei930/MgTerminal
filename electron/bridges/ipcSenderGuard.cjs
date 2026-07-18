@@ -69,7 +69,9 @@ function validateIpcSender(event, options = {}) {
  * @param {{ errorResult?: (error: string) => any }} [options]
  */
 function withTrustedIpcSender(handler, options = {}) {
-  return async (event, ...args) => {
+  // Keep this wrapper synchronous so throw-based handlers still reject via
+  // throw (not Promise rejection) when invoked from tests or sync IPC paths.
+  return (event, ...args) => {
     const check = validateIpcSender(event);
     if (!check.ok) {
       if (typeof options.errorResult === "function") {

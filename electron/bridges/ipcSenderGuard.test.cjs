@@ -33,13 +33,13 @@ test("validateIpcSender accepts local file URL without BrowserWindow", () => {
   assert.equal(res.ok, true);
 });
 
-test("withTrustedIpcSender short-circuits untrusted callers", async () => {
+test("withTrustedIpcSender short-circuits untrusted callers", () => {
   let called = false;
-  const wrapped = withTrustedIpcSender(async () => {
+  const wrapped = withTrustedIpcSender(() => {
     called = true;
     return { ok: true };
   });
-  const out = await wrapped({});
+  const out = wrapped({});
   assert.equal(called, false);
   assert.deepEqual(out, { success: false, error: "missing_sender" });
 });

@@ -20,7 +20,10 @@ test('update install shows an installing state before invoking the bridge', () =
 });
 
 test('update install handles an empty bridge result without a secondary exception', () => {
-  assert.match(hookSource, /if \(result\?\.unsupported\)/);
+  // Narrow void|object first so empty/void results do not throw on property access.
+  assert.match(hookSource, /if \(result && typeof result === 'object'\)/);
+  assert.match(hookSource, /result\.unsupported/);
+  assert.match(hookSource, /void \/ undefined: treat as started/);
 });
 
 test('system settings disables the install button while restart is starting', () => {

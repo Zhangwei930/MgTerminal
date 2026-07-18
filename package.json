@@ -43,6 +43,7 @@
     "postinstall": "electron-builder install-app-deps && patch-package && node scripts/patch-xterm-webgl-atlas.cjs",
     "rebuild": "electron-builder install-app-deps",
     "tool:cli": "node electron/cli/magies-terminal-tool-cli.cjs",
+    "perf:smoke": "electron scripts/perf-smoke.cjs",
     "generate:capability-tools": "node scripts/generate-capability-tools.cjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

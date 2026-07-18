@@ -1,5 +1,7 @@
 # MagiesTerminal 路线图长尾：竞品可借鉴能力
 
+> **状态更新（2026-07-18，截至 v0.5.6）：** 本文档规划的 **P0 全部 6 项与 P1 主线均已交付**。原标记「阻塞 / 延后」的内置 ssh2 后量子 KEX、原列在 P2 的 RDP，以及团队 Vault（本地优先角色版）、WAN Follow 中继、设备 Passkey 解锁均已在 v0.5.2 落地。文中「当前差距 / 实现核对要点」描述的是规划当时的状态，仅作历史参考；剩余未做项见「P2」与「P1 收口说明」中的标注。
+
 本文档整理自 Xshell / Termius 的能力对照，作为 `feat/roadmap-p0-p2-batch` 之后的**产品长尾**优先级参考。目标不是功能堆叠，而是在保持 MagiesTerminal「开源、本地优先、AI 运维工作台」定位的前提下，优先吸收 Xshell 的操作安全与终端成熟度，再吸收 Termius 的工作区、日志与团队协作能力。
 
 **明确不做 / 不优先：**
@@ -44,6 +46,8 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 ---
 
 ## P0：建议优先实现
+
+> **✅ 已全部交付**：精确广播目标（`domain/broadcastTargets.ts`）、安全粘贴与发送节流（PR #12）、触发器动作扩展（`domain/triggerActions.ts`）、隧道活动通道视图（`electron/bridges/portForwardChannelTracker.cjs` + `ActiveChannelsPanel`）、日志书签与备注（`useLogBookmarks`）、Workspace 模板（`useWorkspaceTemplates`）。
 
 面向日常运维安全与重复效率，投入产出比最高。
 
@@ -112,24 +116,25 @@ MagiesTerminal 已具备大量同类能力，后续工作应**增强而不是重
 | Follow 审计清除 | 已实现 | 本机会话历史一键清空（内存+磁盘） |
 | GSSAPI / Kerberos | 已实现 | 系统 OpenSSH + GSSAPIAuthentication（非 ssh2）；无跳板/应用代理 |
 | 系统 OpenSSH 传输 | 已实现 | per-host `useSystemOpenSsh`；与 GSSAPI/PQ 共用 pty 路径 |
-| 后量子 SSH（hybrid KEX 偏好） | **部分** | per-host `preferPostQuantumKex` → 系统 OpenSSH `KexAlgorithms`（mlkem768/sntrup761 + 经典回退）；内置 ssh2 仍无 PQ |
-| 后量子 SSH（完整 ssh2 原生） | **阻塞 / 延后** | ssh2 1.17 无 PQ KEX；待库支持后再做内置路径 |
+| 后量子 SSH（hybrid KEX 偏好） | 已实现 | per-host `preferPostQuantumKex` → 系统 OpenSSH `KexAlgorithms`（mlkem768/sntrup761 + 经典回退） |
+| 后量子 SSH（完整 ssh2 原生） | 已实现 | v0.5.2 内置 ssh2 混合 PQ KEX：优先 `mlkem768x25519-sha256`，服务端不支持时回退经典算法 |
 
 ### P1 收口说明
 
 - **产品 P1 主线已完成**（数据源含 YAML 进出与 HTTP 鉴权编辑、Hex、团队元数据分享、本地/LAN Follow、审计、设备解锁、PKCS#11、GSSAPI、系统 OpenSSH / PQ KEX 偏好）。
-- **部分交付**：后量子 hybrid KEX 通过系统 OpenSSH 可选偏好实现；**不自研算法**；内置 ssh2 路径仍等库支持。
-- **范围边界**：GSSAPI / 系统 OpenSSH 依赖本机 `ssh` 与（GSSAPI 时）Kerberos 票据；不支持 jump chain 与 MagiesTerminal 内置代理（见主机设置提示）。
-- **团队 Vault 完整角色/云端**、**可移植 FIDO2 身份**、**WAN multiplayer** 属更深企业能力，不在本批 P1 必达范围（元数据分享 + 本机解锁已交付）。
+- **后量子已全量交付**：系统 OpenSSH 偏好路径与内置 ssh2 混合 PQ KEX（v0.5.2）均已实现；**不自研算法**。
+- **范围边界**：GSSAPI 依赖本机 `ssh` 与 Kerberos 票据；系统 OpenSSH 会话自 v0.5.2 起已支持跳板链与内置 HTTP/SOCKS 代理。
+- **v0.5.2 追加交付**：本地优先团队 Vault（owner/editor/viewer 角色 + HMAC 签名审计，密码/私钥不离机）、**WAN Follow 中继**（可内嵌或自建 `scripts/follow-relay.cjs`）、**设备 Passkey 解锁 Vault**（WebAuthn 平台认证器）。
+- **仍未做**：可移植（跨设备）FIDO2 身份、团队 Vault 云端/自托管服务端完整形态 —— 按真实企业需求驱动。
 
 ---
 
 ## P2：根据用户需求再做
 
 - iOS / Android 完整客户端。
-- RDP 支持。
+- ~~RDP 支持~~ **已实现（v0.5.2）**：Vault 一键拉起系统远程桌面客户端（mstsc / Windows App / xfreerdp）；应用内嵌 RDP 渲染仍未做、按需评估。
 - VT220 / VT320、SCOANSI 等旧终端仿真。
-- 云厂商账号直接导入。
+- 云厂商账号直接导入（AWS / 阿里云 / 腾讯云 API 作为主机数据源；可复用现有可插拔数据源管线，**当前建议的下一优先项**）。
 - 企业 SAML / SSO、组织管理后台。
 - 强制日志和集中审计策略。
 

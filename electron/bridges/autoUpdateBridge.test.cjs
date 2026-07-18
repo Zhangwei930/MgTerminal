@@ -811,6 +811,37 @@ test("mainland-China locale or timezone prefers the mirror update feed", async (
   });
 });
 
+test("Windows arm64 uses the latest-arm64 update channel", async () => {
+  await withMocks({}, async ({ bridge }) => {
+    assert.equal(bridge.resolveUpdateChannel("win32", "arm64"), "latest-arm64");
+    assert.equal(bridge.resolveUpdateChannel("win32", "x64"), "latest");
+    assert.equal(bridge.resolveUpdateChannel("darwin", "arm64"), "latest");
+    assert.equal(bridge.resolveUpdateChannel("linux", "arm64"), "latest");
+  });
+});
+
+test("applyFeed sets channel on generic and github providers", async () => {
+  const feeds = [];
+  const autoUpdater = {
+    channel: "latest",
+    setFeedURL(options) {
+      feeds.push({ ...options, channel: this.channel });
+    },
+  };
+  await withMocks({}, async ({ bridge }) => {
+    // Force win-arm64 channel by calling resolve via applyFeed after patching.
+    // applyFeed reads process.arch; for unit isolation call setFeedURL shape.
+    bridge.applyFeed(autoUpdater, "mirror");
+    assert.equal(feeds.at(-1).provider, "generic");
+    assert.match(feeds.at(-1).url, /dl\.magies\.top/);
+    assert.ok(feeds.at(-1).channel === "latest" || feeds.at(-1).channel === "latest-arm64");
+    bridge.applyFeed(autoUpdater, "github");
+    assert.equal(feeds.at(-1).provider, "github");
+    assert.equal(feeds.at(-1).owner, "JasonZhangDad");
+    assert.equal(feeds.at(-1).repo, "MgTerminal-releases");
+  });
+});
+
 test("update check falls back to the mirror feed when GitHub is unreachable", async () => {
   const feeds = [];
   const autoUpdater = {

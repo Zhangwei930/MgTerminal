@@ -138,11 +138,28 @@ function detectPreferredFeed() {
   }
 }
 
+/**
+ * Windows arm64 publishes to channel "latest-arm64" (latest-arm64.yml) so it
+ * cannot clobber x64 latest.yml. electron-updater must request that channel
+ * or arm64 clients will try to download x64 installers and fail.
+ */
+function resolveUpdateChannel(platform = _platform, arch = process.arch) {
+  if (platform === "win32" && arch === "arm64") return "latest-arm64";
+  return "latest";
+}
+
 function applyFeed(updater, feed) {
+  const channel = resolveUpdateChannel();
+  // Keep channel in sync for both providers (generic uses latest[-arm64].yml).
+  try {
+    updater.channel = channel;
+  } catch {
+    // ignore — older electron-updater stubs in tests may not expose channel
+  }
   if (feed === "mirror") {
-    updater.setFeedURL({ provider: "generic", url: MIRROR_FEED_URL });
+    updater.setFeedURL({ provider: "generic", url: MIRROR_FEED_URL, channel });
   } else {
-    updater.setFeedURL(GITHUB_FEED);
+    updater.setFeedURL({ ...GITHUB_FEED, channel });
   }
 }
 
@@ -173,6 +190,11 @@ function getAutoUpdater() {
     autoUpdater.autoInstallOnAppQuit = false;
     // Silence the default electron-log transport (we log ourselves).
     autoUpdater.logger = null;
+    try {
+      autoUpdater.channel = resolveUpdateChannel();
+    } catch {
+      // ignore
+    }
     _autoUpdater = autoUpdater;
     return autoUpdater;
   } catch (err) {
@@ -551,14 +573,19 @@ function registerHandlers(ipcMain) {
         releaseDate: releaseDate || null,
       };
     } catch (err) {
-      _isChecking = false;
-      _lastStatus = { ..._lastStatus, isChecking: false };
       console.warn("[AutoUpdate] Check failed:", err?.message || err);
       return {
         available: false,
         supported: true,
         error: err?.message || "Unknown update check error",
       };
+    } finally {
+      // Always clear the in-flight flag. Event handlers also clear it, but if
+      // checkForUpdates resolves without emitting (or after a throw before the
+      // event), leaving _isChecking true blocks every subsequent check and
+      // forces the renderer into a false "update failed" path.
+      _isChecking = false;
+      _lastStatus = { ..._lastStatus, isChecking: false };
     }
   });
 
@@ -769,4 +796,6 @@ module.exports = {
   startAutoCheck,
   shouldPreferMirrorFeed,
   checkForUpdatesWithFallback,
+  resolveUpdateChannel,
+  applyFeed,
 };

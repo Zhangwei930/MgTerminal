@@ -469,19 +469,38 @@ export function useUpdateCheck(options?: {
       //    environments where api.github.com is blocked would never attempt
       //    the auto-download path.
       void magiesTerminalBridge.get()?.checkForUpdate?.().then((res) => {
-        if (res?.error && res?.supported !== false) {
-          // Surface actual download-feed errors; unsupported platforms
-          // (res.supported === false) should keep autoDownloadStatus at
-          // 'idle' so the manual download link shows.
-          setUpdateState((prev) => ({
-            ...prev,
-            autoDownloadStatus: 'error',
-            downloadError: res.error,
-          }));
-        } else if (res?.checking) {
+        if (res?.checking) {
           // Another check is already in flight — don't change status; the
           // in-flight check will resolve via IPC events.
-        } else if (nextStatus === 'error' && res?.available) {
+          return;
+        }
+        if (res?.error && res?.supported !== false) {
+          // Check-phase feed errors must NOT look like a failed download.
+          // Only set downloadError when we were already downloading; otherwise
+          // surface the message on the manual-check error path (no "更新失败"
+          // toast for a pure check failure). If GitHub already found a version,
+          // keep the available state — a concurrent auto-check/download may still
+          // succeed via IPC events.
+          setUpdateState((prev) => {
+            if (prev.autoDownloadStatus === 'downloading' || prev.autoDownloadStatus === 'ready') {
+              return {
+                ...prev,
+                autoDownloadStatus: 'error',
+                downloadError: res.error ?? null,
+              };
+            }
+            if (prev.hasUpdate || nextStatus === 'available') {
+              return prev;
+            }
+            return {
+              ...prev,
+              manualCheckStatus: 'error',
+              error: res.error ?? prev.error,
+            };
+          });
+          return;
+        }
+        if (nextStatus === 'error' && res?.available) {
           // GitHub API failed but electron-updater found an update.
           // Respect dismissed versions before surfacing.
           const dismissed = localStorageAdapter.readString(STORAGE_KEY_UPDATE_DISMISSED_VERSION);

@@ -9,7 +9,7 @@
  * preventing sensitive values from silently falling back to plaintext.
  */
 
-import type { GroupConfig, Host, Identity, ProxyProfile, SSHKey } from "../../domain/models";
+import type { GroupConfig, Host, Identity, ManagedSource, ProxyProfile, SSHKey } from "../../domain/models";
 import type { ProviderConnection, S3Config, WebDAVConfig } from "../../domain/sync";
 import { magiesTerminalBridge } from "../services/magiesTerminalBridge";
 
@@ -142,6 +142,28 @@ export function encryptGroupConfigs(configs: GroupConfig[]): Promise<GroupConfig
 
 export function decryptGroupConfigs(configs: GroupConfig[]): Promise<GroupConfig[]> {
   return Promise.all(configs.map(decryptGroupConfigSecrets));
+}
+
+// ---------------------------------------------------------------------------
+// ManagedSource (external inventory data sources)
+// ---------------------------------------------------------------------------
+
+export async function encryptManagedSourceSecrets(source: ManagedSource): Promise<ManagedSource> {
+  if (!source.httpAuthHeaderValue) return source;
+  return { ...source, httpAuthHeaderValue: await encryptField(source.httpAuthHeaderValue) };
+}
+
+export async function decryptManagedSourceSecrets(source: ManagedSource): Promise<ManagedSource> {
+  if (!source.httpAuthHeaderValue) return source;
+  return { ...source, httpAuthHeaderValue: await decryptField(source.httpAuthHeaderValue) };
+}
+
+export function encryptManagedSources(sources: ManagedSource[]): Promise<ManagedSource[]> {
+  return Promise.all(sources.map(encryptManagedSourceSecrets));
+}
+
+export function decryptManagedSources(sources: ManagedSource[]): Promise<ManagedSource[]> {
+  return Promise.all(sources.map(decryptManagedSourceSecrets));
 }
 
 // ---------------------------------------------------------------------------

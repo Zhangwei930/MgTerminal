@@ -66,11 +66,13 @@ import {
   decryptHosts,
   decryptIdentities,
   decryptKeys,
+  decryptManagedSources,
   decryptProxyProfiles,
   encryptGroupConfigs,
   encryptHosts,
   encryptIdentities,
   encryptKeys,
+  encryptManagedSources,
   encryptProxyProfiles,
 } from "../../infrastructure/persistence/secureFieldAdapter";
 
@@ -230,6 +232,7 @@ export const useVaultState = () => {
   const identitiesWriteVersion = useRef(0);
   const proxyProfilesWriteVersion = useRef(0);
   const groupConfigsWriteVersion = useRef(0);
+  const managedSourcesWriteVersion = useRef(0);
 
   // Read-sequence counters for cross-window storage events.  Each incoming
   // event bumps the counter; the async decrypt callback only applies state if
@@ -462,7 +465,11 @@ export const useVaultState = () => {
 
   const updateManagedSources = useCallback((data: ManagedSource[]) => {
     setManagedSources(data);
-    localStorageAdapter.write(STORAGE_KEY_MANAGED_SOURCES, data);
+    const ver = ++managedSourcesWriteVersion.current;
+    return encryptManagedSources(data).then((enc) => {
+      if (ver === managedSourcesWriteVersion.current)
+        localStorageAdapter.write(STORAGE_KEY_MANAGED_SOURCES, enc);
+    });
   }, []);
 
   const updateGroupConfigs = useCallback((data: GroupConfig[]) => {
@@ -841,11 +848,20 @@ export const useVaultState = () => {
           STORAGE_KEY_MANAGED_SOURCES,
         );
         if (savedManagedSources) {
-          setManagedSources(
-            savedManagedSources
-              .map((entry) => normalizeManagedSource(entry))
-              .filter((entry): entry is ManagedSource => Boolean(entry)),
-          );
+          const msVer = ++managedSourcesWriteVersion.current;
+          const normalized = savedManagedSources
+            .map((entry) => normalizeManagedSource(entry))
+            .filter((entry): entry is ManagedSource => Boolean(entry));
+          const decryptedMS = deferSecrets ? normalized : await decryptManagedSources(normalized);
+          if (msVer === managedSourcesWriteVersion.current) {
+            setManagedSources(decryptedMS);
+            if (!deferSecrets) {
+              encryptManagedSources(decryptedMS).then((enc) => {
+                if (msVer === managedSourcesWriteVersion.current)
+                  localStorageAdapter.write(STORAGE_KEY_MANAGED_SOURCES, enc);
+              });
+            }
+          }
         }
 
         // Load group configs
@@ -887,13 +903,15 @@ export const useVaultState = () => {
     const idVer = ++identitiesWriteVersion.current;
     const proxyVer = ++proxyProfilesWriteVersion.current;
     const gcVer = ++groupConfigsWriteVersion.current;
+    const msVer = ++managedSourcesWriteVersion.current;
 
-    const [decHosts, decKeys, decIds, decProxy, decGC] = await Promise.all([
+    const [decHosts, decKeys, decIds, decProxy, decGC, decMS] = await Promise.all([
       decryptHosts(hosts),
       decryptKeys(keys),
       decryptIdentities(identities),
       decryptProxyProfiles(proxyProfiles),
       decryptGroupConfigs(groupConfigs),
+      decryptManagedSources(managedSources),
     ]);
 
     if (hostVer === hostsWriteVersion.current) {
@@ -936,10 +954,17 @@ export const useVaultState = () => {
           localStorageAdapter.write(STORAGE_KEY_GROUP_CONFIGS, enc);
       });
     }
+    if (msVer === managedSourcesWriteVersion.current) {
+      setManagedSources(decMS);
+      encryptManagedSources(decMS).then((enc) => {
+        if (msVer === managedSourcesWriteVersion.current)
+          localStorageAdapter.write(STORAGE_KEY_MANAGED_SOURCES, enc);
+      });
+    }
 
     setSecretsLocked(false);
     return true;
-  }, [groupConfigs, hosts, identities, keys, proxyProfiles]);
+  }, [groupConfigs, hosts, identities, keys, managedSources, proxyProfiles]);
 
   const lockVaultSecrets = useCallback(() => {
     // Session lock: require platform/PIN again. Plaintext already in renderer
@@ -1081,7 +1106,10 @@ export const useVaultState = () => {
         const next = (safeParse<ManagedSource[]>(event.newValue) ?? [])
           .map((entry) => normalizeManagedSource(entry))
           .filter((entry): entry is ManagedSource => Boolean(entry));
-        setManagedSources(next);
+        const msVer = ++managedSourcesWriteVersion.current;
+        decryptManagedSources(next).then((dec) => {
+          if (msVer === managedSourcesWriteVersion.current) setManagedSources(dec);
+        });
         return;
       }
 

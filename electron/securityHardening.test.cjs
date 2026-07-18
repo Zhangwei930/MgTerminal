@@ -76,8 +76,8 @@ test('packaged tray panel and preload ignore VITE_DEV_SERVER_URL', () => {
 
 test('dependency overrides pin reachable XSS and undici DoS fixes', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.equal(pkg.overrides.dompurify, '3.3.2');
-  assert.equal(pkg.overrides.undici, '6.23.0');
+  assert.equal(pkg.overrides.dompurify, '3.4.12');
+  assert.equal(pkg.overrides.undici, '6.27.0');
 });
 
 test('afterPack repairs ASAR integrity before macOS signing', () => {

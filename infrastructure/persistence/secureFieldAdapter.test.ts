@@ -7,6 +7,7 @@ import {
   decryptHosts,
   decryptIdentities,
   decryptKeys,
+  decryptManagedSources,
   decryptProviderSecrets,
   decryptProxyProfiles,
   encryptField,
@@ -14,6 +15,7 @@ import {
   encryptHosts,
   encryptIdentities,
   encryptKeys,
+  encryptManagedSources,
   encryptProviderSecrets,
   encryptProxyProfiles,
 } from './secureFieldAdapter.ts';
@@ -129,6 +131,50 @@ test('model adapters protect every supported credential field', async () => {
         : '',
       's3-secret',
     );
+  } finally {
+    restoreWindow();
+  }
+});
+
+test('managed source adapters encrypt the HTTP auth header value only', async () => {
+  const restoreWindow = installCredentialBridge();
+  try {
+    const [source] = await encryptManagedSources([{
+      id: 'src-1',
+      type: 'json_http',
+      filePath: 'https://inv.example.com/hosts.json',
+      groupName: 'prod',
+      lastSyncedAt: 0,
+      httpAuthHeaderName: 'Authorization',
+      httpAuthHeaderValue: 'Bearer super-secret-token',
+    } as never]);
+
+    // The secret is encrypted; non-secret metadata is untouched.
+    assert.equal(source.httpAuthHeaderValue, 'encrypted:Bearer super-secret-token');
+    assert.equal(source.httpAuthHeaderName, 'Authorization');
+    assert.equal(source.filePath, 'https://inv.example.com/hosts.json');
+
+    assert.equal(
+      (await decryptManagedSources([source]))[0].httpAuthHeaderValue,
+      'Bearer super-secret-token',
+    );
+  } finally {
+    restoreWindow();
+  }
+});
+
+test('managed source adapters leave sources without a header value untouched', async () => {
+  const restoreWindow = installCredentialBridge();
+  try {
+    const [source] = await encryptManagedSources([{
+      id: 'src-2',
+      type: 'json_file',
+      filePath: '/etc/hosts.json',
+      groupName: 'lab',
+      lastSyncedAt: 0,
+    } as never]);
+    assert.equal(source.httpAuthHeaderValue, undefined);
+    assert.equal((await decryptManagedSources([source]))[0].httpAuthHeaderValue, undefined);
   } finally {
     restoreWindow();
   }

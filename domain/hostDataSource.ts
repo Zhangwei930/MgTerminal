@@ -145,9 +145,12 @@ export function normalizeHttpAuthHeaderValue(value: unknown): string | undefined
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  // Cap length; never allow newlines (header injection).
+  // Never allow newlines (header injection). Cap generously: this value is
+  // stored encrypted, and ciphertext of a large token inflates well past the
+  // plaintext length — too tight a cap would truncate the stored blob and
+  // break decryption on reload.
   if (/[\r\n]/.test(trimmed)) return undefined;
-  return trimmed.slice(0, 2000);
+  return trimmed.slice(0, 8192);
 }
 
 export function buildHttpInventoryHeaders(

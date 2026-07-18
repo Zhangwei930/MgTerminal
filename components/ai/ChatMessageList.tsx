@@ -18,6 +18,7 @@ import {
 } from '../ai-elements/conversation';
 import { Message, MessageContent, MessageResponse } from '../ai-elements/message';
 import { ToolCall } from '../ai-elements/tool-call';
+import { AiActivityIndicator } from './AiActivityIndicator';
 import ThinkingBlock from './ThinkingBlock';
 import ToolCallGroup from './ToolCallGroup';
 import {
@@ -492,10 +493,13 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {/* Status text with shimmer */}
                 {message.statusText && (
-                  <div className="py-1">
-                    <span className="thinking-shimmer text-xs">
-                      {resolveCompactionStatusText(message.statusText, t)}
-                    </span>
+                  <div className="py-0.5">
+                    <AiActivityIndicator
+                      variant="compact"
+                      framed={false}
+                      showIcon={false}
+                      label={resolveCompactionStatusText(message.statusText, t)}
+                    />
                   </div>
                 )}
 
@@ -592,23 +596,23 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           })}
         {/* Transient compaction status — inline, no banner */}
         {showCompactionStatus && activeCompaction && (
-          <div className="py-1">
-            <span className="thinking-shimmer text-xs text-muted-foreground">
-              {compactionStatusText(activeCompaction.trigger, t)}
-            </span>
-          </div>
+          <AiActivityIndicator
+            variant="compact"
+            framed
+            showIcon
+            label={compactionStatusText(activeCompaction.trigger, t)}
+            className="mb-0.5"
+          />
         )}
 
         {/* Streaming indicator — only when no content and no thinking yet */}
         {isStreaming && !lastAssistantMessage?.content && !lastAssistantMessage?.thinking && (
-          <div className="flex items-center gap-2 rounded-2xl border border-border/40 bg-card/50 px-3.5 py-3 shadow-sm">
-            <div className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-bounce [animation-delay:300ms]" />
-            </div>
-            <span className="text-[12px] text-muted-foreground/60">{t('ai.chat.generating')}</span>
-          </div>
+          <AiActivityIndicator
+            variant="generating"
+            framed
+            showIcon
+            label={t('ai.chat.generating')}
+          />
         )}
       </ConversationContent>
       <ConversationScrollButton />

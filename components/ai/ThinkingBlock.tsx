@@ -10,6 +10,7 @@ import { Brain, ChevronRight } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { cn } from '../../lib/utils';
+import { AiTypingDots } from './AiActivityIndicator';
 
 interface ThinkingBlockProps {
   content: string;
@@ -103,17 +104,22 @@ const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
             isExpanded && 'rotate-90',
           )}
         />
-        <span className="text-[12px] font-medium text-muted-foreground/80 whitespace-nowrap shrink-0">
-          {isStreaming ? (
-            <span className="thinking-shimmer">{t('ai.chat.thinking')}</span>
-          ) : (
-            displayDuration > 0
+        {isStreaming ? (
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <AiTypingDots size="sm" />
+            <span className="thinking-shimmer thinking-shimmer--primary whitespace-nowrap text-[12px] font-medium">
+              {t('ai.chat.thinking')}
+            </span>
+          </span>
+        ) : (
+          <span className="shrink-0 whitespace-nowrap text-[12px] font-medium text-muted-foreground/80">
+            {displayDuration > 0
               ? t('ai.chat.thoughtFor', { duration: formatDuration(displayDuration) })
-              : t('ai.chat.thought')
-          )}
-        </span>
+              : t('ai.chat.thought')}
+          </span>
+        )}
         {isStreaming && elapsed > 0 && (
-          <span className="text-[11px] text-muted-foreground/45 tabular-nums shrink-0">
+          <span className="shrink-0 tabular-nums text-[11px] text-violet-400/70">
             {formatDuration(elapsed)}
           </span>
         )}

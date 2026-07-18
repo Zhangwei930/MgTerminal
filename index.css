@@ -554,16 +554,33 @@ html[data-theme-transition] *::after {
   background: linear-gradient(
     90deg,
     currentColor 0%,
-    currentColor 40%,
-    rgba(255, 255, 255, 0.6) 50%,
-    currentColor 60%,
+    currentColor 38%,
+    color-mix(in srgb, currentColor 35%, white) 50%,
+    currentColor 62%,
     currentColor 100%
   );
-  background-size: 200% 100%;
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: thinking-shimmer 1.5s ease-in-out infinite;
+  animation: thinking-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Primary-tinted shimmer for AI activity labels (coordinates with typing dots). */
+.thinking-shimmer--primary {
+  color: hsl(var(--primary) / 0.88);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.55) 0%,
+    hsl(var(--primary) / 0.55) 36%,
+    hsl(var(--primary) / 1) 50%,
+    hsl(var(--primary) / 0.55) 64%,
+    hsl(var(--primary) / 0.55) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 @keyframes thinking-shimmer {
@@ -572,6 +589,75 @@ html[data-theme-transition] *::after {
   }
   100% {
     background-position: -100% center;
+  }
+}
+
+/* AI typing dots — soft wave + glow, used while waiting for first tokens. */
+.ai-typing-dots {
+  height: 1rem;
+}
+
+.ai-typing-dot {
+  display: inline-block;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+  animation: ai-typing-dot 1.15s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes ai-typing-dot {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0) scale(0.78);
+    opacity: 0.32;
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+  }
+  40% {
+    transform: translateY(-3px) scale(1.12);
+    opacity: 1;
+    box-shadow: 0 0 10px 1px hsl(var(--primary) / 0.45);
+  }
+}
+
+/* Gentle sheen across the generating card */
+.ai-activity-sheen {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    hsl(var(--primary) / 0.06) 48%,
+    hsl(var(--primary) / 0.1) 52%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: ai-activity-sheen 2.4s ease-in-out infinite;
+}
+
+@keyframes ai-activity-sheen {
+  0% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: -100% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-typing-dot,
+  .thinking-shimmer,
+  .thinking-shimmer--primary,
+  .ai-activity-sheen {
+    animation: none !important;
+  }
+  .ai-typing-dot {
+    opacity: 0.7;
+    transform: none;
+  }
+  .thinking-shimmer,
+  .thinking-shimmer--primary {
+    -webkit-text-fill-color: currentColor;
+    background: none;
   }
 }
 

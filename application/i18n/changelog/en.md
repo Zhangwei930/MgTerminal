@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.8] - 2026-07-19
+
+### Security
+- **Local file IPC hardening**: the local file read/write/delete/enumerate IPC handlers now validate the calling renderer's sender and reject webview/guest contexts, so a renderer XSS cannot escalate to arbitrary local file access (defense-in-depth)
+- **Dependency hardening**: cleared all high-severity advisories in the production dependency tree: fast-uri → 4.1.1, fast-xml-parser → 5.10.1, fast-xml-builder → 1.3.0, hono → 4.12.31; and, scoped to the @cursor/sdk subtree, node-gyp → 11.4.2 and tar → 7.5.20 (scoped so native builds are unaffected)
+
 ## [0.5.7] - 2026-07-18
 
 ### Features

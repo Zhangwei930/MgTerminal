@@ -1,6 +1,12 @@
 # Journal des modifications
 
 
+## [0.5.8] - 2026-07-19
+
+### Sécurité
+- **Renforcement de l'IPC de fichiers locaux**: les gestionnaires IPC de lecture/écriture/suppression/énumération de fichiers locaux valident désormais l'expéditeur du renderer appelant et rejettent les contextes webview/invité, afin qu'un XSS du renderer ne puisse pas dégénérer en accès arbitraire aux fichiers locaux (défense en profondeur)
+- **Renforcement des dépendances**: toutes les alertes de gravité élevée de l'arbre de dépendances de production corrigées : fast-uri → 4.1.1, fast-xml-parser → 5.10.1, fast-xml-builder → 1.3.0, hono → 4.12.31 ; et, limité au sous-arbre @cursor/sdk, node-gyp → 11.4.2 et tar → 7.5.20 (portée restreinte pour ne pas affecter les builds natifs)
+
 ## [0.5.7] - 2026-07-18
 
 ### Fonctionnalités

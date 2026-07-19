@@ -1,6 +1,12 @@
 # Änderungsprotokoll
 
 
+## [0.5.8] - 2026-07-19
+
+### Sicherheit
+- **Härtung des lokalen Datei-IPC**: die IPC-Handler zum Lesen/Schreiben/Löschen/Auflisten lokaler Dateien prüfen nun den Sender des aufrufenden Renderers und lehnen Webview-/Gast-Kontexte ab, sodass ein Renderer-XSS nicht zu beliebigem lokalem Dateizugriff eskalieren kann (Defense-in-Depth)
+- **Härtung der Abhängigkeiten**: alle hochkritischen Advisories im Produktions-Abhängigkeitsbaum behoben: fast-uri → 4.1.1, fast-xml-parser → 5.10.1, fast-xml-builder → 1.3.0, hono → 4.12.31; sowie, beschränkt auf den @cursor/sdk-Teilbaum, node-gyp → 11.4.2 und tar → 7.5.20 (eingegrenzt, sodass native Builds unberührt bleiben)
+
 ## [0.5.7] - 2026-07-18
 
 ### Funktionen

@@ -129,19 +129,19 @@ export function injectTerminalPaneAppearanceVars(sessionId: string, theme: Termi
   const pane = document.querySelector<HTMLElement>(`[data-session-id="${sessionId}"]`);
   if (!pane) return;
   const vars = buildTerminalAppearanceCssVars(theme);
-  setStylePropertyIfChanged(pane, '--nc-term-bg', vars['--nc-term-bg']);
-  setStylePropertyIfChanged(pane, '--nc-term-fg', vars['--nc-term-fg']);
-  setStylePropertyIfChanged(pane, '--nc-term-border', vars['--nc-term-border']);
-  setStylePropertyIfChanged(pane, '--nc-term-toolbar-btn', vars['--nc-term-toolbar-btn']);
-  setStylePropertyIfChanged(pane, '--nc-term-toolbar-btn-hover', vars['--nc-term-toolbar-btn-hover']);
-  setStylePropertyIfChanged(pane, '--nc-term-toolbar-btn-active', vars['--nc-term-toolbar-btn-active']);
+  setStylePropertyIfChanged(pane, '--mg-term-bg', vars['--mg-term-bg']);
+  setStylePropertyIfChanged(pane, '--mg-term-fg', vars['--mg-term-fg']);
+  setStylePropertyIfChanged(pane, '--mg-term-border', vars['--mg-term-border']);
+  setStylePropertyIfChanged(pane, '--mg-term-toolbar-btn', vars['--mg-term-toolbar-btn']);
+  setStylePropertyIfChanged(pane, '--mg-term-toolbar-btn-hover', vars['--mg-term-toolbar-btn-hover']);
+  setStylePropertyIfChanged(pane, '--mg-term-toolbar-btn-active', vars['--mg-term-toolbar-btn-active']);
   // Legacy aliases consumed by Terminal.tsx toolbar styles.
-  setStylePropertyIfChanged(pane, '--terminal-preview-bg', vars['--nc-term-bg']);
-  setStylePropertyIfChanged(pane, '--terminal-preview-fg', vars['--nc-term-fg']);
-  setStylePropertyIfChanged(pane, '--terminal-preview-border', vars['--nc-term-border']);
-  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn', vars['--nc-term-toolbar-btn']);
-  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn-hover', vars['--nc-term-toolbar-btn-hover']);
-  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn-active', vars['--nc-term-toolbar-btn-active']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-bg', vars['--mg-term-bg']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-fg', vars['--mg-term-fg']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-border', vars['--mg-term-border']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn', vars['--mg-term-toolbar-btn']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn-hover', vars['--mg-term-toolbar-btn-hover']);
+  setStylePropertyIfChanged(pane, '--terminal-preview-toolbar-btn-active', vars['--mg-term-toolbar-btn-active']);
 }
 
 export function clearTerminalPaneAppearanceVars(sessionId: string): void {
@@ -149,8 +149,8 @@ export function clearTerminalPaneAppearanceVars(sessionId: string): void {
   const pane = document.querySelector<HTMLElement>(`[data-session-id="${sessionId}"]`);
   if (!pane) return;
   const keys = [
-    '--nc-term-bg', '--nc-term-fg', '--nc-term-border',
-    '--nc-term-toolbar-btn', '--nc-term-toolbar-btn-hover', '--nc-term-toolbar-btn-active',
+    '--mg-term-bg', '--mg-term-fg', '--mg-term-border',
+    '--mg-term-toolbar-btn', '--mg-term-toolbar-btn-hover', '--mg-term-toolbar-btn-active',
     '--terminal-preview-bg', '--terminal-preview-fg', '--terminal-preview-border',
     '--terminal-preview-toolbar-btn', '--terminal-preview-toolbar-btn-hover', '--terminal-preview-toolbar-btn-active',
   ];

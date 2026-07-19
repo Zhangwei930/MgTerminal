@@ -32,10 +32,10 @@ test('buildTerminalAppearanceCssVars maps core terminal colors', () => {
     },
   });
 
-  assert.equal(vars['--nc-term-bg'], '#f7f7f7');
-  assert.equal(vars['--nc-term-fg'], '#100f0f');
-  assert.equal(vars['--nc-term-panel-bg'], '#f7f7f7');
-  assert.equal(vars['--nc-term-host-tree-bg'], '#f7f7f7');
+  assert.equal(vars['--mg-term-bg'], '#f7f7f7');
+  assert.equal(vars['--mg-term-fg'], '#100f0f');
+  assert.equal(vars['--mg-term-panel-bg'], '#f7f7f7');
+  assert.equal(vars['--mg-term-host-tree-bg'], '#f7f7f7');
 });
 
 test('buildSidePanelChromeThemeFromTerminalTheme uses resolved terminal colors', () => {

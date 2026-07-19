@@ -7,9 +7,15 @@
   "version": "0.5.10",
   "type": "module",
   "author": {
-    "name": "binaricat and MagiesTerminal contributors",
+    "name": "JasonZhangDad",
     "email": "470059464@qq.com"
   },
+  "contributors": [
+    {
+      "name": "binaricat",
+      "url": "https://github.com/binaricat"
+    }
+  ],
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=22"

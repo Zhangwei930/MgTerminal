@@ -1,0 +1,21 @@
+MagiesTerminal
+Copyright (C) 2025 JasonZhangDad and the MagiesTerminal contributors
+
+Portions Copyright (C) binaricat and the Netcatty contributors
+
+MagiesTerminal is a modified version (a "fork") of Netcatty:
+
+  Upstream project : Netcatty — https://github.com/binaricat/Netcatty
+  Original author  : binaricat and the Netcatty contributors
+  Upstream license : GNU General Public License v3.0 or later
+
+Modifications by JasonZhangDad and the MagiesTerminal contributors have been
+made since December 2025 and are ongoing (rebranding, UI and theme
+changes, additional features). In keeping with the GNU General Public
+License, the original copyright and authorship notices above are
+preserved alongside those of this project.
+
+Like the original, MagiesTerminal is distributed under the GNU General
+Public License v3.0 or later; see the LICENSE file for the full license
+text. This NOTICE file is provided for attribution and does not modify
+the license terms.

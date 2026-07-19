@@ -265,7 +265,13 @@ See [AGENTS.md](AGENTS.md) for architecture overview and coding conventions.
 <a name="license"></a>
 # License
 
-This project is licensed under the **GPL-3.0 License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GPL-3.0-or-later** - see the [LICENSE](LICENSE) file for details.
+
+Copyright © 2025 JasonZhangDad and the MagiesTerminal contributors.
+
+## Based on Netcatty
+
+MagiesTerminal is a **fork of [Netcatty](https://github.com/binaricat/Netcatty)** (© binaricat and the Netcatty contributors), which is also licensed under GPL-3.0-or-later. Significant modifications — rebranding, UI and theme changes, and additional features — have been made by JasonZhangDad and the MagiesTerminal contributors since December 2025. See the [NOTICE](NOTICE) file for full attribution.
 
 ---
 

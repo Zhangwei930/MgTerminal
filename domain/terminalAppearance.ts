@@ -70,6 +70,7 @@ export const resolveHostTerminalThemeId = (host: Host | null | undefined, defaul
  * match exists (caller should fall back to the global terminal theme).
  */
 const CORE_LIGHT_UI_TO_TERMINAL_THEME: Record<string, string> = {
+  'ember-day': 'ui-ember-day',
   'snow': 'ui-snow',
   'pure-white': 'ui-pure-white',
   'ivory': 'ui-ivory',
@@ -80,6 +81,7 @@ const CORE_LIGHT_UI_TO_TERMINAL_THEME: Record<string, string> = {
 };
 
 const CORE_DARK_UI_TO_TERMINAL_THEME: Record<string, string> = {
+  'ember-night': 'ui-ember-night',
   'pure-black': 'ui-pure-black',
   'midnight': 'ui-midnight',
   'deep-blue': 'ui-deep-blue',

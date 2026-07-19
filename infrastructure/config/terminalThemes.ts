@@ -10,6 +10,8 @@ import { uiMatchTerminalThemes } from './terminalThemes/uiMatch';
 export type TerminalThemeConfig = TerminalTheme;
 
 const UI_MATCH_TERMINAL_THEME_IDS = new Set([
+  'ui-ember-day',
+  'ui-ember-night',
   'ui-snow',
   'ui-pure-white',
   'ui-ivory',

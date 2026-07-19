@@ -80,8 +80,8 @@ describe("system preset UI themes", () => {
 
     assert.equal(EXTENDED_LIGHT_UI_THEMES.length, 55);
     assert.equal(EXTENDED_DARK_UI_THEMES.length, 55);
-    assert.equal(LIGHT_UI_THEMES.length, 7 + 55);
-    assert.equal(DARK_UI_THEMES.length, 7 + 55);
+    assert.equal(LIGHT_UI_THEMES.length, 8 + 55);
+    assert.equal(DARK_UI_THEMES.length, 8 + 55);
     assert.equal([...LIGHT_UI_THEMES, ...DARK_UI_THEMES].filter((theme) => theme.collection !== undefined && theme.collection !== "core").length, 0);
   });
 
@@ -97,12 +97,38 @@ describe("system preset UI themes", () => {
   });
 
   it("marks every core light and dark preset with collection core", () => {
-    for (const theme of LIGHT_UI_THEMES.slice(0, 7)) {
+    for (const theme of LIGHT_UI_THEMES.slice(0, 8)) {
       assert.equal(theme.collection, "core", theme.id);
     }
-    for (const theme of DARK_UI_THEMES.slice(0, 7)) {
+    for (const theme of DARK_UI_THEMES.slice(0, 8)) {
       assert.equal(theme.collection, "core", theme.id);
     }
+  });
+
+  it("ships ember-day and ember-night as core presets", () => {
+    // getUiThemeById falls back to list[0], so assert identity directly.
+    const emberDay = LIGHT_UI_THEMES.find((theme) => theme.id === "ember-day");
+    const emberNight = DARK_UI_THEMES.find((theme) => theme.id === "ember-night");
+
+    assert.ok(emberDay, "ember-day light preset should exist");
+    assert.ok(emberNight, "ember-night dark preset should exist");
+    assert.equal(emberDay.collection, "core");
+    assert.equal(emberNight.collection, "core");
+  });
+
+  it("keeps default ember card elevated above background", () => {
+    const emberDay = getUiThemeById("light", "ember-day");
+    const emberNight = getUiThemeById("dark", "ember-night");
+    const lightness = (token: string) => Number(token.split(/\s+/)[2]?.replace("%", ""));
+
+    assert.ok(
+      lightness(emberDay.tokens.card) > lightness(emberDay.tokens.background),
+      "ember-day card should be lighter than canvas",
+    );
+    assert.ok(
+      lightness(emberNight.tokens.card) > lightness(emberNight.tokens.background),
+      "ember-night card should be lighter than canvas",
+    );
   });
 
   it("keeps default snow and midnight with card elevated above background", () => {
@@ -129,7 +155,9 @@ describe("system preset UI themes", () => {
     };
 
     for (const [mode, id] of [
+      ["light", "ember-day"],
       ["light", "snow"],
+      ["dark", "ember-night"],
       ["dark", "midnight"],
     ] as const) {
       const tokens = getUiThemeById(mode, id).tokens;

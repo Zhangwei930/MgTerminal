@@ -29,6 +29,35 @@ export type UiThemePreset = {
 
 export const CORE_LIGHT_UI_THEMES: UiThemePreset[] = [
   {
+    id: "ember-day",
+    name: "Ember Day",
+    collection: "core",
+    tokens: {
+      // Warm paper canvas, white cards, ember primary — the light face of the
+      // Ember identity. Destructive stays true red so it never reads as accent.
+      background: "28 30% 97%",
+      foreground: "24 18% 12%",
+      card: "0 0% 100%",
+      cardForeground: "24 18% 12%",
+      popover: "0 0% 100%",
+      popoverForeground: "24 18% 12%",
+      primary: "16 90% 44%",
+      primaryForeground: "40 60% 98%",
+      secondary: "28 22% 92%",
+      secondaryForeground: "24 20% 18%",
+      muted: "28 20% 93%",
+      mutedForeground: "24 12% 38%",
+      accent: "16 90% 44%",
+      accentForeground: "40 60% 98%",
+      destructive: "358 70% 47%",
+      destructiveForeground: "0 0% 100%",
+      border: "28 18% 86%",
+      input: "28 18% 86%",
+      ring: "16 90% 44%",
+    },
+  },
+
+  {
     id: "snow",
     name: "Snow",
     collection: "core",
@@ -2976,6 +3005,34 @@ export const EXTENDED_DARK_UI_THEMES: UiThemePreset[] = [
 ];
 
 export const CORE_DARK_UI_THEMES: UiThemePreset[] = [
+  {
+    id: "ember-night",
+    name: "Ember Night",
+    collection: "core",
+    tokens: {
+      // Warm charcoal canvas, lifted cards, glowing ember primary carrying a
+      // dark label — the signature dark face of the Ember identity.
+      background: "24 14% 8%",
+      foreground: "36 28% 90%",
+      card: "24 12% 11%",
+      cardForeground: "36 28% 90%",
+      popover: "24 12% 12%",
+      popoverForeground: "36 28% 90%",
+      primary: "24 95% 56%",
+      primaryForeground: "24 40% 8%",
+      secondary: "24 10% 16%",
+      secondaryForeground: "36 24% 88%",
+      muted: "24 12% 15%",
+      mutedForeground: "30 14% 64%",
+      accent: "24 95% 56%",
+      accentForeground: "24 40% 8%",
+      destructive: "2 78% 58%",
+      destructiveForeground: "24 40% 8%",
+      border: "26 12% 20%",
+      input: "26 12% 20%",
+      ring: "24 95% 56%",
+    },
+  },
   {
     id: "pure-black",
     name: "Pure Black",

@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.8] - 2026-07-19
+
+### 安全
+- **本地文件 IPC 加固**：localFsBridge 的本地文件读/写/删/枚举接口新增调用方 sender 校验，拒绝 webview/访客上下文，防止渲染层 XSS 升级为任意本地文件访问（纵深防御）
+- **依赖安全加固**：清除生产依赖树全部 high 公告：fast-uri→4.1.1、fast-xml-parser→5.10.1、fast-xml-builder→1.3.0、hono→4.12.31；并将 @cursor/sdk 子树的 node-gyp→11.4.2、tar→7.5.20（作用域收窄，不影响原生构建）
+
 ## [0.5.7] - 2026-07-18
 
 ### 功能

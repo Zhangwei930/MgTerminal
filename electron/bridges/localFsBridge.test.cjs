@@ -188,3 +188,59 @@ test("readLocalFile returns only the trailing maxBytes when requested", async ()
     await fs.promises.rm(root, { recursive: true, force: true });
   }
 });
+
+function collectRegisteredHandlers() {
+  const { registerHandlers } = require("./localFsBridge.cjs");
+  const handlers = new Map();
+  registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) });
+  return handlers;
+}
+
+test("registered local filesystem handlers reject untrusted IPC senders", async () => {
+  const handlers = collectRegisteredHandlers();
+  const untrustedEvent = {
+    sender: { isDestroyed: () => false, getType: () => "webview", getURL: () => "file://x" },
+  };
+
+  // Every channel that reads, writes, or enumerates the local filesystem must
+  // refuse a webview/guest sender before touching disk. The bogus path proves
+  // the guard fires ahead of any fs access (a leaked call would reject with
+  // ENOENT, not the guard error).
+  const guardedChannels = [
+    "magiesTerminal:local:list",
+    "magiesTerminal:local:read",
+    "magiesTerminal:local:write",
+    "magiesTerminal:local:delete",
+    "magiesTerminal:local:rename",
+    "magiesTerminal:local:mkdir",
+    "magiesTerminal:local:stat",
+    "magiesTerminal:local:tree",
+    "magiesTerminal:local:homedir",
+    "magiesTerminal:local:drives",
+    "magiesTerminal:system:info",
+    "magiesTerminal:known-hosts:read",
+  ];
+
+  for (const channel of guardedChannels) {
+    const handler = handlers.get(channel);
+    assert.equal(typeof handler, "function", `${channel} handler missing`);
+    await assert.rejects(
+      async () => handler(untrustedEvent, { path: "/definitely-not-a-real-path-xyz", newPath: "/nope" }),
+      /untrusted_sender_type/,
+      `${channel} must reject untrusted senders`,
+    );
+  }
+});
+
+test("registered read handler passes trusted senders through to the filesystem", async () => {
+  const handlers = collectRegisteredHandlers();
+  const trustedEvent = {
+    sender: { isDestroyed: () => false, getType: () => "window", getURL: () => "file:///app/index.html" },
+  };
+  // A trusted sender must reach fs and fail with ENOENT (not a guard rejection),
+  // proving the wrapper does not block legitimate renderer callers.
+  await assert.rejects(
+    async () => handlers.get("magiesTerminal:local:read")(trustedEvent, { path: "/nonexistent-abc-123" }),
+    (err) => !/untrusted/.test(String(err?.message)),
+  );
+});

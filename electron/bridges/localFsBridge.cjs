@@ -388,18 +388,30 @@ async function listDrives() {
  * Register IPC handlers for local filesystem operations
  */
 function registerHandlers(ipcMain) {
-  ipcMain.handle("magiesTerminal:local:list", listLocalDir);
-  ipcMain.handle("magiesTerminal:local:read", readLocalFile);
-  ipcMain.handle("magiesTerminal:local:write", writeLocalFile);
-  ipcMain.handle("magiesTerminal:local:delete", deleteLocalFile);
-  ipcMain.handle("magiesTerminal:local:rename", renameLocalFile);
-  ipcMain.handle("magiesTerminal:local:mkdir", mkdirLocal);
-  ipcMain.handle("magiesTerminal:local:stat", statLocal);
-  ipcMain.handle("magiesTerminal:local:tree", listLocalTree);
-  ipcMain.handle("magiesTerminal:local:homedir", getHomeDir);
-  ipcMain.handle("magiesTerminal:local:drives", listDrives);
-  ipcMain.handle("magiesTerminal:system:info", getSystemInfo);
-  ipcMain.handle("magiesTerminal:known-hosts:read", readKnownHosts);
+  // These handlers give the renderer arbitrary local filesystem access, so they
+  // must reject webview/guest/offscreen senders the same way the vault surfaces
+  // do. Untrusted callers get a thrown error (IPC promise rejection) rather than
+  // a silent no-op, so a leaked call fails loudly.
+  const { withTrustedIpcSender } = require("./ipcSenderGuard.cjs");
+  const trusted = (handler) =>
+    withTrustedIpcSender(handler, {
+      errorResult: (error) => {
+        throw new Error(`Local filesystem access denied for untrusted sender: ${error}`);
+      },
+    });
+
+  ipcMain.handle("magiesTerminal:local:list", trusted(listLocalDir));
+  ipcMain.handle("magiesTerminal:local:read", trusted(readLocalFile));
+  ipcMain.handle("magiesTerminal:local:write", trusted(writeLocalFile));
+  ipcMain.handle("magiesTerminal:local:delete", trusted(deleteLocalFile));
+  ipcMain.handle("magiesTerminal:local:rename", trusted(renameLocalFile));
+  ipcMain.handle("magiesTerminal:local:mkdir", trusted(mkdirLocal));
+  ipcMain.handle("magiesTerminal:local:stat", trusted(statLocal));
+  ipcMain.handle("magiesTerminal:local:tree", trusted(listLocalTree));
+  ipcMain.handle("magiesTerminal:local:homedir", trusted(getHomeDir));
+  ipcMain.handle("magiesTerminal:local:drives", trusted(listDrives));
+  ipcMain.handle("magiesTerminal:system:info", trusted(getSystemInfo));
+  ipcMain.handle("magiesTerminal:known-hosts:read", trusted(readKnownHosts));
 }
 
 module.exports = {

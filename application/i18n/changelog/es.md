@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.10] - 2026-07-19
+
+### Correcciones
+- **Superposición del diálogo «Novedades» demasiado oscura**: el diálogo «Novedades» oscurecía tanto la ventana de Ajustes que la navegación izquierda era casi ilegible; ahora se reducen la opacidad y el desenfoque de su superposición para que la navegación de detrás siga siendo legible (solo afecta a este diálogo)
+
 ## [0.5.9] - 2026-07-19
 
 ### Correcciones

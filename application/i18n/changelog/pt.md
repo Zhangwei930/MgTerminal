@@ -1,6 +1,11 @@
 # Registro de alterações
 
 
+## [0.5.10] - 2026-07-19
+
+### Correções
+- **Sobreposição do diálogo «Novidades» escura demais**: o diálogo «Novidades» escurecia tanto a janela de Configurações que a navegação à esquerda ficava quase ilegível; agora a opacidade e o desfoque da sua sobreposição são reduzidos para que a navegação atrás continue legível (afeta apenas este diálogo)
+
 ## [0.5.9] - 2026-07-19
 
 ### Correções

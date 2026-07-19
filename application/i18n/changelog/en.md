@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.10] - 2026-07-19
+
+### Fixes
+- **What's New dialog overlay too dark**: the What's New dialog dimmed the Settings window so heavily that the left navigation was nearly unreadable; its overlay opacity and blur are now reduced so the nav behind stays legible (only this dialog is affected)
+
 ## [0.5.9] - 2026-07-19
 
 ### Fixes

@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.10] - 2026-07-19
+
+### Corrections
+- **Superposition de la boîte de dialogue « Nouveautés » trop sombre**: la boîte de dialogue « Nouveautés » assombrissait tellement la fenêtre Paramètres que la navigation de gauche était presque illisible ; l'opacité et le flou de sa superposition sont désormais réduits pour que la navigation en arrière-plan reste lisible (seule cette boîte de dialogue est concernée)
+
 ## [0.5.9] - 2026-07-19
 
 ### Corrections

@@ -249,7 +249,11 @@ npm run pack:linux   # Linux (AppImage + DEB + RPM)
 <a name="ライセンス"></a>
 # ライセンス
 
-このプロジェクトは **GPL-3.0 ライセンス** の下でライセンスされています - 詳細は [LICENSE](LICENSE) ファイルをご覧ください。
+このプロジェクトは **GPL-3.0-or-later ライセンス** の下でライセンスされています - 詳細は [LICENSE](LICENSE) ファイルをご覧ください。
+
+## Netcatty をベースにしています
+
+MagiesTerminal は **[Netcatty](https://github.com/binaricat/Netcatty) のフォーク**（© binaricat および Netcatty コントリビューター）であり、Netcatty も GPL-3.0-or-later でライセンスされています。2025年12月以降、MagiesTerminal コントリビューターによってブランド変更・UI/テーマの変更・機能追加などの重要な変更が加えられています。完全な帰属表示は [NOTICE](NOTICE) ファイルをご覧ください。
 
 ---
 

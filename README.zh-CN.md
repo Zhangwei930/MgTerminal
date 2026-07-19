@@ -249,7 +249,11 @@ npm run pack:linux   # Linux (AppImage + DEB + RPM)
 <a name="开源协议"></a>
 # 开源协议
 
-本项目采用 **GPL-3.0 协议** 开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 **GPL-3.0-or-later 协议** 开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 基于 Netcatty
+
+MagiesTerminal 是 **[Netcatty](https://github.com/binaricat/Netcatty) 的一个 fork**（© binaricat 及 Netcatty 贡献者），Netcatty 同样采用 GPL-3.0-or-later 协议。自 2025 年 12 月起，MagiesTerminal 贡献者对其进行了重要修改——品牌重塑、界面/主题调整以及新增功能。完整署名见 [NOTICE](NOTICE) 文件。
 
 ---
 

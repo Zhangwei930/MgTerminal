@@ -179,20 +179,20 @@ Or browse all releases at [GitHub Releases](https://github.com/JasonZhangDad/MgT
 MagiesTerminal provides a flake that wraps the official Linux AppImage release for Nix and NixOS users:
 
 ```bash
-nix run github:JasonZhangDad/MgTerminal
+nix run github:Zhangwei930/MgTerminal
 ```
 
 For declarative installs, add the MagiesTerminal flake as an input and use `inputs.magiesTerminal.packages.${pkgs.system}.default` in your NixOS or Home Manager package list.
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 22+ and npm
 - macOS, Windows 10+, or Linux
 
 ### Development
 
 ```bash
 # Clone the repository
-git clone https://github.com/JasonZhangDad/MgTerminal.git
+git clone https://github.com/Zhangwei930/MgTerminal.git
 cd MgTerminal
 
 # Install dependencies
@@ -227,10 +227,10 @@ npm run pack:linux   # Linux (AppImage + DEB + RPM)
 
 | Category | Technology |
 |----------|------------|
-| Framework | Electron 40 |
+| Framework | Electron 42 |
 | Frontend | React 19, TypeScript |
 | Build Tool | Vite 7 |
-| Terminal | xterm.js 5 |
+| Terminal | xterm.js 6 |
 | Styling | Tailwind CSS 4 |
 | SSH/SFTP | ssh2, ssh2-sftp-client |
 | PTY | node-pty |
@@ -249,7 +249,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-See [agents.md](agents.md) for architecture overview and coding conventions.
+See [AGENTS.md](AGENTS.md) for architecture overview and coding conventions.
 
 ---
 

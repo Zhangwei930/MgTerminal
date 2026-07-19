@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUC
 
 ## Ways to Contribute
 
-- Report bugs via [GitHub Issues](https://github.com/JasonZhangDad/MagiesTerminal/issues)
+- Report bugs via [GitHub Issues](https://github.com/Zhangwei930/MgTerminal/issues)
 - Suggest features or improvements
 - Fix bugs or implement features listed in Issues
 - Improve documentation
@@ -21,7 +21,7 @@ This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUC
 
 ```bash
 # Clone the repository
-git clone https://github.com/JasonZhangDad/MagiesTerminal.git
+git clone https://github.com/Zhangwei930/MgTerminal.git
 cd MagiesTerminal
 
 # Install dependencies

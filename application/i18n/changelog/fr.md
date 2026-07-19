@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.9] - 2026-07-19
+
+### Corrections
+- **Impossible de fermer la boîte de dialogue**: les boîtes de dialogue ouvertes dans la fenêtre Paramètres (par ex. le journal « Nouveautés ») ne pouvaient pas être fermées — le X en haut à droite chevauchait la zone de déplacement de la barre de titre, donc les clics étaient interprétés comme un déplacement de la fenêtre. Toutes les boîtes de dialogue sont désormais exclues de cette zone et le X ferme correctement
+
 ## [0.5.8] - 2026-07-19
 
 ### Sécurité

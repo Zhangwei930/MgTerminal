@@ -1,6 +1,11 @@
 # Registro de alterações
 
 
+## [0.5.9] - 2026-07-19
+
+### Correções
+- **Não era possível fechar o diálogo**: os diálogos abertos na janela de Configurações (p. ex., o registro de «Novidades») não podiam ser fechados — o X no canto superior direito sobrepunha a região de arraste da barra de título, então os cliques eram tratados como arraste da janela. Agora todos os diálogos ficam fora dessa região e o X fecha de forma confiável
+
 ## [0.5.8] - 2026-07-19
 
 ### Segurança

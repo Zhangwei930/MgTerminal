@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.9] - 2026-07-19
+
+### Fehlerbehebungen
+- **Dialog ließ sich nicht schließen**: im Einstellungen-Fenster geöffnete Dialoge (z. B. das „Neuigkeiten“-Changelog) ließen sich nicht schließen — das X oben rechts überlappte die Titelleisten-Drag-Region, sodass Klicks als Fensterziehen interpretiert wurden. Alle Dialoge sind jetzt von der Drag-Region ausgenommen und das X schließt zuverlässig
+
 ## [0.5.8] - 2026-07-19
 
 ### Sicherheit

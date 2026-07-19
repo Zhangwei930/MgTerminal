@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.9] - 2026-07-19
+
+### Fixes
+- **Dialog could not be closed**: dialogs opened in the Settings window (e.g. the What's New changelog) could not be closed — the top-right X overlapped the titlebar drag region, so its clicks were consumed as window drags. All dialogs now opt out of the drag region and the X closes reliably
+
 ## [0.5.8] - 2026-07-19
 
 ### Security

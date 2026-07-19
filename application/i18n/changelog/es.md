@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.9] - 2026-07-19
+
+### Correcciones
+- **No se podía cerrar el diálogo**: los diálogos abiertos en la ventana de Ajustes (p. ej., el registro de «Novedades») no se podían cerrar: la X de la esquina superior derecha se solapaba con la zona de arrastre de la barra de título, por lo que los clics se interpretaban como arrastre de la ventana. Ahora todos los diálogos quedan excluidos de esa zona y la X cierra de forma fiable
+
 ## [0.5.8] - 2026-07-19
 
 ### Seguridad

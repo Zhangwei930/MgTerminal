@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.10] - 2026-07-19
+
+### Fehlerbehebungen
+- **„Neuigkeiten“-Dialog-Overlay zu dunkel**: der „Neuigkeiten“-Dialog verdunkelte das Einstellungen-Fenster so stark, dass die linke Navigation kaum lesbar war; Deckkraft und Unschärfe des Overlays dieses Dialogs sind jetzt reduziert, sodass die Navigation dahinter lesbar bleibt (betrifft nur diesen Dialog)
+
 ## [0.5.9] - 2026-07-19
 
 ### Fehlerbehebungen

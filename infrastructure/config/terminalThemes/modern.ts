@@ -1,8 +1,15 @@
 import type { TerminalTheme } from '../../../domain/models';
 
 export const modernTerminalThemes: TerminalTheme[] = [
+  { id: 'ui-claude', name: 'Claude', type: 'dark', colors: {
+    background: '#171311', foreground: '#f5efe9', cursor: '#e08a5d', selection: '#4a2c1f',
+    black: '#171311', red: '#ff7b72', green: '#3fb950', yellow: '#e0a454',
+    blue: '#6cb6ff', magenta: '#d2a8ff', cyan: '#56d4dd', white: '#d8cfc6',
+    brightBlack: '#7a716a', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',
+    brightBlue: '#79c0ff', brightMagenta: '#e2c5ff', brightCyan: '#6adce4', brightWhite: '#fff8f2',
+  }},
   { id: 'ui-pure-black', name: 'Pure Black', type: 'dark', colors: {
-    background: '#000000', foreground: '#c9d1d9', cursor: '#58a6ff', selection: '#264f78',
+    background: '#000000', foreground: '#c9d1d9', cursor: '#c4c9d1', selection: '#2a2d33',
     black: '#000000', red: '#ff7b72', green: '#3fb950', yellow: '#d29922',
     blue: '#58a6ff', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4',
     brightBlack: '#6e7681', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',

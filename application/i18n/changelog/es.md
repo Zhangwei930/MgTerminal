@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.15] - 2026-07-20
+
+### Mejoras
+- **Naranja Claude por defecto**: temas claros/oscuros por defecto en naranja cálido estilo Anthropic/Claude; Claude primero en la lista core, **Pure Black** sigue disponible; temas de terminal follow-app alineados
+
 ## [0.5.14] - 2026-07-20
 
 ### Mejoras

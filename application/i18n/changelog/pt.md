@@ -1,6 +1,11 @@
 # Registro de alterações
 
 
+## [0.5.15] - 2026-07-20
+
+### Melhorias
+- **Laranja Claude como padrão**: temas claro/escuro padrão em laranja quente inspirado no Anthropic/Claude; Claude no topo da lista core, **Pure Black** ainda disponível; temas de terminal follow-app alinhados
+
 ## [0.5.14] - 2026-07-20
 
 ### Melhorias

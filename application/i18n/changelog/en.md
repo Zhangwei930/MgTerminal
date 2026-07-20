@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.15] - 2026-07-20
+
+### Improvements
+- **Claude orange as the default UI theme**: light and dark defaults now use a vivid Anthropic/Claude-inspired warm orange; Claude is first in the core theme list, with **Pure Black** still available for a black look; follow-app terminal themes match
+
 ## [0.5.14] - 2026-07-20
 
 ### Improvements

@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.15] - 2026-07-20
+
+### Améliorations
+- **Orange Claude par défaut** : thèmes clairs/sombres par défaut en orange chaud inspiré d'Anthropic/Claude ; Claude en tête de la liste core, **Pure Black** toujours disponible ; thèmes terminal follow-app alignés
+
 ## [0.5.14] - 2026-07-20
 
 ### Améliorations

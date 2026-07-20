@@ -80,8 +80,8 @@ describe("system preset UI themes", () => {
 
     assert.equal(EXTENDED_LIGHT_UI_THEMES.length, 55);
     assert.equal(EXTENDED_DARK_UI_THEMES.length, 55);
-    assert.equal(LIGHT_UI_THEMES.length, 7 + 55);
-    assert.equal(DARK_UI_THEMES.length, 7 + 55);
+    assert.equal(LIGHT_UI_THEMES.length, 8 + 55);
+    assert.equal(DARK_UI_THEMES.length, 8 + 55);
     assert.equal([...LIGHT_UI_THEMES, ...DARK_UI_THEMES].filter((theme) => theme.collection !== undefined && theme.collection !== "core").length, 0);
   });
 
@@ -97,27 +97,36 @@ describe("system preset UI themes", () => {
   });
 
   it("marks every core light and dark preset with collection core", () => {
-    for (const theme of LIGHT_UI_THEMES.slice(0, 7)) {
+    for (const theme of LIGHT_UI_THEMES.slice(0, 8)) {
       assert.equal(theme.collection, "core", theme.id);
     }
-    for (const theme of DARK_UI_THEMES.slice(0, 7)) {
+    for (const theme of DARK_UI_THEMES.slice(0, 8)) {
       assert.equal(theme.collection, "core", theme.id);
     }
   });
 
-  it("keeps default snow and midnight with card elevated above background", () => {
-    const snow = getUiThemeById("light", "snow");
-    const midnight = getUiThemeById("dark", "midnight");
-    const snowBgL = Number(snow.tokens.background.split(/\s+/)[2]?.replace("%", ""));
-    const snowCardL = Number(snow.tokens.card.split(/\s+/)[2]?.replace("%", ""));
-    const midnightBgL = Number(midnight.tokens.background.split(/\s+/)[2]?.replace("%", ""));
-    const midnightCardL = Number(midnight.tokens.card.split(/\s+/)[2]?.replace("%", ""));
-
-    assert.ok(snowCardL > snowBgL, "snow card should be lighter than canvas");
-    assert.ok(midnightCardL > midnightBgL, "midnight card should be lighter than canvas");
+  it("puts Claude orange first as the default core preset", () => {
+    assert.equal(LIGHT_UI_THEMES[0]?.id, "claude-light");
+    assert.equal(DARK_UI_THEMES[0]?.id, "claude");
+    assert.equal(getUiThemeById("light", "claude-light").name, "Claude");
+    assert.equal(getUiThemeById("dark", "claude").name, "Claude");
+    // Black remains a first-class core option.
+    assert.ok(DARK_UI_THEMES.some((theme) => theme.id === "pure-black"));
   });
 
-  it("keeps default snow and midnight readable for body and primary chrome", async () => {
+  it("keeps default Claude themes with card elevated above background", () => {
+    const light = getUiThemeById("light", "claude-light");
+    const dark = getUiThemeById("dark", "claude");
+    const lightBgL = Number(light.tokens.background.split(/\s+/)[2]?.replace("%", ""));
+    const lightCardL = Number(light.tokens.card.split(/\s+/)[2]?.replace("%", ""));
+    const darkBgL = Number(dark.tokens.background.split(/\s+/)[2]?.replace("%", ""));
+    const darkCardL = Number(dark.tokens.card.split(/\s+/)[2]?.replace("%", ""));
+
+    assert.ok(lightCardL > lightBgL, "claude-light card should be lighter than canvas");
+    assert.ok(darkCardL > darkBgL, "claude card should be lighter than canvas");
+  });
+
+  it("keeps default Claude themes readable for body and primary chrome", async () => {
     const { getContrastRatio, getHslTokenRelativeLuminance } = await import(
       "../../domain/colorContrast.ts"
     );
@@ -129,8 +138,9 @@ describe("system preset UI themes", () => {
     };
 
     for (const [mode, id] of [
-      ["light", "snow"],
-      ["dark", "midnight"],
+      ["light", "claude-light"],
+      ["dark", "claude"],
+      ["dark", "pure-black"],
     ] as const) {
       const tokens = getUiThemeById(mode, id).tokens;
       assert.ok(contrast(tokens.foreground, tokens.background) >= 7, `${id} body on canvas`);
@@ -142,13 +152,13 @@ describe("system preset UI themes", () => {
     }
   });
 
-  it("aligns default follow-app terminal themes with snow and midnight canvas", () => {
-    const snow = getUiThemeById("light", "snow").tokens;
-    const midnight = getUiThemeById("dark", "midnight").tokens;
-    const snowTerm = TERMINAL_THEMES.find((theme) => theme.id === "ui-snow");
-    const midnightTerm = TERMINAL_THEMES.find((theme) => theme.id === "ui-midnight");
-    assert.ok(snowTerm);
-    assert.ok(midnightTerm);
+  it("aligns default follow-app terminal themes with Claude canvas", () => {
+    const light = getUiThemeById("light", "claude-light").tokens;
+    const dark = getUiThemeById("dark", "claude").tokens;
+    const lightTerm = TERMINAL_THEMES.find((theme) => theme.id === "ui-claude-light");
+    const darkTerm = TERMINAL_THEMES.find((theme) => theme.id === "ui-claude");
+    assert.ok(lightTerm);
+    assert.ok(darkTerm);
 
     // HSL → approx RGB; allow a small channel delta for hand-tuned ANSI palettes.
     const hslLightness = (token: string) => Number(token.split(/\s+/)[2]?.replace("%", ""));
@@ -160,12 +170,12 @@ describe("system preset UI themes", () => {
     };
 
     assert.ok(
-      Math.abs(hexLightness(snowTerm.colors.background) - hslLightness(snow.background)) <= 3,
-      "ui-snow background should track snow canvas lightness",
+      Math.abs(hexLightness(lightTerm.colors.background) - hslLightness(light.background)) <= 3,
+      "ui-claude-light background should track claude-light canvas lightness",
     );
     assert.ok(
-      Math.abs(hexLightness(midnightTerm.colors.background) - hslLightness(midnight.background)) <= 3,
-      "ui-midnight background should track midnight canvas lightness",
+      Math.abs(hexLightness(darkTerm.colors.background) - hslLightness(dark.background)) <= 3,
+      "ui-claude background should track claude canvas lightness",
     );
   });
 

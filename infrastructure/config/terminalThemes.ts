@@ -10,6 +10,7 @@ import { uiMatchTerminalThemes } from './terminalThemes/uiMatch';
 export type TerminalThemeConfig = TerminalTheme;
 
 const UI_MATCH_TERMINAL_THEME_IDS = new Set([
+  'ui-claude-light',
   'ui-snow',
   'ui-pure-white',
   'ui-ivory',
@@ -17,6 +18,7 @@ const UI_MATCH_TERMINAL_THEME_IDS = new Set([
   'ui-mint',
   'ui-sand',
   'ui-lavender',
+  'ui-claude',
   'ui-pure-black',
   'ui-midnight',
   'ui-deep-blue',

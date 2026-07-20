@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.15] - 2026-07-20
+
+### Verbesserungen
+- **Claude-Orange als Standard-UI-Thema**: Hell/Dunkel standardmäßig warmes Anthropic/Claude-Orange; Claude steht zuerst in der Kernliste, **Pure Black** bleibt wählbar; Follow-App-Terminalthemen passen dazu
+
 ## [0.5.14] - 2026-07-20
 
 ### Verbesserungen

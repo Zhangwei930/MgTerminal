@@ -30,10 +30,11 @@ export const getSystemPreference = (): 'light' | 'dark' =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
-export const DEFAULT_LIGHT_UI_THEME = 'snow';
-export const DEFAULT_DARK_UI_THEME = 'midnight';
+export const DEFAULT_LIGHT_UI_THEME = 'claude-light';
+export const DEFAULT_DARK_UI_THEME = 'claude';
 export const DEFAULT_ACCENT_MODE: 'theme' | 'custom' = 'theme';
-export const DEFAULT_CUSTOM_ACCENT = '221.2 83.2% 53.3%';
+/** Fallback custom accent when users override theme accent — Claude orange. */
+export const DEFAULT_CUSTOM_ACCENT = '16 82% 46%';
 export const DEFAULT_TERMINAL_THEME = 'magiesTerminal-dark';
 export const DEFAULT_FONT_FAMILY = 'menlo';
 

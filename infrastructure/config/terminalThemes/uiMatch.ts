@@ -7,6 +7,13 @@ export const uiMatchTerminalThemes: TerminalTheme[] = [
   // ANSI palette based on magiesTerminal-light (for light) / magiesTerminal-dark (for dark).,
   // ====================================================================,
   // Light UI matches,
+  { id: 'ui-claude-light', name: 'Claude', type: 'light', colors: {
+    background: '#faf6f3', foreground: '#241c18', cursor: '#d97745', selection: '#f3d0bc',
+    black: '#241c18', red: '#cf222e', green: '#116329', yellow: '#9a6700',
+    blue: '#0b6bcb', magenta: '#8250df', cyan: '#0e7574', white: '#6e7781',
+    brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37', brightYellow: '#7d4e00',
+    brightBlue: '#218bff', brightMagenta: '#a475f9', brightCyan: '#0c7875', brightWhite: '#8c959f',
+  }},
   { id: 'ui-snow', name: 'Snow', type: 'light', colors: {
     background: '#f5f7fa', foreground: '#101728', cursor: '#0068d6', selection: '#b3d7ff',
     black: '#101728', red: '#cf222e', green: '#116329', yellow: '#9a6700',

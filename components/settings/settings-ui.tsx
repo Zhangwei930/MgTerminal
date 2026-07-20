@@ -23,13 +23,15 @@ export const Toggle: React.FC<ToggleProps> = ({ checked, onChange, disabled, ari
       "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent",
       "transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       "disabled:cursor-not-allowed disabled:opacity-50",
-      checked ? "bg-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]" : "bg-input/90",
+      checked
+        ? "bg-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_0_12px_-2px_hsl(var(--primary)/0.55)]"
+        : "bg-input/85 shadow-[inset_0_1px_2px_hsl(var(--foreground)/0.08)]",
     )}
   >
     <span
       className={cn(
         "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-md ring-0 transition-transform duration-200 ease-out",
-        checked ? "translate-x-5" : "translate-x-0",
+        checked ? "translate-x-5 shadow-primary/20" : "translate-x-0",
       )}
     />
   </button>
@@ -58,9 +60,9 @@ export const Select: React.FC<SelectProps> = ({
     <SelectPrimitive.Root value={value} onValueChange={onChange} disabled={disabled}>
       <SelectPrimitive.Trigger
         className={cn(
-          "flex h-9 max-w-full items-center justify-between rounded-lg border border-border/70 bg-background px-3 py-1 text-sm",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-[border-color,box-shadow]",
-          "focus-visible:outline-none focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/15",
+          "flex h-9 max-w-full items-center justify-between rounded-lg border border-border/65 bg-background/90 px-3 py-1 text-sm",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-[border-color,box-shadow]",
+          "focus-visible:outline-none focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/18 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]",
           "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:min-w-0 [&>span]:truncate [&>span]:whitespace-nowrap",
           fitSelectedText && "min-w-max",
           className,
@@ -78,7 +80,7 @@ export const Select: React.FC<SelectProps> = ({
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
-          className="z-[200000] max-h-80 w-max max-w-[min(24rem,var(--radix-select-content-available-width))] overflow-hidden rounded-xl border border-border/55 bg-popover/95 text-popover-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
+          className="z-[200000] max-h-80 w-max max-w-[min(24rem,var(--radix-select-content-available-width))] overflow-hidden rounded-xl border border-border/50 bg-popover/96 text-popover-foreground shadow-[0_12px_36px_rgba(0,0,0,0.14),0_4px_12px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.04] backdrop-blur-md data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1"
           position="popper"
           sideOffset={4}
           style={{ minWidth: "max(12rem, var(--radix-select-trigger-width))" }}
@@ -156,7 +158,7 @@ export const SettingsSection: React.FC<{
 );
 
 export const settingCardClassName =
-  "rounded-xl border border-border/60 bg-card text-card-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] ring-1 ring-inset ring-white/[0.02]";
+  "rounded-xl border border-border/55 bg-card/95 text-card-foreground shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.1)] ring-1 ring-inset ring-white/[0.035]";
 
 interface SettingCardProps {
   children: React.ReactNode;

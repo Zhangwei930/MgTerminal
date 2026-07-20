@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.11] - 2026-07-20
+
+### Verbesserungen
+- **Themenorientierte Client-UI-Auffrischung**: Shell-Chrome, Vault-Seitenleiste/Bühne, Einstellungsfenster und gemeinsame UI-Primitives folgen dem aktiven Thema klarer — Primärakzent-Navigation, Glas-Overlays, weichere Elevation sowie verfeinerter Fokus und Tiefe bei Buttons, Eingaben, Dialogen, Tabs, Schaltern, Leerzuständen und Seitenpanels
+
 ## [0.5.10] - 2026-07-19
 
 ### Fehlerbehebungen

@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.11] - 2026-07-20
+
+### Improvements
+- **Theme-aligned client UI refresh**: shell chrome, vault sidebar/stage, settings window, and shared UI primitives now follow the active theme more clearly — primary-accent nav, glass overlays, softer elevation, and refined focus/depth on buttons, inputs, dialogs, tabs, switches, empty states, and side panels
+
 ## [0.5.10] - 2026-07-19
 
 ### Fixes

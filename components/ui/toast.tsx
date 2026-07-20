@@ -122,14 +122,14 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onDismiss: (id: string) => voi
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm">
+        <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 max-w-sm">
             {toasts.map(t => (
                 <div
                     key={t.id}
                     className={cn(
-                        "flex items-start gap-3 p-3.5 rounded-xl border border-border/55",
-                        "bg-card/95 shadow-[0_12px_32px_rgba(0,0,0,0.14),0_2px_8px_rgba(0,0,0,0.06)]",
-                        "ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm",
+                        "flex items-start gap-3 p-3.5 rounded-xl border border-border/50",
+                        "bg-card/96 shadow-[0_16px_40px_rgba(0,0,0,0.16),0_4px_12px_rgba(0,0,0,0.06)]",
+                        "ring-1 ring-inset ring-white/[0.04] backdrop-blur-md",
                         "animate-in slide-in-from-right-5 fade-in duration-200",
                         TOAST_STYLES[t.type],
                         t.onClick && "cursor-pointer hover:opacity-95 transition-opacity"

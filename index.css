@@ -397,6 +397,30 @@ body {
   font-family: var(--font-sans);
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Theme-aware elevation + glass tokens used by shell chrome and surfaces */
+:root {
+  --surface-elevated: hsl(var(--card) / 0.92);
+  --surface-glass: hsl(var(--background) / 0.82);
+  --surface-inset: hsl(var(--muted) / 0.45);
+  --shadow-elevated: 0 1px 2px hsl(var(--foreground) / 0.04), 0 10px 28px -12px hsl(var(--foreground) / 0.14);
+  --shadow-float: 0 0 0 1px hsl(var(--border) / 0.4), 0 18px 40px -16px hsl(var(--foreground) / 0.22), 0 8px 18px -10px hsl(var(--foreground) / 0.1);
+  --shadow-glow-primary: 0 0 0 1px hsl(var(--primary) / 0.18), 0 8px 24px -8px hsl(var(--primary) / 0.35);
+  --ring-inset-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.dark {
+  --surface-elevated: hsl(var(--card) / 0.88);
+  --surface-glass: hsl(var(--background) / 0.78);
+  --surface-inset: hsl(var(--muted) / 0.35);
+  --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.24), 0 14px 36px -14px hsl(0 0% 0% / 0.55);
+  --shadow-float: 0 0 0 1px hsl(var(--border) / 0.45), 0 22px 48px -18px hsl(0 0% 0% / 0.65), 0 10px 22px -12px hsl(0 0% 0% / 0.4);
+  --shadow-glow-primary: 0 0 0 1px hsl(var(--primary) / 0.28), 0 10px 28px -8px hsl(var(--primary) / 0.45);
+  --ring-inset-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.06);
 }
 
 /* Text selection uses theme accent instead of browser default */
@@ -440,8 +464,43 @@ body {
 /* Semantic selected row surface for lists (vault / trees / settings) */
 [data-selected="true"],
 [aria-selected="true"] {
-  --magiesTerminal-selected-bg: hsl(var(--primary) / 0.1);
+  --magiesTerminal-selected-bg: hsl(var(--primary) / 0.12);
   --magiesTerminal-selected-fg: hsl(var(--foreground));
+  --magiesTerminal-selected-ring: hsl(var(--primary) / 0.22);
+}
+
+/* Shared elevated / glass surface helpers for shell chrome */
+.magiesTerminal-surface {
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-elevated), var(--ring-inset-highlight);
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.875rem;
+}
+
+.magiesTerminal-surface-glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: var(--shadow-elevated), var(--ring-inset-highlight);
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.magiesTerminal-nav-active {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.16) 0%,
+    hsl(var(--primary) / 0.08) 100%
+  );
+  color: hsl(var(--foreground));
+  box-shadow: inset 2px 0 0 0 hsl(var(--primary));
+}
+
+.magiesTerminal-nav-active:hover {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.2) 0%,
+    hsl(var(--primary) / 0.1) 100%
+  );
 }
 
 ::view-transition-old(root),
@@ -502,7 +561,74 @@ html[data-theme-transition] *::after {
 
 .magiesTerminal-shell {
   position: relative;
-  background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 60%, hsl(var(--background) / 0.9) 100%);
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 80% 50% at 0% -10%, hsl(var(--primary) / 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, hsl(var(--accent) / 0.06), transparent 50%),
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 55%, hsl(var(--secondary) / 0.55) 100%);
+}
+
+.magiesTerminal-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, black, transparent 78%);
+}
+
+.dark .magiesTerminal-shell {
+  background:
+    radial-gradient(ellipse 85% 55% at 8% -12%, hsl(var(--primary) / 0.12), transparent 58%),
+    radial-gradient(ellipse 55% 40% at 96% 4%, hsl(var(--accent) / 0.08), transparent 52%),
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 52%, hsl(var(--secondary) / 0.4) 100%);
+}
+
+/* Vault workspace stage — elevated content island */
+.magiesTerminal-vault-stage {
+  background:
+    linear-gradient(180deg, hsl(var(--secondary) / 0.65) 0%, hsl(var(--secondary) / 0.35) 100%);
+}
+
+.magiesTerminal-vault-sidebar {
+  background:
+    linear-gradient(180deg, hsl(var(--secondary) / 0.92) 0%, hsl(var(--secondary) / 0.7) 100%);
+  border-right: 1px solid hsl(var(--border) / 0.35);
+}
+
+.magiesTerminal-vault-surface {
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.98) 0%, hsl(var(--background)) 40%);
+  box-shadow:
+    var(--shadow-elevated),
+    var(--ring-inset-highlight),
+    0 0 0 1px hsl(var(--border) / 0.28);
+  border: 1px solid hsl(var(--border) / 0.55);
+}
+
+/* Settings window chrome */
+.settings-window {
+  background:
+    radial-gradient(ellipse 70% 40% at 0% 0%, hsl(var(--primary) / 0.06), transparent 55%),
+    hsl(var(--background));
+}
+
+.settings-window .settings-nav-rail {
+  background: linear-gradient(180deg, hsl(var(--muted) / 0.28) 0%, hsl(var(--muted) / 0.12) 100%);
+  border-right: 1px solid hsl(var(--border) / 0.55);
+}
+
+.settings-window .settings-titlebar {
+  background: linear-gradient(180deg, hsl(var(--card) / 0.55) 0%, hsl(var(--card) / 0.28) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Slim down xterm 6.0 VS Code scrollbar — wide hit area, thin visual slider */

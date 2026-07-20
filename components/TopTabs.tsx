@@ -860,7 +860,7 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
     <div
       data-top-tabs-root
       data-section="top-tabs"
-      className="relative w-full bg-secondary app-drag after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-bottom after:[transform:scaleY(.5)] after:bg-border/50 after:content-['']"
+      className="relative w-full bg-gradient-to-b from-secondary/95 to-secondary/80 app-drag after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-bottom after:[transform:scaleY(.5)] after:bg-border/45 after:content-[''] backdrop-blur-[1px]"
       style={{
         ...dragRegionNoSelect,
         backgroundColor: 'var(--top-tabs-bg, hsl(var(--secondary)))',

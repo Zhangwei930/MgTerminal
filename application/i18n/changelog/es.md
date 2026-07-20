@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.11] - 2026-07-20
+
+### Mejoras
+- **Renovación de la UI del cliente alineada al tema**: el chrome de la app, la barra lateral/escenario del vault, la ventana de ajustes y los componentes UI compartidos siguen el tema activo con más claridad — navegación con acento primario, superposiciones tipo cristal, elevación más suave y foco/profundidad refinados en botones, entradas, diálogos, pestañas, interruptores, estados vacíos y paneles laterales
+
 ## [0.5.10] - 2026-07-19
 
 ### Correcciones

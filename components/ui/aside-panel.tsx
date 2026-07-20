@@ -111,7 +111,7 @@ export const AsidePanelHeader: React.FC<AsidePanelHeaderProps> = ({
     showBackButton = false,
 }) => {
     return (
-        <div className="px-4 py-3 flex items-center justify-between border-b border-border/50 bg-gradient-to-b from-card/70 to-card/30 app-no-drag shrink-0">
+        <div className="px-4 py-3 flex items-center justify-between border-b border-border/45 bg-gradient-to-b from-card/80 via-card/50 to-card/20 app-no-drag shrink-0 backdrop-blur-[2px]">
             <div className="flex items-center gap-2 min-w-0">
                 {showBackButton && onBack && (
                     <button
@@ -161,7 +161,7 @@ export const AsidePanelFooter: React.FC<{ children: ReactNode; className?: strin
     className,
 }) => {
     return (
-        <div className={cn("px-4 py-3 border-t border-border/50 bg-card/20 shrink-0", className)}>
+        <div className={cn("px-4 py-3 border-t border-border/45 bg-gradient-to-t from-card/35 to-card/10 shrink-0", className)}>
             {children}
         </div>
     );
@@ -313,8 +313,8 @@ export const AsidePanelStack: React.FC<AsidePanelStackProps> = ({
         <AsidePanelContext.Provider value={{ push, pop, replace, clear, canGoBack, currentItem }}>
             <div className={cn(
                 layout === 'inline'
-                    ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/55 bg-background/98 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_40px_hsl(var(--foreground)/0.07)]"
-                    : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/55 bg-background/98 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_36px_hsl(var(--foreground)/0.08)]",
+                    ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/50 bg-background/97 flex flex-col app-no-drag overflow-hidden shadow-[-24px_0_48px_hsl(var(--foreground)/0.08)] ring-1 ring-inset ring-white/[0.02]"
+                    : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/50 bg-background/97 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_44px_hsl(var(--foreground)/0.1)] ring-1 ring-inset ring-white/[0.02]",
                 layout === 'overlay' && width,
                 className
             )}
@@ -408,8 +408,8 @@ export const AsidePanel: React.FC<AsidePanelProps> = ({
     return (
         <div className={cn(
             layout === 'inline'
-                ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/55 bg-background/98 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_40px_hsl(var(--foreground)/0.07)]"
-                : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/55 bg-background/98 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-16px_0_36px_hsl(var(--foreground)/0.08)]",
+                ? "relative split-panel-enter shrink-0 h-full min-h-0 max-w-full border-l border-border/50 bg-background/97 flex flex-col app-no-drag overflow-hidden shadow-[-24px_0_48px_hsl(var(--foreground)/0.08)] ring-1 ring-inset ring-white/[0.02]"
+                : "absolute right-0 top-0 bottom-0 max-w-full border-l border-border/50 bg-background/97 z-30 flex flex-col app-no-drag overflow-hidden shadow-[-20px_0_44px_hsl(var(--foreground)/0.1)] ring-1 ring-inset ring-white/[0.02]",
             layout === 'overlay' && width,
             isResizing && layout === 'inline' && 'transition-none',
             className

@@ -84,13 +84,18 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
     }
   }, [isHostPanelOpen]);
 
+  const vaultNavActiveClass =
+    "magiesTerminal-nav-active border-border/30 hover:bg-primary/15";
+  const vaultNavIdleClass =
+    "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]";
+
   return (
-    <div ref={rootRef} className="absolute inset-0 min-h-0 flex bg-secondary" data-section="vault-view">
+    <div ref={rootRef} className="absolute inset-0 min-h-0 flex magiesTerminal-vault-stage" data-section="vault-view">
       {/* Sidebar */}
       <TooltipProvider delayDuration={100}>
         <div
           className={cn(
-            "relative shrink-0 bg-secondary flex flex-col",
+            "relative shrink-0 magiesTerminal-vault-sidebar flex flex-col",
             isSidebarResizing ? "transition-none" : "transition-[width] duration-200",
           )}
           style={{ width: effectiveSidebarWidth }}
@@ -104,9 +109,9 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-2.5 rounded-xl transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
-                  <AppLogo className="h-8 w-8 flex-shrink-0" />
+                  <AppLogo className="h-8 w-8 flex-shrink-0 drop-shadow-sm" />
                   {!sidebarCollapsed && (
                     <p className="text-xl font-black italic tracking-tight text-foreground leading-none">
                       MagiesTerminal
@@ -128,8 +133,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "hosts" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "hosts" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
                     setCurrentSection("hosts");
@@ -149,8 +153,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "keys" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "keys" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
                     setCurrentSection("keys");
@@ -169,8 +172,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "proxies" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "proxies" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
                     setCurrentSection("proxies");
@@ -189,8 +191,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "port" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "port" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("port")}
                 >
@@ -207,8 +208,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "snippets" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "snippets" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
                     setCurrentSection("snippets");
@@ -227,8 +227,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "notes" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "notes" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
                     setCurrentSection("notes");
@@ -247,8 +246,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "knownhosts" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "knownhosts" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("knownhosts")}
                 >
@@ -265,8 +263,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                   className={cn(
                     "w-full h-10",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
-                    currentSection === "logs" &&
-                    "bg-foreground/10 text-foreground hover:bg-foreground/15 border-border/40",
+                    currentSection === "logs" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("logs")}
                 >
@@ -278,13 +275,13 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             </Tooltip>
           </div>
 
-          <div className={cn("mt-auto pb-4 space-y-2", sidebarCollapsed ? "px-1.5" : "px-2.5")}>
+          <div className={cn("mt-auto pb-4 space-y-2 border-t border-border/30 pt-3", sidebarCollapsed ? "px-1.5" : "px-2.5")}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   className={cn(
-                    "w-full",
+                    "w-full text-muted-foreground hover:text-foreground",
                     sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3"
                   )}
                   onClick={onOpenSettings}
@@ -313,7 +310,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
 
       <div className="flex min-w-0 flex-1 py-0 pr-2 pb-2 pl-0" data-section="vault-stage">
         <div
-          className="relative flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border/60 bg-background shadow-sm"
+          className="relative flex min-h-0 flex-1 overflow-hidden rounded-2xl magiesTerminal-vault-surface"
           data-section="vault-surface"
         >
           {/* Main Area */}

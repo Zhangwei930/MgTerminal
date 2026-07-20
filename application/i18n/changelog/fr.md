@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.11] - 2026-07-20
+
+### Améliorations
+- **Rafraîchissement UI client aligné sur le thème** : chrome de l'application, barre latérale/scène du vault, fenêtre des paramètres et primitives UI partagées suivent mieux le thème actif — navigation en accent primaire, superpositions verre, élévation plus douce, focus et profondeur affinés pour boutons, champs, dialogues, onglets, interrupteurs, états vides et panneaux latéraux
+
 ## [0.5.10] - 2026-07-19
 
 ### Corrections

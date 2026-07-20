@@ -36,8 +36,8 @@ export const ProductEmptyState: React.FC<ProductEmptyStateProps> = ({
     data-testid="product-empty-state"
   >
     {icon && (
-      <div className="mb-5 flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-2xl border border-border/50 bg-gradient-to-b from-secondary to-secondary/60 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03]">
-        {icon}
+      <div className="relative mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl border border-border/50 bg-gradient-to-b from-secondary via-secondary/80 to-secondary/50 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_rgba(0,0,0,0.08)] ring-1 ring-inset ring-primary/10 before:absolute before:inset-0 before:rounded-2xl before:bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.14),transparent_60%)] before:pointer-events-none">
+        <span className="relative z-[1]">{icon}</span>
       </div>
     )}
     <h3 className="mb-2 text-lg font-semibold tracking-tight text-foreground">{title}</h3>

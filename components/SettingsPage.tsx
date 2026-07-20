@@ -62,7 +62,7 @@ class AITabErrorBoundary extends React.Component<
 type SettingsState = ReturnType<typeof useSettingsState>;
 
 const settingsTabTriggerClassName =
-    "w-full justify-start gap-2 px-3 py-2 text-sm rounded-md transition-colors duration-150 overflow-hidden text-muted-foreground hover:bg-muted/60 hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-[inset_2px_0_0_0_hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "w-full justify-start gap-2 px-3 py-2.5 text-sm rounded-lg transition-[color,background-color,box-shadow] duration-150 overflow-hidden text-muted-foreground hover:bg-muted/55 hover:text-foreground data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/14 data-[state=active]:to-primary/6 data-[state=active]:text-foreground data-[state=active]:shadow-[inset_2px_0_0_0_hsl(var(--primary))] data-[state=active]:ring-1 data-[state=active]:ring-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 const settingsTabIconClassName = "shrink-0";
 const settingsTabLabelClassName = "min-w-0 truncate";
 
@@ -338,19 +338,19 @@ const SettingsPageContent: React.FC<{ settings: SettingsState }> = ({ settings }
 
     return (
         <>
-        <div className="settings-window h-screen flex flex-col bg-background text-foreground font-sans">
-            <div className="shrink-0 border-b border-border/60 bg-card/40 app-drag">
+        <div className="settings-window h-screen flex flex-col text-foreground font-sans">
+            <div className="settings-titlebar shrink-0 app-drag">
                 <div className="flex items-center justify-between px-4 pt-3">
                     {isMac && <div className="h-6" />}
                 </div>
-                <div className="flex items-center justify-between px-4 py-2">
+                <div className="flex items-center justify-between px-4 py-2.5">
                     <h1 className="text-lg font-semibold tracking-tight">{t("settings.title")}</h1>
                     {!isMac && (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={handleClose}
-                                    className="app-no-drag w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-destructive/20 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                    className="app-no-drag w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-destructive/20 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                 >
                                     <X size={16} />
                                 </button>
@@ -367,8 +367,8 @@ const SettingsPageContent: React.FC<{ settings: SettingsState }> = ({ settings }
                 orientation="vertical"
                 className="flex-1 flex overflow-hidden"
             >
-                <div className="w-56 border-r border-border/60 bg-muted/15 flex flex-col shrink-0 px-3 py-3">
-                    <TabsList className="flex flex-col h-auto bg-transparent gap-0.5 p-0 justify-start">
+                <div className="settings-nav-rail w-56 flex flex-col shrink-0 px-3 py-3">
+                    <TabsList className="flex flex-col h-auto bg-transparent gap-1 p-0 justify-start border-0 shadow-none">
                         <TabsTrigger
                             value="application"
                             className={settingsTabTriggerClassName}

@@ -19,7 +19,7 @@ export function VaultPageHeader({
   return (
     <header
       className={cn(
-        "relative shrink-0 bg-background/95 app-drag after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-bottom after:[transform:scaleY(.5)] after:bg-border/40 after:content-['']",
+        "relative shrink-0 bg-gradient-to-b from-background/98 to-background/90 backdrop-blur-[2px] app-drag after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-bottom after:[transform:scaleY(.5)] after:bg-border/45 after:content-['']",
         className,
       )}
       data-section={dataSection}
@@ -73,8 +73,8 @@ export function VaultHeaderSearch({
 }
 
 export const vaultHeaderSecondaryButtonClass =
-  "h-10 px-3 gap-2 bg-foreground/5 text-foreground hover:bg-foreground/10 border-border/40";
+  "h-10 px-3 gap-2 bg-foreground/[0.05] text-foreground hover:bg-foreground/[0.09] border-border/40 shadow-sm";
 
-export const vaultHeaderIconButtonClass = "h-10 w-10";
+export const vaultHeaderIconButtonClass = "h-10 w-10 text-muted-foreground hover:text-foreground";
 
-export const vaultSectionTitleClass = "text-base font-semibold text-muted-foreground";
+export const vaultSectionTitleClass = "text-base font-semibold tracking-tight text-muted-foreground";

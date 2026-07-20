@@ -20,8 +20,8 @@ const SelectTrigger = React.forwardRef<
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex h-10 w-full max-w-full items-center justify-between rounded-lg border border-border/70 bg-background px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
-        "placeholder:text-muted-foreground transition-[border-color,box-shadow] focus:outline-none focus:border-primary/45 focus:ring-2 focus:ring-primary/15",
+        "flex h-10 w-full max-w-full items-center justify-between rounded-lg border border-border/65 bg-background/90 px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        "placeholder:text-muted-foreground transition-[border-color,box-shadow] focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/18 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.08)]",
         "disabled:cursor-not-allowed disabled:opacity-50 [&>span]:min-w-0 [&>span]:truncate [&>span]:whitespace-nowrap",
         fitSelectedText && "min-w-max",
         className
@@ -85,8 +85,8 @@ const SelectContent = React.forwardRef<
       ref={ref}
       // Disable animations - they cause stacking/positioning issues on first open
       className={cn(
-        "z-[200000] max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border/55 bg-popover/95 text-popover-foreground",
-        "shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm",
+        "z-[200000] max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border/50 bg-popover/96 text-popover-foreground",
+        "shadow-[0_12px_36px_rgba(0,0,0,0.14),0_4px_12px_rgba(0,0,0,0.06)] ring-1 ring-inset ring-white/[0.04] backdrop-blur-md",
         position === "popper" &&
         "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className

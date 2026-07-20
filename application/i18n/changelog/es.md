@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.13] - 2026-07-20
+
+### Mejoras
+- **Rediseño del panel lateral de IA**: lavado ambiental y microcuadrícula; cabecera de cristal + botón Nuevo chat primary; burbujas de usuario solid primary y tarjetas del asistente con riel primary; compositor flotante con resplandor de foco; estado vacío, sesiones recientes, grupos de herramientas, bloques de pensamiento y menú de agente actualizados
+
 ## [0.5.12] - 2026-07-20
 
 ### Mejoras

@@ -525,29 +525,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
   // Shared toolbar chip: bordered pill with soft fill so model/permission
   // controls read as interactive controls, not plain text labels.
   const chipClassName = [
-    'inline-flex h-7 items-center gap-1.5 rounded-full border border-border/55',
-    'bg-muted/20 px-2 text-[11px] font-medium text-foreground/78',
-    'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
-    'transition-colors hover:border-border hover:bg-muted/35 hover:text-foreground',
+    'inline-flex h-7 items-center gap-1.5 rounded-full border border-border/50',
+    'bg-background/70 px-2.5 text-[11px] font-medium text-foreground/82',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_hsl(var(--foreground)/0.04)]',
+    'transition-colors hover:border-primary/30 hover:bg-primary/[0.07] hover:text-foreground',
   ].join(' ');
   const selectedSkillChipClassName =
-    'inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/22 bg-primary/10 pl-2.5 pr-1.5 text-[11px] font-medium text-foreground/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
+    'inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/12 pl-2.5 pr-1.5 text-[11px] font-medium text-foreground/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
   const iconButtonClassName = [
     'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-    'border border-transparent text-foreground/65',
-    'hover:border-border/50 hover:bg-muted/30 hover:text-foreground',
+    'border border-border/40 bg-background/50 text-foreground/70',
+    'hover:border-primary/30 hover:bg-primary/[0.08] hover:text-foreground',
     'transition-colors',
   ].join(' ');
   const menuShellClassName =
-    'fixed z-[1000] overflow-hidden rounded-xl border border-border/55 bg-popover/95 shadow-xl backdrop-blur-sm py-1';
+    'fixed z-[1000] overflow-hidden rounded-2xl border border-border/50 bg-popover/96 shadow-[0_16px_40px_rgba(0,0,0,0.16)] backdrop-blur-md py-1.5 ring-1 ring-inset ring-white/[0.04]';
   const menuItemClassName =
-    'w-full flex items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors cursor-pointer hover:bg-muted/35';
+    'w-full flex items-center gap-2.5 mx-1 px-2.5 py-2 text-left text-[12px] rounded-xl transition-colors cursor-pointer hover:bg-muted/40';
   const menuSectionLabelClassName =
-    'px-3 pt-1.5 pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/45';
+    'px-3.5 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50';
 
   return (
-    <div className="shrink-0 px-4 pb-4 pt-1">
-      <div ref={inputShellRef} className="relative">
+    <div className="shrink-0 px-3.5 pb-3.5 pt-1.5">
+      <div ref={inputShellRef} className="magiesTerminal-ai-composer relative">
       <PromptInput onSubmit={handleSubmit} className="block">
         {/* File attachment chips */}
         {files.length > 0 && (

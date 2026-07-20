@@ -127,8 +127,8 @@ export const AiActivityIndicator: React.FC<AiActivityIndicatorProps> = ({
       aria-live="polite"
       className={cn(
         'group/ai-activity relative flex w-fit max-w-full items-center gap-2.5 overflow-hidden',
-        'rounded-2xl rounded-tl-md border border-border/50 bg-card/70 px-3.5 py-2.5',
-        'shadow-[0_1px_3px_rgba(0,0,0,0.05)] ring-1 ring-inset ring-white/[0.03]',
+        'rounded-2xl rounded-tl-md border border-primary/25 bg-gradient-to-br from-primary/[0.1] to-card/80 px-3.5 py-2.5',
+        'shadow-[0_4px_16px_-8px_hsl(var(--primary)/0.3)] ring-1 ring-inset ring-white/[0.04]',
         className,
       )}
     >

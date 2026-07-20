@@ -41,11 +41,11 @@ export const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-card/30 px-4 py-2.5">
-        <span className="text-[13px] font-medium text-foreground/80">{t('ai.chat.allSessions')}</span>
+      <div className="magiesTerminal-ai-header flex shrink-0 items-center justify-between px-4 py-3">
+        <span className="text-[13px] font-semibold tracking-tight text-foreground">{t('ai.chat.allSessions')}</span>
         <button
           onClick={onClose}
-          className="rounded-md p-1 text-[12px] text-muted-foreground/60 transition-colors duration-150 hover:bg-muted hover:text-muted-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-lg p-1.5 text-[12px] text-muted-foreground/70 transition-colors duration-150 hover:bg-muted hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X size={14} />
         </button>

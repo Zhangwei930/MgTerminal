@@ -64,20 +64,20 @@ const AgentMenuRow: React.FC<{
       type="button"
       onClick={onClick}
       className={cn(
-        'mx-1.5 flex h-11 w-[calc(100%-0.75rem)] items-center gap-3 rounded-xl px-2.5 text-left text-[13px] text-foreground/88 transition-colors cursor-pointer',
+        'mx-1.5 flex h-11 w-[calc(100%-0.75rem)] items-center gap-3 rounded-xl px-2.5 text-left text-[13px] text-foreground/90 transition-colors cursor-pointer',
         'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30',
-        isActive && 'bg-primary/[0.08] ring-1 ring-inset ring-primary/15',
+        isActive && 'bg-primary text-primary-foreground shadow-[0_4px_12px_-4px_hsl(var(--primary)/0.5)] hover:bg-primary/92',
       )}
     >
-      <AgentIconBadge agent={agent} size="sm" variant="plain" className="opacity-90" />
+      <AgentIconBadge agent={agent} size="sm" variant="plain" className={cn('opacity-95', isActive && 'brightness-110')} />
       <div className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{agent.name}</span>
+        <span className="block truncate font-semibold">{agent.name}</span>
         {subtitle && (
-          <span className="block truncate font-mono text-[10.5px] text-muted-foreground/50">{subtitle}</span>
+          <span className={cn('block truncate font-mono text-[10.5px]', isActive ? 'text-primary-foreground/70' : 'text-muted-foreground/50')}>{subtitle}</span>
         )}
       </div>
       {isActive && (
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-foreground/90" />
       )}
     </button>
   );
@@ -208,26 +208,26 @@ const AgentSelector: React.FC<AgentSelectorProps> = ({
         <button
           type="button"
           className={cn(
-            'group flex h-8 min-w-0 max-w-[200px] items-center gap-2 rounded-xl border border-border/45 bg-background/50 px-2 text-left',
-            'shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors',
-            'hover:border-border hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/28',
-            open && 'border-primary/30 bg-primary/[0.06]',
+            'group flex h-8 min-w-0 max-w-[220px] items-center gap-2 rounded-xl border border-border/50 bg-background/70 px-2.5 text-left',
+            'shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_2px_hsl(var(--foreground)/0.04)] transition-colors',
+            'hover:border-primary/30 hover:bg-primary/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25',
+            open && 'border-primary/40 bg-primary/[0.1] shadow-[0_0_0_1px_hsl(var(--primary)/0.12)]',
           )}
         >
           <AgentIconBadge
             agent={currentAgent}
             size="xs"
             variant="plain"
-            className="opacity-90"
+            className="opacity-95"
           />
-          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
             {currentAgent.name}
           </span>
           <ChevronDown
             size={12}
             className={cn(
-              'shrink-0 text-muted-foreground/55 transition-transform',
-              open && 'rotate-180 text-primary/70',
+              'shrink-0 text-muted-foreground/60 transition-transform',
+              open && 'rotate-180 text-primary',
             )}
           />
         </button>

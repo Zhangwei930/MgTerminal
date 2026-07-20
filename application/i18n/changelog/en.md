@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.13] - 2026-07-20
+
+### Improvements
+- **AI side panel redesign**: ambient panel wash; glass header with solid primary New Chat; solid primary user bubbles and assistant cards with a primary edge rail; floating composer with focus glow; empty state, recent sessions, tool groups, thinking blocks, and agent menu restyled to match
+
 ## [0.5.12] - 2026-07-20
 
 ### Improvements

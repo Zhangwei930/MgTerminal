@@ -1195,6 +1195,88 @@ html[data-theme-transition] *::after {
 }
 
 /* Streamdown table overrides */
+/* ── AI chat panel visual system ── */
+.magiesTerminal-ai-panel {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 90% 45% at 0% 0%, hsl(var(--primary) / 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, hsl(var(--accent) / 0.06), transparent 50%),
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.28) 100%);
+}
+
+.magiesTerminal-ai-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.14) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black, transparent 75%);
+}
+
+.magiesTerminal-ai-header {
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.75) 0%, hsl(var(--card) / 0.35) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow: 0 1px 0 hsl(0 0% 100% / 0.03);
+}
+
+.magiesTerminal-ai-composer {
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.92) 0%, hsl(var(--background) / 0.96) 100%);
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 1.25rem;
+  box-shadow:
+    0 1px 2px hsl(var(--foreground) / 0.04),
+    0 12px 32px -14px hsl(var(--foreground) / 0.16),
+    0 0 0 1px hsl(var(--primary) / 0.04),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+  overflow: hidden;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.magiesTerminal-ai-composer:focus-within {
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow:
+    0 1px 2px hsl(var(--foreground) / 0.04),
+    0 16px 40px -14px hsl(var(--primary) / 0.22),
+    0 0 0 3px hsl(var(--primary) / 0.1),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
+}
+
+.dark .magiesTerminal-ai-composer {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.3),
+    0 16px 40px -14px hsl(0 0% 0% / 0.55),
+    0 0 0 1px hsl(var(--primary) / 0.08),
+    inset 0 1px 0 hsl(0 0% 100% / 0.04);
+}
+
+.dark .magiesTerminal-ai-composer:focus-within {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.3),
+    0 18px 44px -12px hsl(var(--primary) / 0.35),
+    0 0 0 3px hsl(var(--primary) / 0.14),
+    inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+
+.magiesTerminal-ai-empty-orb {
+  background:
+    radial-gradient(circle at 30% 25%, hsl(var(--primary) / 0.28), transparent 55%),
+    linear-gradient(145deg, hsl(var(--primary) / 0.16) 0%, hsl(var(--muted) / 0.5) 100%);
+  box-shadow:
+    0 8px 28px -8px hsl(var(--primary) / 0.4),
+    inset 0 1px 0 hsl(0 0% 100% / 0.12);
+}
+
 .ai-chat-message-content[data-role="assistant"] [data-streamdown="table-wrapper"] {
   gap: 4px !important;
   padding: 4px 8px 8px !important;

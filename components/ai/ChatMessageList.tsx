@@ -253,14 +253,14 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   if (visibleMessages.length === 0 && !isStreaming) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/50 bg-gradient-to-br from-primary/10 to-muted/30 shadow-sm">
-          <SquareTerminal size={22} className="text-primary/70" />
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+        <div className="magiesTerminal-ai-empty-orb mb-5 flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-primary/25">
+          <SquareTerminal size={26} className="text-primary" strokeWidth={1.75} />
         </div>
-        <p className="max-w-[16rem] text-center text-[13.5px] font-medium leading-snug text-foreground/70">
+        <p className="max-w-[17rem] text-center text-[15px] font-semibold tracking-tight leading-snug text-foreground">
           {t('ai.chat.emptyTitle')}
         </p>
-        <p className="mt-2 max-w-[18rem] text-center text-[12px] leading-relaxed text-muted-foreground/55">
+        <p className="mt-2.5 max-w-[19rem] text-center text-[12.5px] leading-relaxed text-muted-foreground/70">
           {t('ai.chat.emptyHint')}
         </p>
       </div>
@@ -276,7 +276,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   const conversation = (
     <>
-    <Conversation className="flex-1 bg-gradient-to-b from-background via-background to-muted/[0.12]">
+    <Conversation className="flex-1 bg-transparent">
       <ConversationContent>
         {hiddenMessageCount > 0 && (
           <button
@@ -407,9 +407,9 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       att.terminalSelection ? (
                         <div
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-primary/15 bg-background/40 px-2 text-[11px] text-foreground/75"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-primary-foreground/25 bg-primary-foreground/10 px-2 text-[11px] text-primary-foreground/90"
                         >
-                          <SquareTerminal size={12} className="text-primary/60 shrink-0" />
+                          <SquareTerminal size={12} className="text-primary-foreground/80 shrink-0" />
                           <span className="truncate max-w-[150px]">{att.filename || 'terminal selection'}</span>
                         </div>
                       ) : att.mediaType.startsWith('image/') ? (
@@ -417,15 +417,15 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
                           src={`data:${att.mediaType};base64,${att.base64Data}`}
                           alt={att.filename || 'image'}
-                          className="max-h-[120px] max-w-[200px] cursor-pointer rounded-xl border border-border/30 object-contain shadow-sm transition-opacity hover:opacity-90"
+                          className="max-h-[120px] max-w-[200px] cursor-pointer rounded-xl border border-primary-foreground/20 object-contain shadow-sm transition-opacity hover:opacity-90"
                           onClick={() => openPreview(`data:${att.mediaType};base64,${att.base64Data}`, att.filename || 'image')}
                         />
                       ) : (
                         <div
                           key={att.filename ? `${att.filename}-${i}` : `att-${message.id}-${i}`}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border/30 bg-background/40 px-2 text-[11px] text-foreground/75"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-primary-foreground/25 bg-primary-foreground/10 px-2 text-[11px] text-primary-foreground/90"
                         >
-                          <FileText size={12} className="text-muted-foreground/60 shrink-0" />
+                          <FileText size={12} className="text-primary-foreground/75 shrink-0" />
                           <span className="truncate max-w-[120px]">{att.filename || 'file'}</span>
                         </div>
                       )
@@ -435,7 +435,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
                 {message.content && (
                   isUser
-                    ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.6] text-foreground/90 [overflow-wrap:anywhere]">{message.content}</div>
+                    ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.6] text-primary-foreground [overflow-wrap:anywhere]">{message.content}</div>
                     : hideMarkdown
                       ? <div className="whitespace-pre-wrap break-words text-[13.5px] leading-[1.65] [overflow-wrap:anywhere]">{message.content}</div>
                       : (

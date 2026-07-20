@@ -9,8 +9,8 @@ export const InputGroup = forwardRef<HTMLDivElement, InputGroupProps>(
     <div
       ref={ref}
       className={cn(
-        'flex flex-col rounded-[22px] border border-border/65 bg-background transition-[border-color,background-color,box-shadow]',
-        'focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15 focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]',
+        // Border/shadow can be provided by parent shells (e.g. AI composer).
+        'flex flex-col rounded-[20px] border border-transparent bg-transparent transition-[border-color,background-color,box-shadow]',
         // Keep overflow hidden for rounded corners; glyph room comes from
         // textarea line-height + padding (not from y:visible which browsers coerce).
         'overflow-hidden',
@@ -55,8 +55,8 @@ export const InputGroupAddon = forwardRef<HTMLDivElement, InputGroupAddonProps>(
       ref={ref}
       className={cn(
         'flex items-center gap-1 px-3 py-2',
-        align === 'block-start' && 'border-b border-border/35 bg-muted/8',
-        align === 'block-end' && 'border-t border-border/50 bg-muted/[0.12]',
+        align === 'block-start' && 'border-b border-border/35 bg-muted/10',
+        align === 'block-end' && 'border-t border-border/40 bg-muted/[0.14]',
         className,
       )}
       {...props}

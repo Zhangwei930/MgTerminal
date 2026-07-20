@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.13] - 2026-07-20
+
+### Améliorations
+- **Refonte du panneau latéral IA** : lavis ambiant et micro-grille ; en-tête verre + bouton Nouvelle conversation primary ; bulles utilisateur solid primary et cartes assistant avec rail primary ; compositeur flottant avec halo de focus ; état vide, sessions récentes, groupes d'outils, blocs de réflexion et menu agent mis à jour
+
 ## [0.5.12] - 2026-07-20
 
 ### Améliorations

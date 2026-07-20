@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.13] - 2026-07-20
+
+### Verbesserungen
+- **KI-Seitenleiste neu gestaltet**: Umgebungslicht und feines Raster; Glas-Header mit solidem Primary-„Neuer Chat“; User-Bubbles solid primary, Assistant-Karten mit Primary-Kante; schwebender Composer mit Fokus-Glow; Leerzustand, letzte Sessions, Tool-Gruppen, Thinking-Blöcke und Agent-Menü angepasst
+
 ## [0.5.12] - 2026-07-20
 
 ### Verbesserungen

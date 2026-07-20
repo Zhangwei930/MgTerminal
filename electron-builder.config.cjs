@@ -80,6 +80,10 @@ module.exports = {
     files: [
         'dist/**/*',
         'electron/**/*',
+        // GPL-3.0 binaries should carry the licence text they are distributed
+        // under, so ship LICENSE inside the app bundle rather than leaving it
+        // only in the source repository.
+        'LICENSE',
         // Main-process terminal flow control reads shared thresholds from here
         // (terminalFlowAck.cjs). Must ship beside electron/ in app.asar.
         'infrastructure/config/terminalFlowConstants.cjs',

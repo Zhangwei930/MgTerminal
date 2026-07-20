@@ -80,8 +80,8 @@ describe("system preset UI themes", () => {
 
     assert.equal(EXTENDED_LIGHT_UI_THEMES.length, 55);
     assert.equal(EXTENDED_DARK_UI_THEMES.length, 55);
-    assert.equal(LIGHT_UI_THEMES.length, 8 + 55);
-    assert.equal(DARK_UI_THEMES.length, 8 + 55);
+    assert.equal(LIGHT_UI_THEMES.length, 9 + 55);
+    assert.equal(DARK_UI_THEMES.length, 11 + 55);
     assert.equal([...LIGHT_UI_THEMES, ...DARK_UI_THEMES].filter((theme) => theme.collection !== undefined && theme.collection !== "core").length, 0);
   });
 
@@ -97,10 +97,10 @@ describe("system preset UI themes", () => {
   });
 
   it("marks every core light and dark preset with collection core", () => {
-    for (const theme of LIGHT_UI_THEMES.slice(0, 8)) {
+    for (const theme of LIGHT_UI_THEMES.slice(0, 9)) {
       assert.equal(theme.collection, "core", theme.id);
     }
-    for (const theme of DARK_UI_THEMES.slice(0, 8)) {
+    for (const theme of DARK_UI_THEMES.slice(0, 11)) {
       assert.equal(theme.collection, "core", theme.id);
     }
   });
@@ -110,8 +110,16 @@ describe("system preset UI themes", () => {
     assert.equal(DARK_UI_THEMES[0]?.id, "claude");
     assert.equal(getUiThemeById("light", "claude-light").name, "Claude");
     assert.equal(getUiThemeById("dark", "claude").name, "Claude");
-    // Black remains a first-class core option.
-    assert.ok(DARK_UI_THEMES.some((theme) => theme.id === "pure-black"));
+    // White / Black remain first-class core options.
+    assert.equal(LIGHT_UI_THEMES[1]?.id, "pure-white");
+    assert.equal(getUiThemeById("light", "pure-white").name, "White");
+    assert.equal(DARK_UI_THEMES[1]?.id, "pure-black");
+    assert.equal(getUiThemeById("dark", "pure-black").name, "Black");
+    // Multi-color cores stay available.
+    assert.ok(DARK_UI_THEMES.some((theme) => theme.id === "rose"));
+    assert.ok(DARK_UI_THEMES.some((theme) => theme.id === "amber"));
+    assert.ok(DARK_UI_THEMES.some((theme) => theme.id === "sky"));
+    assert.ok(LIGHT_UI_THEMES.some((theme) => theme.id === "rose"));
   });
 
   it("keeps default Claude themes with card elevated above background", () => {

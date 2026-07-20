@@ -44,6 +44,27 @@ export const modernTerminalThemes: TerminalTheme[] = [
     brightBlack: '#6e7681', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',
     brightBlue: '#79c0ff', brightMagenta: '#d2a8ff', brightCyan: '#56d4dd', brightWhite: '#f0f6fc',
   }},
+  { id: 'ui-rose', name: 'Rose', type: 'dark', colors: {
+    background: '#1a1014', foreground: '#f7eef1', cursor: '#f43f5e', selection: '#4c1d2a',
+    black: '#1a1014', red: '#ff7b72', green: '#3fb950', yellow: '#e0a454',
+    blue: '#6cb6ff', magenta: '#f472b6', cyan: '#56d4dd', white: '#e4d4da',
+    brightBlack: '#7a6a70', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',
+    brightBlue: '#79c0ff', brightMagenta: '#f9a8d4', brightCyan: '#6adce4', brightWhite: '#fff5f7',
+  }},
+  { id: 'ui-amber', name: 'Amber', type: 'dark', colors: {
+    background: '#17120e', foreground: '#f6f0e6', cursor: '#f59e0b', selection: '#4a3414',
+    black: '#17120e', red: '#ff7b72', green: '#3fb950', yellow: '#fbbf24',
+    blue: '#6cb6ff', magenta: '#d2a8ff', cyan: '#56d4dd', white: '#e4d8c4',
+    brightBlack: '#7a7160', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#fcd34d',
+    brightBlue: '#79c0ff', brightMagenta: '#e2c5ff', brightCyan: '#6adce4', brightWhite: '#fffbeb',
+  }},
+  { id: 'ui-sky', name: 'Sky', type: 'dark', colors: {
+    background: '#0f171c', foreground: '#eef6fa', cursor: '#0ea5e9', selection: '#164e63',
+    black: '#0f171c', red: '#ff7b72', green: '#3fb950', yellow: '#e0a454',
+    blue: '#38bdf8', magenta: '#d2a8ff', cyan: '#22d3ee', white: '#c9d8e0',
+    brightBlack: '#6a7a84', brightRed: '#ffa198', brightGreen: '#56d364', brightYellow: '#e3b341',
+    brightBlue: '#7dd3fc', brightMagenta: '#e2c5ff', brightCyan: '#67e8f9', brightWhite: '#f0f9ff',
+  }},
   { id: 'ui-obsidian', name: 'Obsidian', type: 'dark', colors: {
     background: '#131316', foreground: '#c9d1d9', cursor: '#a78bfa', selection: '#3b3175',
     black: '#131316', red: '#ff7b72', green: '#3fb950', yellow: '#d29922',

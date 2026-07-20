@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.16] - 2026-07-20
+
+### Améliorations
+- **Thèmes multi-couleurs plus accessibles** : core avec **Claude orange / White / Black** et bleu, vert, violet, rose, ambre, ciel ; bandeau de pastilles en un clic dans Apparence
+
 ## [0.5.15] - 2026-07-20
 
 ### Améliorations

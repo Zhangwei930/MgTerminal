@@ -434,6 +434,47 @@ function SettingsAppearanceTab(props: {
             </div>
           </div>
 
+          {/* One-tap color strip for core themes (White / Black / Claude / multi-color). */}
+          {themeScope === "core" && !themeQuery.trim() && (
+            <div className="flex flex-wrap gap-2">
+              {(resolvedTheme === "dark" ? DARK_UI_THEMES : LIGHT_UI_THEMES)
+                .filter((preset) => preset.collection === "core")
+                .slice(0, 9)
+                .map((preset) => {
+                  const selected = visibleUiThemeId === preset.id;
+                  return (
+                    <Tooltip key={`quick-${preset.id}`}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setVisibleUiThemeId(preset.id)}
+                          className={cn(
+                            "group flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-all duration-150",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            selected
+                              ? "border-primary bg-primary/10 text-foreground shadow-sm"
+                              : "border-border/70 bg-muted/40 text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground",
+                          )}
+                          aria-pressed={selected}
+                        >
+                          <span
+                            className="h-3.5 w-3.5 rounded-full shadow-sm ring-1 ring-black/10 dark:ring-white/15"
+                            style={getHslStyle(preset.tokens.primary)}
+                          />
+                          <span
+                            className="h-3.5 w-3.5 rounded-full border border-black/10 dark:border-white/15 shadow-sm"
+                            style={getHslStyle(preset.tokens.background)}
+                          />
+                          <span className="max-w-[5.5rem] truncate">{preset.name}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{preset.name}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+            </div>
+          )}
+
           <div className="relative">
             <Search
               size={14}

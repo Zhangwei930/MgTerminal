@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.16] - 2026-07-20
+
+### Improvements
+- **Easier multi-color themes**: core themes clearly offer **Claude orange / White / Black** plus blue, green, purple, rose, amber, and sky; Appearance adds a one-tap color chip strip; White sits next to Claude in light mode, Black next to Claude in dark mode
+
 ## [0.5.15] - 2026-07-20
 
 ### Improvements

@@ -18,6 +18,7 @@ const UI_MATCH_TERMINAL_THEME_IDS = new Set([
   'ui-mint',
   'ui-sand',
   'ui-lavender',
+  'ui-rose-light',
   'ui-claude',
   'ui-pure-black',
   'ui-midnight',
@@ -26,6 +27,9 @@ const UI_MATCH_TERMINAL_THEME_IDS = new Set([
   'ui-graphite',
   'ui-obsidian',
   'ui-forest',
+  'ui-rose',
+  'ui-amber',
+  'ui-sky',
 ]);
 
 export const TERMINAL_THEMES: TerminalTheme[] = [

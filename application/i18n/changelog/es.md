@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.16] - 2026-07-20
+
+### Mejoras
+- **Temas multicolor más fáciles de elegir**: core con **Claude naranja / White / Black** y azul, verde, púrpura, rosa, ámbar, cielo; tiras de chips de un toque en Apariencia
+
 ## [0.5.15] - 2026-07-20
 
 ### Mejoras

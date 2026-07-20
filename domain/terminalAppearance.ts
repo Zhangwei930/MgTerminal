@@ -71,13 +71,14 @@ export const resolveHostTerminalThemeId = (host: Host | null | undefined, defaul
  */
 const CORE_LIGHT_UI_TO_TERMINAL_THEME: Record<string, string> = {
   'claude-light': 'ui-claude-light',
-  'snow': 'ui-snow',
   'pure-white': 'ui-pure-white',
+  'snow': 'ui-snow',
   'ivory': 'ui-ivory',
   'mist': 'ui-mist',
   'mint': 'ui-mint',
   'sand': 'ui-sand',
   'lavender': 'ui-lavender',
+  'rose': 'ui-rose-light',
 };
 
 const CORE_DARK_UI_TO_TERMINAL_THEME: Record<string, string> = {
@@ -85,10 +86,13 @@ const CORE_DARK_UI_TO_TERMINAL_THEME: Record<string, string> = {
   'pure-black': 'ui-pure-black',
   'midnight': 'ui-midnight',
   'deep-blue': 'ui-deep-blue',
+  'forest': 'ui-forest',
+  'obsidian': 'ui-obsidian',
+  'rose': 'ui-rose',
+  'amber': 'ui-amber',
+  'sky': 'ui-sky',
   'vscode': 'ui-vscode',
   'graphite': 'ui-graphite',
-  'obsidian': 'ui-obsidian',
-  'forest': 'ui-forest',
 };
 
 const UI_TO_TERMINAL_THEME: Record<string, string> = {

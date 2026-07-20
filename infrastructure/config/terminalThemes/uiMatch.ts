@@ -64,5 +64,12 @@ export const uiMatchTerminalThemes: TerminalTheme[] = [
     brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37', brightYellow: '#7d4e00',
     brightBlue: '#218bff', brightMagenta: '#a475f9', brightCyan: '#0c7875', brightWhite: '#8c959f',
   }},
+  { id: 'ui-rose-light', name: 'Rose', type: 'light', colors: {
+    background: '#fdf5f7', foreground: '#2a161c', cursor: '#e11d48', selection: '#fecdd3',
+    black: '#2a161c', red: '#cf222e', green: '#116329', yellow: '#9a6700',
+    blue: '#0969da', magenta: '#8250df', cyan: '#0e7574', white: '#6e7781',
+    brightBlack: '#57606a', brightRed: '#a40e26', brightGreen: '#1a7f37', brightYellow: '#7d4e00',
+    brightBlue: '#218bff', brightMagenta: '#a475f9', brightCyan: '#0c7875', brightWhite: '#8c959f',
+  }},
   // Dark UI matches,
 ];

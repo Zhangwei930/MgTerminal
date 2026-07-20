@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.16] - 2026-07-20
+
+### Verbesserungen
+- **Mehrfarbige Themes leichter wählbar**: Core mit **Claude-Orange / White / Black** plus Blau, Grün, Lila, Rose, Amber, Sky; Appearance mit One-Tap-Farbchips
+
 ## [0.5.15] - 2026-07-20
 
 ### Verbesserungen

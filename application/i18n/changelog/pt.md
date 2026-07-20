@@ -1,6 +1,11 @@
 # Registro de alterações
 
 
+## [0.5.16] - 2026-07-20
+
+### Melhorias
+- **Temas multicolor mais fáceis**: core com **Claude laranja / White / Black** e azul, verde, roxo, rosa, âmbar, céu; faixa de chips de um toque em Aparência
+
 ## [0.5.15] - 2026-07-20
 
 ### Melhorias

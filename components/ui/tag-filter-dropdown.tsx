@@ -118,13 +118,14 @@ export const TagFilterDropdown: React.FC<TagFilterDropdownProps> = ({
                 <Button
                     variant="ghost"
                     size="icon"
+                    data-active={hasFilters ? "true" : undefined}
                     className={cn(
                         className || "h-8 w-8",
-                        hasFilters && "text-primary"
+                        hasFilters && "bg-primary/12 text-primary border-primary/20 shadow-sm",
                     )}
                 >
                     <Tag size={14} />
-                    {open ? <ChevronUp size={10} className="ml-0.5" /> : <ChevronDown size={10} className="ml-0.5" />}
+                    {open ? <ChevronUp size={10} className="ml-0.5 opacity-70" /> : <ChevronDown size={10} className="ml-0.5 opacity-70" />}
                 </Button>
             </DropdownTrigger>
             <DropdownContent className="w-64" align="end">

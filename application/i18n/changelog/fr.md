@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.17] - 2026-07-20
+
+### Améliorations
+- **Réorganisation des boutons-icônes de barre d'outils** : outils d'en-tête vault en cluster thématique ; hauteurs/espacements unifiés ; bande multi-sélection et utilitaires top-tab groupés
+
 ## [0.5.16] - 2026-07-20
 
 ### Améliorations

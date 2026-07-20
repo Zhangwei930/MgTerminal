@@ -32,7 +32,7 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange, cla
             <DropdownTrigger asChild>
                 <Button variant="ghost" size="icon" className={className || "h-8 w-8"}>
                     {SORT_OPTIONS[value].triggerIcon}
-                    {open ? <ChevronUp size={10} className="ml-0.5" /> : <ChevronDown size={10} className="ml-0.5" />}
+                    {open ? <ChevronUp size={10} className="ml-0.5 opacity-70" /> : <ChevronDown size={10} className="ml-0.5 opacity-70" />}
                 </Button>
             </DropdownTrigger>
             <DropdownContent className="w-44" align="end">

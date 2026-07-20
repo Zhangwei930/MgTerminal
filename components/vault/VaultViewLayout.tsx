@@ -8,6 +8,7 @@ import {
   VaultPageHeader,
   vaultHeaderIconButtonClass,
   vaultHeaderSecondaryButtonClass,
+  vaultHeaderToolbarClusterClass,
 } from "./VaultPageHeader";
 import { LazyLoadBoundary } from "../ui/lazy-load-boundary";
 import HostHealthPanel from "../health/HostHealthPanel";
@@ -124,14 +125,14 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             </Tooltip>
           </div>
 
-          <div className={cn("space-y-1.5", sidebarCollapsed ? "px-1.5" : "px-2.5")}>
+          <div className={cn("space-y-1", sidebarCollapsed ? "px-1.5" : "px-2")}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <RippleButton
                   variant={currentSection === "hosts" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "hosts" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
@@ -150,8 +151,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "keys" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "keys" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
@@ -169,8 +170,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "proxies" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "proxies" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
@@ -188,8 +189,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "port" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "port" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("port")}
@@ -205,8 +206,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "snippets" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "snippets" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
@@ -224,8 +225,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "notes" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "notes" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => {
@@ -243,8 +244,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "knownhosts" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "knownhosts" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("knownhosts")}
@@ -260,8 +261,8 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 <RippleButton
                   variant={currentSection === "logs" ? "secondary" : "ghost"}
                   className={cn(
-                    "w-full h-10 rounded-xl",
-                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-3",
+                    "w-full h-9 rounded-xl",
+                    sidebarCollapsed ? "justify-center p-0" : "justify-start gap-2.5 px-2.5",
                     currentSection === "logs" ? vaultNavActiveClass : vaultNavIdleClass,
                   )}
                   onClick={() => setCurrentSection("logs")}
@@ -323,7 +324,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
         >
               <VaultHeaderSearch
                 placeholder={t("vault.hosts.search.placeholder")}
-                className="flex-1"
+                className="min-w-0 flex-1"
                 inputClassName={cn(
                   isSearchQuickConnect &&
                   "border-primary/50 ring-1 ring-primary/20",
@@ -340,7 +341,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             <Button
               variant={isSearchQuickConnect ? "default" : "secondary"}
               className={cn(
-                "h-10 px-4",
+                "h-9 shrink-0 px-3.5 rounded-xl",
                 !isSearchQuickConnect &&
                 vaultHeaderSecondaryButtonClass,
               )}
@@ -348,39 +349,43 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             >
               {t("vault.hosts.connect")}
             </Button>
-            {/* View mode, tag filter, and sort controls */}
-            <div className="flex items-center gap-1 app-no-drag">
+            {/* View mode, tag filter, and sort controls — themed toolbar cluster */}
+            <div className={cn(vaultHeaderToolbarClusterClass, "app-no-drag shrink-0")}>
               <Dropdown>
                 <DropdownTrigger asChild>
-                  <Button variant="ghost" size="icon" className={vaultHeaderIconButtonClass}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(vaultHeaderIconButtonClass, "w-auto min-w-9 gap-0.5 px-1.5")}
+                  >
                     {viewMode === "grid" ? (
-                      <LayoutGrid size={16} />
+                      <LayoutGrid size={15} />
                     ) : viewMode === "list" ? (
-                      <List size={16} />
+                      <List size={15} />
                     ) : (
-                      <Network size={16} />
+                      <Network size={15} />
                     )}
-                    <ChevronDown size={10} className="ml-0.5" />
+                    <ChevronDown size={11} className="opacity-70" />
                   </Button>
                 </DropdownTrigger>
-                <DropdownContent className="w-32" align="end">
+                <DropdownContent className="w-36 p-1.5" align="end">
                   <Button
                     variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 h-9"
+                    className="w-full justify-start gap-2 h-9 rounded-lg"
                     onClick={() => setViewMode("grid")}
                   >
                     <LayoutGrid size={14} /> {t("vault.view.grid")}
                   </Button>
                   <Button
                     variant={viewMode === "list" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 h-9"
+                    className="w-full justify-start gap-2 h-9 rounded-lg"
                     onClick={() => setViewMode("list")}
                   >
                     <List size={14} /> {t("vault.view.list")}
                   </Button>
                   <Button
                     variant={viewMode === "tree" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 h-9"
+                    className="w-full justify-start gap-2 h-9 rounded-lg"
                     onClick={() => setViewMode("tree")}
                   >
                     <Network size={14} /> {t("vault.view.tree")}
@@ -403,9 +408,13 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={isMultiSelectMode ? "secondary" : "ghost"}
+                    variant="ghost"
                     size="icon"
-                    className={vaultHeaderIconButtonClass}
+                    data-active={isMultiSelectMode ? "true" : undefined}
+                    className={cn(
+                      vaultHeaderIconButtonClass,
+                      isMultiSelectMode && "bg-primary/12 text-primary border-primary/20",
+                    )}
                     onClick={() => {
                       if (isMultiSelectMode) {
                         clearHostSelection();
@@ -414,7 +423,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                       }
                     }}
                   >
-                    <CheckSquare size={16} />
+                    <CheckSquare size={15} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{t("vault.hosts.multiSelect")}</TooltipContent>
@@ -427,7 +436,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                     className={vaultHeaderIconButtonClass}
                     onClick={() => setIsHealthPanelOpen(true)}
                   >
-                    <Activity size={16} />
+                    <Activity size={15} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{t("health.open")}</TooltipContent>
@@ -448,19 +457,19 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
               inert={isHostPanelOpen ? true : undefined}
             >
               <Dropdown>
-                <div className="flex items-center rounded-md bg-primary text-primary-foreground">
+                <div className="flex items-center overflow-hidden rounded-xl bg-primary text-primary-foreground shadow-[0_4px_14px_-6px_hsl(var(--primary)/0.55)]">
                   <Button
                     size="sm"
-                    className="h-10 px-3 rounded-r-none bg-transparent hover:bg-white/10 shadow-none"
+                    className="h-9 px-3 rounded-none bg-transparent hover:bg-white/12 shadow-none"
                     onClick={handleNewHost}
                     tabIndex={isHostPanelOpen ? -1 : 0}
                   >
-                    <Plus size={14} className="mr-2" /> {t("vault.hosts.newHost")}
+                    <Plus size={14} className="mr-1.5" /> {t("vault.hosts.newHost")}
                   </Button>
                   <DropdownTrigger asChild>
                     <Button
                       size="sm"
-                      className="h-10 px-2 rounded-l-none bg-transparent hover:bg-white/10 border-l border-primary-foreground/20 shadow-none"
+                      className="h-9 px-2 rounded-none bg-transparent hover:bg-white/12 border-l border-primary-foreground/20 shadow-none"
                       tabIndex={isHostPanelOpen ? -1 : 0}
                     >
                       <ChevronDown size={14} />
@@ -555,9 +564,9 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             <div
               ref={sessionActionsRef}
               className={cn(
-                "flex items-center gap-3 overflow-hidden transition-[max-width,opacity,margin] duration-200 ease-in-out",
+                "flex items-center gap-2 overflow-hidden transition-[max-width,opacity,margin] duration-200 ease-in-out",
                 isHostPanelOpen
-                  ? "max-w-0 opacity-0 -ml-3 pointer-events-none"
+                  ? "max-w-0 opacity-0 -ml-2 pointer-events-none"
                   : "max-w-[320px] opacity-100",
               )}
               aria-hidden={isHostPanelOpen ? true : undefined}
@@ -570,7 +579,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 onClick={onCreateLocalTerminal}
                 tabIndex={isHostPanelOpen ? -1 : 0}
               >
-                <TerminalSquare size={14} className="mr-2" /> {t("common.terminal")}
+                <TerminalSquare size={14} className="mr-1.5" /> {t("common.terminal")}
               </Button>
               <Button
                 size="sm"
@@ -579,40 +588,42 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                 onClick={() => setIsSerialModalOpen(true)}
                 tabIndex={isHostPanelOpen ? -1 : 0}
               >
-                <Usb size={14} className="mr-2" /> {t("serial.button")}
+                <Usb size={14} className="mr-1.5" /> {t("serial.button")}
               </Button>
             </div>
         </VaultPageHeader>
 
         {isMultiSelectMode && isHostsSectionActive && (
-          <div className="px-4 py-1.5 bg-background border-b border-border/40 flex items-center gap-2">
-            <span className="flex items-center h-7 text-xs text-muted-foreground leading-none">
+          <div className="flex items-center gap-2 border-b border-border/45 bg-gradient-to-r from-primary/[0.06] via-background to-background px-3.5 py-2">
+            <span className="inline-flex h-7 items-center rounded-lg bg-primary/10 px-2 text-xs font-medium text-primary leading-none">
               {t("vault.hosts.selected", { count: selectedHostIds.size })}
             </span>
             <div className="flex-1" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => {
-                const allIds = new Set(displayedHosts.map(h => h.id));
-                setSelectedHostIds(allIds);
-              }}
-            >
-              {t("vault.hosts.selectAll")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={clearHostSelection}
-            >
-              {t("vault.hosts.deselectAll")}
-            </Button>
+            <div className={cn(vaultHeaderToolbarClusterClass, "gap-0.5")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-2.5 text-xs"
+                onClick={() => {
+                  const allIds = new Set(displayedHosts.map(h => h.id));
+                  setSelectedHostIds(allIds);
+                }}
+              >
+                {t("vault.hosts.selectAll")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-2.5 text-xs"
+                onClick={clearHostSelection}
+              >
+                {t("vault.hosts.deselectAll")}
+              </Button>
+            </div>
             <Button
               variant="default"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-8 rounded-lg px-2.5 text-xs shadow-sm shadow-primary/25"
               disabled={selectedHostIds.size === 0}
               onClick={connectSelectedHosts}
             >
@@ -622,7 +633,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             <Button
               variant="destructive"
               size="sm"
-              className="h-7 px-2 text-xs"
+              className="h-8 rounded-lg px-2.5 text-xs"
               disabled={selectedHostIds.size === 0}
               onClick={deleteSelectedHosts}
             >
@@ -632,10 +643,10 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className={cn(vaultHeaderIconButtonClass, "h-8 w-8")}
               onClick={clearHostSelection}
             >
-              <X size={12} />
+              <X size={13} />
             </Button>
           </div>
         )}

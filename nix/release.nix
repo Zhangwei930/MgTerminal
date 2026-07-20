@@ -1,5 +1,5 @@
 {
-  version = "0.5.16";
+  version = "0.5.17";
 
   sources = {
     x86_64-linux = {

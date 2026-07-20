@@ -1045,65 +1045,67 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
           </Tooltip>
         )}
 
-        {/* Fixed right controls — utility icons + window controls share one h-7 row */}
+        {/* Fixed right controls — utility icons clustered, window controls beside */}
         <div
-          className="flex-shrink-0 flex items-center gap-0.5 app-drag self-end h-7 overflow-visible"
+          className="flex-shrink-0 flex items-center gap-1.5 app-drag self-end h-7 overflow-visible"
           style={dragRegionStyle}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 app-no-drag top-tab-utility-btn"
-                style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
-                onClick={() => window.dispatchEvent(new CustomEvent('magiesTerminal:toggle-ai-panel'))}
-              >
-                <Sparkles size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('topTabs.aiAssistant')}</TooltipContent>
-          </Tooltip>
-          <WindowOpacityButton
-            windowOpacity={windowOpacity}
-            setWindowOpacity={setWindowOpacity}
-            className="h-7 w-7 shrink-0 top-tab-utility-btn"
-            style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
-          />
-          <SyncStatusButton
-            onOpenSettings={onOpenSettings}
-            onSyncNow={onSyncNow}
-            className="h-7 w-7 shrink-0 top-tab-utility-btn"
-            style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
-          />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 app-no-drag top-tab-utility-btn"
-                style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
-                onClick={onToggleTheme}
-              >
-                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('topTabs.toggleTheme')}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 app-no-drag top-tab-utility-btn"
-                style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
-                onClick={onOpenSettings}
-              >
-                <Settings size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('topTabs.openSettings')}</TooltipContent>
-          </Tooltip>
+          <div className="top-tab-utility-cluster app-no-drag">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 top-tab-utility-btn"
+                  style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+                  onClick={() => window.dispatchEvent(new CustomEvent('magiesTerminal:toggle-ai-panel'))}
+                >
+                  <Sparkles size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('topTabs.aiAssistant')}</TooltipContent>
+            </Tooltip>
+            <WindowOpacityButton
+              windowOpacity={windowOpacity}
+              setWindowOpacity={setWindowOpacity}
+              className="h-6 w-6 shrink-0 top-tab-utility-btn"
+              style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+            />
+            <SyncStatusButton
+              onOpenSettings={onOpenSettings}
+              onSyncNow={onSyncNow}
+              className="h-6 w-6 shrink-0 top-tab-utility-btn"
+              style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 top-tab-utility-btn"
+                  style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+                  onClick={onToggleTheme}
+                >
+                  {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('topTabs.toggleTheme')}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 top-tab-utility-btn"
+                  style={{ color: 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+                  onClick={onOpenSettings}
+                >
+                  <Settings size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('topTabs.openSettings')}</TooltipContent>
+            </Tooltip>
+          </div>
           {showWindowControls && <WindowControls />}
         </div>
         {/* Small drag shim to the right edge (macOS only – on Windows the close button should touch the edge) */}

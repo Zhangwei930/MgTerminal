@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.17] - 2026-07-20
+
+### Improvements
+- **Toolbar icon-button layout redesign**: vault header tools sit in a themed control cluster with primary active states; search, secondary actions, and New Host share consistent height/spacing; multi-select strip and top-tab utilities (AI/theme/settings) are grouped with theme-aligned hover
+
 ## [0.5.16] - 2026-07-20
 
 ### Improvements

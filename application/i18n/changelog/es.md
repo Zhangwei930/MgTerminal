@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.17] - 2026-07-20
+
+### Mejoras
+- **Rediseño de botones de icono en barras**: herramientas del vault en clúster temático; alturas/espaciado unificados; franja multi-selección y utilidades de pestañas agrupadas
+
 ## [0.5.16] - 2026-07-20
 
 ### Mejoras

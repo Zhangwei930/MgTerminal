@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.17] - 2026-07-20
+
+### Verbesserungen
+- **Toolbar-Icon-Layout neu gestaltet**: Vault-Header-Tools in themenkonformen Clustern; einheitliche Höhen/Abstände; Multi-Select-Leiste und Top-Tab-Utilities gruppiert mit Theme-Hover
+
 ## [0.5.16] - 2026-07-20
 
 ### Verbesserungen

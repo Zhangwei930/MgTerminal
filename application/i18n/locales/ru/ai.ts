@@ -47,6 +47,14 @@ export const ruAiMessages: Messages = {
   'ai.providers.noMatchingModels': 'Нет подходящих моделей',
   'ai.providers.clickToLoadModels': 'Нажмите, чтобы загрузить модели',
   'ai.providers.showingModels': 'Показаны первые 100 из {count} моделей. Введите текст для фильтрации.',
+
+  'ai.providers.retryLoadModels': 'Повторить',
+  'ai.providers.liveModelCount': 'Загружено моделей: {count}',
+  'ai.providers.usingPresetModels': 'Используется офлайн-список (живой каталог недоступен)',
+  'ai.providers.needApiKeyForModels': 'Введите API-ключ, чтобы загрузить список моделей',
+  'ai.providers.fetchModelsFailed': 'Не удалось загрузить модели: {detail}',
+  'ai.providers.emptyModelCatalog': 'Провайдер вернул пустой список моделей',
+  'ai.providers.modelsBridgeUnavailable': 'Загрузка моделей недоступна в этом окне. Полностью перезапустите MagiesTerminal и попробуйте снова.',
   'ai.providers.advancedParams': 'Дополнительные параметры',
   'ai.providers.advancedParams.hint': 'Оставьте пустым, чтобы использовать настройки провайдера по умолчанию.',
   'ai.providers.advancedParams.maxTokens.placeholder': 'например, 4096',
@@ -76,6 +84,14 @@ export const ruAiMessages: Messages = {
   'ai.codex.logout': 'Выйти',
   'ai.codex.connectChatGPT': 'Подключить ChatGPT',
   'ai.codex.refreshStatus': 'Обновить статус',
+
+  'ai.geminiProvider.hint': 'Используйте Gemini через MagiesTerminal Agent: добавьте Google AI, сохраните API-ключ и выберите Gemini в меню модели/провайдера.',
+  'ai.grokProvider.hint': 'Используйте Grok через MagiesTerminal Agent: добавьте xAI (Grok), сохраните API-ключ и выберите Grok в меню модели/провайдера.',
+  'ai.chat.modelsLoading': 'Загрузка моделей…',
+  'ai.chat.modelsLoadFailed': 'Не удалось обновить модели',
+  'ai.chat.modelsRetry': 'Повторить',
+  'ai.chat.modelsFromLive': 'Онлайн-каталог',
+  'ai.chat.modelsFromPresets': 'Офлайн-пресеты',
 
   // AI Claude Code
   'ai.claude.title': 'Claude Code',

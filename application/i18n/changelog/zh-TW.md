@@ -4,9 +4,10 @@
 ## [0.5.19] - 2026-07-20
 
 ### 優化
-- **模型列表自動拉取與 UX**：API Key 後自動載入線上模型；載入中/失敗提示與重試；線上優先、離線預設兜底
-- **GPT-5.6 / Grok / Gemini**：更新預設模型；新增 xAI (Grok) 提供商
-- **ChatGPT 品牌**：Codex 顯示為 ChatGPT（OpenAI 圖示）
+- **模型列表自動拉取與 UX**：提供商填入 API Key 後自動載入線上模型目錄；載入中/失敗提示與重試刷新；線上列表優先，離線預設兜底
+- **GPT-5.6 / Grok / Gemini 模型預設**：Codex/Cursor/OpenCode 與 OpenAI/xAI/Google 提供商預設模型更新
+- **xAI (Grok) 提供商**：新增 `api.x.ai` 快速接入
+- **ChatGPT 品牌**：原 Codex 代理顯示名與圖示改為 ChatGPT（OpenAI 標識）；各 Agent 圖示按品牌解析
 
 ## [0.5.18] - 2026-07-20
 

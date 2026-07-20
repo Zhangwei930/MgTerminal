@@ -12,6 +12,12 @@ function requestedArch() {
 module.exports = {
     appId: 'top.magies.terminal',
     productName: 'MagiesTerminal',
+    // Set explicitly: without this electron-builder derives the bundle's
+    // copyright string (macOS NSHumanReadableCopyright, Windows file version
+    // info) from package.json `author`, so the shipped binary's copyright
+    // silently tracked whatever that field happened to say. Full licence and
+    // attribution live in LICENSE and NOTICE at the repository root.
+    copyright: 'Copyright © 2026 JasonZhangDad and the MagiesTerminal contributors',
     artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
     protocols: [
         {

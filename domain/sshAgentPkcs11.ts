@@ -49,3 +49,22 @@ export const COMMON_PKCS11_MODULE_HINTS: readonly string[] = [
   "libeTPkcs11.dylib",
   "libeTPkcs11.so",
 ];
+
+/** Directories each platform's package managers install PKCS#11 modules into. */
+const PKCS11_MODULE_DIRS: Record<string, readonly string[]> = {
+  darwin: ["/Library/OpenSC/lib", "/opt/homebrew/lib", "/usr/local/lib"],
+  linux: ["/usr/lib/x86_64-linux-gnu", "/usr/lib64", "/usr/lib"],
+};
+
+/**
+ * Absolute module paths to offer as typing suggestions. Nothing is probed on
+ * disk — these are hints, and a path that does not exist simply fails at
+ * `ssh-add` with the usual error.
+ */
+export function getCommonPkcs11ModulePaths(platform: string = process.platform): string[] {
+  const dirs = PKCS11_MODULE_DIRS[platform];
+  if (!dirs) return [];
+  const extension = platform === "darwin" ? ".dylib" : ".so";
+  const basenames = COMMON_PKCS11_MODULE_HINTS.filter((name) => name.endsWith(extension));
+  return dirs.flatMap((dir) => basenames.map((name) => `${dir}/${name}`));
+}

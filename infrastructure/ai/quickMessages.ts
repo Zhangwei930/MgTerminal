@@ -101,6 +101,25 @@ export function filterQuickMessages(
   });
 }
 
+/**
+ * Free-text search for the settings list. Unlike {@link filterQuickMessages},
+ * which is prefix-anchored on slug because it drives the slash picker, this
+ * matches anywhere across every field the user can edit.
+ */
+export function searchQuickMessages(
+  messages: AIQuickMessage[],
+  query: string,
+): AIQuickMessage[] {
+  const lowerQuery = query.trim().toLowerCase();
+  if (!lowerQuery) return messages;
+  return messages.filter((message) => [
+    message.name,
+    message.slug,
+    message.content,
+    message.description ?? '',
+  ].some((field) => field.toLowerCase().includes(lowerQuery)));
+}
+
 export function filterUserSkillsForSlash(
   skills: UserSkillSlashOption[],
   query: string,

@@ -27,6 +27,11 @@ let fetchImpl = null;
 let enabled = false;
 let stateLoaded = false;
 let gate = null;
+// Persisted delivery counters, surfaced in Settings → System so the user can
+// see what opting in actually sent. Unlike the dedupe gate these outlive the
+// session.
+let sentCount = 0;
+let lastSentAt = null;
 
 // ---------------------------------------------------------------------------
 // Pure helpers (exported for tests)
@@ -140,8 +145,13 @@ function loadState() {
     if (!filePath || !fs.existsSync(filePath)) return;
     const parsed = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     enabled = parsed?.enabled === true;
+    // Pre-0.5.22 state files only carry `enabled`; treat counters as zeroed.
+    sentCount = Number.isInteger(parsed?.sentCount) && parsed.sentCount > 0 ? parsed.sentCount : 0;
+    lastSentAt = Number.isFinite(parsed?.lastSentAt) ? parsed.lastSentAt : null;
   } catch {
     enabled = false;
+    sentCount = 0;
+    lastSentAt = null;
   }
 }
 
@@ -149,7 +159,7 @@ function persistState() {
   try {
     const filePath = stateFilePath();
     if (!filePath) return;
-    fs.writeFileSync(filePath, JSON.stringify({ enabled }) + "\n", "utf-8");
+    fs.writeFileSync(filePath, JSON.stringify({ enabled, sentCount, lastSentAt }) + "\n", "utf-8");
   } catch {
     // Never let the toggle break on a read-only disk.
   }
@@ -178,6 +188,11 @@ function setEnabled(next) {
   return enabled;
 }
 
+function getStats() {
+  loadState();
+  return { sentCount, lastSentAt };
+}
+
 function reportEndpoint() {
   return process.env.MAGIES_TERMINAL_CRASH_ENDPOINT || DEFAULT_ENDPOINT;
 }
@@ -202,15 +217,24 @@ async function reportCrashEntry(entry) {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout ? AbortSignal.timeout(REPORT_TIMEOUT_MS) : undefined,
     });
+
+    // Only a delivered report counts — a throw below leaves the totals alone.
+    sentCount += 1;
+    lastSentAt = Date.now();
+    persistState();
   } catch {
     // Telemetry is best-effort; a failed upload must never surface.
   }
 }
 
 function registerHandlers(ipcMain) {
-  ipcMain.handle("magiesTerminal:crashTelemetry:get", async () => ({ enabled: isEnabled() }));
+  ipcMain.handle("magiesTerminal:crashTelemetry:get", async () => ({
+    enabled: isEnabled(),
+    ...getStats(),
+  }));
   ipcMain.handle("magiesTerminal:crashTelemetry:set", async (_event, payload) => ({
     enabled: setEnabled(payload?.enabled === true),
+    ...getStats(),
   }));
 }
 
@@ -220,6 +244,8 @@ function _resetForTest() {
   enabled = false;
   stateLoaded = false;
   gate = null;
+  sentCount = 0;
+  lastSentAt = null;
 }
 
 module.exports = {
@@ -230,6 +256,7 @@ module.exports = {
   isEnabled,
   setEnabled,
   reportCrashEntry,
+  getStats,
   registerHandlers,
   _resetForTest,
 };

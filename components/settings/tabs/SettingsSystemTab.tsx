@@ -342,13 +342,17 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
     void loadCrashLogs();
   }, [loadCrashLogs]);
 
-  const [crashTelemetryEnabled, setCrashTelemetryEnabled] = useState(false);
+  const [crashTelemetry, setCrashTelemetry] = useState<CrashTelemetryState>({
+    enabled: false,
+    sentCount: 0,
+    lastSentAt: null,
+  });
 
   useEffect(() => {
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.getCrashTelemetry) return;
     void bridge.getCrashTelemetry()
-      .then((state) => setCrashTelemetryEnabled(state.enabled))
+      .then(setCrashTelemetry)
       .catch((err) => console.error("[SettingsSystemTab] Failed to load crash telemetry state:", err));
   }, []);
 
@@ -356,8 +360,7 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.setCrashTelemetry) return;
     try {
-      const state = await bridge.setCrashTelemetry(enabled);
-      setCrashTelemetryEnabled(state.enabled);
+      setCrashTelemetry(await bridge.setCrashTelemetry(enabled));
     } catch (err) {
       console.error("[SettingsSystemTab] Failed to update crash telemetry state:", err);
     }
@@ -1086,11 +1089,22 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                 description={t("settings.system.crashLogs.telemetryDescription")}
               >
                 <Toggle
-                  checked={crashTelemetryEnabled}
+                  checked={crashTelemetry.enabled}
                   onChange={(checked) => void handleToggleCrashTelemetry(checked)}
                   ariaLabel={t("settings.system.crashLogs.telemetryLabel")}
                 />
               </SettingRow>
+
+              {crashTelemetry.enabled && (
+                <p className="text-xs text-muted-foreground">
+                  {crashTelemetry.sentCount > 0 && crashTelemetry.lastSentAt !== null
+                    ? t("settings.system.crashLogs.telemetryStats", {
+                      count: crashTelemetry.sentCount,
+                      date: new Date(crashTelemetry.lastSentAt).toLocaleString(),
+                    })
+                    : t("settings.system.crashLogs.telemetryNoneSent")}
+                </p>
+              )}
 
               {crashLogs.length === 0 && !isLoadingCrashLogs && (
                 <p className="text-sm text-muted-foreground italic">

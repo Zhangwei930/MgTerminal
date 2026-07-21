@@ -222,6 +222,28 @@ export const formatSpeed = (bytesPerSecond: number): string => {
 };
 
 /**
+ * Estimated time left at the current speed. Empty when there is nothing to
+ * estimate from (unknown/zero speed, or nothing left to transfer). Rounds up so
+ * an almost-finished transfer shows "1s" rather than "0s".
+ */
+export const formatEta = (remainingBytes: number, bytesPerSecond: number): string => {
+    if (bytesPerSecond <= 0 || remainingBytes <= 0) return '';
+
+    const totalSeconds = Math.ceil(remainingBytes / bytesPerSecond);
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    if (totalMinutes < 60) {
+        const seconds = totalSeconds % 60;
+        return seconds > 0 ? `${totalMinutes}m ${seconds}s` : `${totalMinutes}m`;
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+};
+
+/**
  * Comprehensive file icon helper - returns JSX element based on file type.
  * Uses pre-built Map for O(1) extension lookup.
  */

@@ -1,5 +1,10 @@
 import type { AISession } from './types';
 
+function formatThinkingDuration(durationMs?: number): string {
+  if (!durationMs || durationMs <= 0) return '';
+  return ` (${(durationMs / 1000).toFixed(1)}s)`;
+}
+
 /**
  * Export a session as Markdown
  */
@@ -29,6 +34,18 @@ export function exportAsMarkdown(session: AISession): string {
     } else if (msg.role === 'assistant') {
       lines.push(`## Assistant [${time}]${msg.model ? ` (${msg.model})` : ''}`);
       lines.push('');
+
+      // Collapsed so rendered Markdown still reads as the answer first.
+      if (msg.thinking) {
+        lines.push('<details>');
+        lines.push(`<summary>Thinking${formatThinkingDuration(msg.thinkingDurationMs)}</summary>`);
+        lines.push('');
+        lines.push(msg.thinking);
+        lines.push('');
+        lines.push('</details>');
+        lines.push('');
+      }
+
       lines.push(msg.content);
 
       if (msg.toolCalls?.length) {
@@ -89,6 +106,15 @@ export function exportAsPlainText(session: AISession): string {
       lines.push('');
     } else if (msg.role === 'assistant') {
       lines.push(`[${time}] Assistant:`);
+
+      if (msg.thinking) {
+        lines.push(`  [Thinking${formatThinkingDuration(msg.thinkingDurationMs)}]`);
+        for (const thinkingLine of msg.thinking.split('\n')) {
+          lines.push(`  ${thinkingLine}`);
+        }
+        lines.push('');
+      }
+
       lines.push(msg.content);
 
       if (msg.toolCalls?.length) {

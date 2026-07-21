@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { Toggle, Select, SettingRow, SectionHeader, SettingCard, SettingsTabContent } from "../settings-ui";
 import { cn } from "../../../lib/utils";
 import { toast } from "../../ui/toast";
-import { TeamVaultPanel } from "../../TeamVaultPanel";
+import { TeamVaultPanelWithVault } from "../TeamVaultPanelWithVault";
 
 interface CrashLogFile {
   fileName: string;
@@ -1072,7 +1072,7 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
               <p className="text-sm text-muted-foreground">
                 {t("settings.system.teamVault.sectionDesc")}
               </p>
-              <TeamVaultPanel />
+              <TeamVaultPanelWithVault />
             </SettingCard>
 
           <SectionHeader title={t("settings.system.crashLogs.title")} />

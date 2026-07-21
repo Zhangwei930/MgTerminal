@@ -39,6 +39,7 @@ import {
   type TeamVaultRole,
 } from "../domain/teamVault";
 import type { Host } from "../domain/models";
+import type { HostInventoryShareDocument } from "../domain/hostDataSource";
 import {
   STORAGE_KEY_DISPLAY_NAME,
   STORAGE_KEY_HOSTS,
@@ -52,7 +53,12 @@ import { cn } from "../lib/utils";
 
 export type TeamVaultPanelProps = {
   hosts?: Host[];
-  onImportInventory?: (hosts: Host[]) => void;
+  /**
+   * Applies a package's inventory to the vault and reports how many hosts were
+   * actually added. Required: without it an import silently succeeds in the UI
+   * while the vault stays untouched.
+   */
+  onImportInventory: (inventory: HostInventoryShareDocument) => number;
 };
 
 type PanelTab = "overview" | "share" | "members" | "audit";
@@ -239,10 +245,9 @@ export const TeamVaultPanel: React.FC<TeamVaultPanelProps> = ({
       setShareInput("");
       setTab("overview");
       refresh();
-      toast.success(
-        t("teamVault.imported", { count: result.package.inventory.hosts.length }),
-      );
-      void onImportInventory;
+      // Report what actually landed in the vault, not what the package claimed.
+      const added = onImportInventory(result.package.inventory);
+      toast.success(t("teamVault.imported", { count: added }));
     } finally {
       setBusy(false);
     }

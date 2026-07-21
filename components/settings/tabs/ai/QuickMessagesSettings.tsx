@@ -6,6 +6,7 @@ import {
   isValidQuickMessageSlug,
   normalizeQuickMessageSlug,
   QUICK_MESSAGE_LIMITS,
+  searchQuickMessages,
   slugFromQuickMessageName,
 } from "../../../../infrastructure/ai/quickMessages";
 import { useI18n } from "../../../../application/i18n/I18nProvider";
@@ -44,9 +45,16 @@ export const QuickMessagesSettings: React.FC<QuickMessagesSettingsProps> = ({
   const [slugTouched, setSlugTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [search, setSearch] = useState("");
+
   const sortedMessages = useMemo(
     () => [...quickMessages].sort((a, b) => a.name.localeCompare(b.name)),
     [quickMessages],
+  );
+
+  const visibleMessages = useMemo(
+    () => searchQuickMessages(sortedMessages, search),
+    [search, sortedMessages],
   );
 
   const resetEditor = useCallback(() => {
@@ -248,9 +256,19 @@ export const QuickMessagesSettings: React.FC<QuickMessagesSettingsProps> = ({
           </div>
         ) : null}
 
-        {sortedMessages.length > 0 ? (
+        {!showEditor && quickMessages.length > 1 ? (
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("ai.quickMessages.search.placeholder")}
+            aria-label={t("ai.quickMessages.search.placeholder")}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+        ) : null}
+
+        {visibleMessages.length > 0 ? (
           <div className="border-t border-border/60 divide-y divide-border/60">
-            {sortedMessages.map((message) => (
+            {visibleMessages.map((message) => (
               <div
                 key={message.id}
                 className="py-3"
@@ -295,7 +313,11 @@ export const QuickMessagesSettings: React.FC<QuickMessagesSettingsProps> = ({
           </div>
         ) : !showEditor ? (
           <div className="border-t border-border/60 pt-3 text-sm text-muted-foreground">
-            <p className="text-sm text-muted-foreground">{t("ai.quickMessages.empty")}</p>
+            <p className="text-sm text-muted-foreground">
+              {sortedMessages.length > 0
+                ? t("ai.quickMessages.noSearchResults")
+                : t("ai.quickMessages.empty")}
+            </p>
           </div>
         ) : null}
       </SettingCard>

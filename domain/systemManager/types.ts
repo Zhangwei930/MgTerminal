@@ -64,7 +64,7 @@ export type TmuxManageAction =
   | { action: 'renameWindow'; sessionName: string; windowIndex: number; newName: string }
   | { action: 'killPane'; sessionName: string; windowIndex: number; paneIndex: number }
   | { action: 'splitPane'; sessionName: string; windowIndex: number; paneIndex?: number; direction: 'horizontal' | 'vertical' }
-  | { action: 'sendKeys'; sessionName: string; windowIndex: number; paneIndex: number; keys: string; enter?: boolean }
+  | { action: 'sendKeys'; sessionName: string; windowIndex: number; paneIndex?: number; keys: string; enter?: boolean }
   | { action: 'selectWindow'; sessionName: string; windowIndex: number }
   | { action: 'killServer' };
 

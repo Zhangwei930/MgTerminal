@@ -1,5 +1,5 @@
 import {
-  Loader2, MonitorPlay, Pencil, Plus, Trash2, Unplug,
+  Loader2, MonitorPlay, Pencil, Plus, SendHorizontal, Trash2, Unplug,
 } from 'lucide-react';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
@@ -37,6 +37,11 @@ const TMUX_POPUP_ICON = {
 type RenamePromptTarget =
   | { kind: 'session' }
   | { kind: 'window'; windowIndex: number; currentName: string };
+
+interface SendKeysTarget {
+  windowIndex: number;
+  windowName: string;
+}
 
 type KillConfirmTarget =
   | { kind: 'session' }
@@ -91,6 +96,7 @@ export const TmuxSessionCard = memo(function TmuxSessionCard({
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [renamePrompt, setRenamePrompt] = useState<RenamePromptTarget | null>(null);
+  const [sendKeysTarget, setSendKeysTarget] = useState<SendKeysTarget | null>(null);
   const [detachConfirmOpen, setDetachConfirmOpen] = useState(false);
   const [killConfirm, setKillConfirm] = useState<KillConfirmTarget | null>(null);
   const [newWindowOpen, setNewWindowOpen] = useState(false);
@@ -279,6 +285,17 @@ export const TmuxSessionCard = memo(function TmuxSessionCard({
                   <Pencil size={11} />
                 </SystemPanelRoundButton>
                 <SystemPanelRoundButton
+                  title={t('systemManager.tmux.sendKeys')}
+                  disabled={busy}
+                  loading={isPending('sendKeys', tmuxWindow.index)}
+                  onClick={() => setSendKeysTarget({
+                    windowIndex: tmuxWindow.index,
+                    windowName: tmuxWindow.name || String(tmuxWindow.index),
+                  })}
+                >
+                  <SendHorizontal size={11} />
+                </SystemPanelRoundButton>
+                <SystemPanelRoundButton
                   title={t('systemManager.tmux.killWindow')}
                   destructive
                   disabled={busy}
@@ -372,6 +389,35 @@ export const TmuxSessionCard = memo(function TmuxSessionCard({
               newName: values.name,
             });
           }
+        }}
+      />
+
+      <SystemPanelPromptDialog
+        open={sendKeysTarget !== null}
+        title={t('systemManager.tmux.sendKeys')}
+        fields={[{
+          id: 'keys',
+          // The window is named here rather than in the title so no new
+          // translated string is needed for it.
+          label: sendKeysTarget
+            ? `#${sendKeysTarget.windowIndex} ${sendKeysTarget.windowName}`
+            : '',
+          placeholder: t('systemManager.tmux.sendKeysPlaceholder'),
+        }]}
+        confirmLabel={t('systemManager.tmux.sendKeys')}
+        busy={busy}
+        onOpenChange={(open) => { if (!open) setSendKeysTarget(null); }}
+        onSubmit={(values) => {
+          const target = sendKeysTarget;
+          setSendKeysTarget(null);
+          if (!target || !values.keys) return;
+          // No paneIndex: tmux sends to the window's active pane.
+          void runAction({
+            action: 'sendKeys',
+            sessionName: session.name,
+            windowIndex: target.windowIndex,
+            keys: values.keys,
+          });
         }}
       />
 

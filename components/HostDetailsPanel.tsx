@@ -726,6 +726,8 @@ const HostDetailsPanel: React.FC<HostDetailsPanelPropsWithResize> = ({
         onUpdateProxy={updateProxyConfig}
         onSelectProxyProfile={selectProxyProfile}
         onClearProxy={clearProxyConfig}
+        targetHostname={form.hostname}
+        targetPort={form.port}
         onBack={() => setActiveSubPanel("none")}
         onCancel={onCancel}
         layout={layout}

@@ -2,9 +2,10 @@
  * Proxy Configuration Sub-Panel
  * Panel for configuring HTTP/SOCKS5/ProxyCommand proxy settings
  */
-import { Globe, KeyRound, SquareTerminal, Trash2 } from 'lucide-react';
-import React, { useCallback, useMemo } from 'react';
+import { CheckCircle2, Globe, KeyRound, Loader2, PlugZap, SquareTerminal, Trash2, XCircle } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
+import { useConnectionDiagnosticsBackend } from '../../application/state/useConnectionDiagnosticsBackend';
 import {
     formatProxyConfigEndpoint,
     formatProxyConfigType,
@@ -30,6 +31,9 @@ export interface ProxyPanelProps {
     onUpdateProxy: (field: keyof ProxyConfig, value: ProxyConfig[keyof ProxyConfig]) => void;
     onSelectProxyProfile?: (profileId: string | undefined) => void;
     onClearProxy: () => void;
+    /** Host this proxy will be used to reach; enables the connection test. */
+    targetHostname?: string;
+    targetPort?: number;
     onBack: () => void;
     onCancel: () => void;
     layout?: AsidePanelLayout;
@@ -45,6 +49,8 @@ export const ProxyPanel: React.FC<ProxyPanelPropsWithResize> = ({
     onUpdateProxy,
     onSelectProxyProfile,
     onClearProxy,
+    targetHostname,
+    targetPort,
     onBack,
     onCancel,
     layout = 'overlay',
@@ -80,6 +86,30 @@ export const ProxyPanel: React.FC<ProxyPanelPropsWithResize> = ({
         [identities, proxyConfig?.identityId],
     );
     const selectedIdentityValue = selectedIdentity?.id || (hasMissingIdentity ? missingIdentityValue : manualCredentialsValue);
+    const { testProxyConnection } = useConnectionDiagnosticsBackend();
+    const [testState, setTestState] = useState<
+        { status: 'idle' } | { status: 'running' } | { status: 'ok'; elapsedMs: number } | { status: 'error'; code: string }
+    >({ status: 'idle' });
+    const canTest = Boolean(targetHostname?.trim()) && canSave && !hasInvalidIdentity;
+
+    const handleTest = useCallback(async () => {
+        const config = effectiveProxyConfig;
+        if (!config || !targetHostname?.trim()) return;
+        setTestState({ status: 'running' });
+        const result = await testProxyConnection({
+            proxy: config,
+            hostname: targetHostname.trim(),
+            port: targetPort,
+        });
+        if (!result) {
+            setTestState({ status: 'error', code: 'failed' });
+            return;
+        }
+        setTestState(result.success
+            ? { status: 'ok', elapsedMs: result.elapsedMs }
+            : { status: 'error', code: result.error });
+    }, [effectiveProxyConfig, targetHostname, targetPort, testProxyConnection]);
+
     const handleBack = useCallback(() => {
         if (hasInvalidManualProxyPort || hasInvalidIdentity) return;
         onBack();
@@ -326,6 +356,34 @@ export const ProxyPanel: React.FC<ProxyPanelPropsWithResize> = ({
                             )}
                         </Card>}
                     </>
+                )}
+
+                {canTest && (
+                    <div className="space-y-2">
+                        <Button
+                            variant="outline"
+                            className="w-full h-10"
+                            disabled={testState.status === 'running'}
+                            onClick={() => void handleTest()}
+                        >
+                            {testState.status === 'running'
+                                ? <Loader2 size={14} className="mr-2 animate-spin" />
+                                : <PlugZap size={14} className="mr-2" />}
+                            {t('hostDetails.proxyPanel.test', { host: targetHostname || '' })}
+                        </Button>
+                        {testState.status === 'ok' && (
+                            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 size={13} className="shrink-0" />
+                                {t('hostDetails.proxyPanel.testOk', { ms: testState.elapsedMs })}
+                            </div>
+                        )}
+                        {testState.status === 'error' && (
+                            <div className="flex items-center gap-2 text-xs text-destructive">
+                                <XCircle size={13} className="shrink-0" />
+                                {t(`hostDetails.proxyPanel.testError.${testState.code}`)}
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {(proxyConfig?.host || proxyConfig?.command || selectedProxyProfileId) && (

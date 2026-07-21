@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
 import type { DiagnosticStepResult } from "../../domain/connectionDiagnostics";
+import type { ProxyConfig } from "../../domain/models";
 
 // Thin backend hook for the connection diagnostics ("Test Connection")
 // bridge, so components stay free of infrastructure imports.
@@ -12,6 +13,15 @@ export const useConnectionDiagnosticsBackend = () => {
       const bridge = magiesTerminalBridge.get();
       if (!bridge?.runConnectionDiagnostics) return null;
       return bridge.runConnectionDiagnostics(options);
+    },
+    [],
+  );
+
+  const testProxyConnection = useCallback(
+    async (payload: { proxy: ProxyConfig; hostname: string; port?: number }) => {
+      const bridge = magiesTerminalBridge.get();
+      if (!bridge?.testProxyConnection) return null;
+      return bridge.testProxyConnection(payload);
     },
     [],
   );
@@ -37,5 +47,5 @@ export const useConnectionDiagnosticsBackend = () => {
     [],
   );
 
-  return { runDiagnostics, cancelDiagnostics, setProgressListener };
+  return { runDiagnostics, cancelDiagnostics, setProgressListener, testProxyConnection };
 };

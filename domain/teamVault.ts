@@ -416,6 +416,28 @@ export async function verifyTeamVaultAuditEvent(
   return diff === 0;
 }
 
+/**
+ * What the audit table is allowed to claim about a row's signature.
+ * `unverifiable` exists so a missing key is never reported as either a good
+ * signature or a tampered one.
+ */
+export type TeamVaultAuditSignatureState =
+  | "verified"
+  | "invalid"
+  | "unsigned"
+  | "unverifiable";
+
+export async function classifyTeamVaultAuditSignatures(
+  events: TeamVaultAuditEvent[],
+  auditKeyHex: string | undefined,
+): Promise<TeamVaultAuditSignatureState[]> {
+  return Promise.all(events.map(async (event): Promise<TeamVaultAuditSignatureState> => {
+    if (!event.sig) return "unsigned";
+    if (!auditKeyHex) return "unverifiable";
+    return (await verifyTeamVaultAuditEvent(event, auditKeyHex)) ? "verified" : "invalid";
+  }));
+}
+
 export function encodeTeamVaultPackageShare(pkg: TeamVaultPackage): string {
   const json = JSON.stringify(pkg);
   const b64 = typeof Buffer !== "undefined"

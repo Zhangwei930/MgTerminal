@@ -12,6 +12,7 @@ import {
   setTeamVaultMemberRole,
   signTeamVaultAuditEvent,
   teamVaultCan,
+  classifyTeamVaultAuditSignatures,
   verifyTeamVaultAuditEvent,
 } from "./teamVault";
 
@@ -120,4 +121,33 @@ test("audit HMAC sign and verify", async () => {
     await verifyTeamVaultAuditEvent({ ...event, detail: "tampered" }, key),
     false,
   );
+});
+
+test("classifyTeamVaultAuditSignatures separates verified, tampered and unsigned rows", async () => {
+  const key = generateAuditKeyHex();
+  const base = { ts: 1, teamId: "t1", type: "inventory_exported" as const, actorMemberId: "m1" };
+  const signed = await signTeamVaultAuditEvent({ ...base, detail: "12 hosts" }, key);
+  const tampered = { ...signed, detail: "1 host" };
+  const unsigned = { ...base, ts: 2, detail: "no key at the time" };
+
+  assert.deepEqual(
+    await classifyTeamVaultAuditSignatures([signed, tampered, unsigned], key),
+    ["verified", "invalid", "unsigned"],
+  );
+});
+
+test("classifyTeamVaultAuditSignatures never claims verified without a key", async () => {
+  const key = generateAuditKeyHex();
+  const signed = await signTeamVaultAuditEvent(
+    { ts: 1, teamId: "t1", type: "team_created", actorMemberId: "m1" },
+    key,
+  );
+  // A signature we hold no key for is unverifiable — reporting it as either
+  // verified or tampered would be a claim we cannot make.
+  assert.deepEqual(await classifyTeamVaultAuditSignatures([signed], undefined), ["unverifiable"]);
+  assert.deepEqual(await classifyTeamVaultAuditSignatures([signed], ""), ["unverifiable"]);
+});
+
+test("classifyTeamVaultAuditSignatures handles an empty ring", async () => {
+  assert.deepEqual(await classifyTeamVaultAuditSignatures([], generateAuditKeyHex()), []);
 });

@@ -32,9 +32,11 @@ import {
   updateLocalMemberRole,
 } from "../application/state/teamVaultStore";
 import {
+  classifyTeamVaultAuditSignatures,
   getLocalTeamVaultRole,
   teamVaultCan,
   type TeamVaultAuditEvent,
+  type TeamVaultAuditSignatureState,
   type TeamVaultPolicy,
   type TeamVaultRole,
 } from "../domain/teamVault";
@@ -50,6 +52,32 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { toast } from "./ui/toast";
 import { cn } from "../lib/utils";
+
+const AUDIT_SIGNATURE_STYLES: Record<
+  TeamVaultAuditSignatureState,
+  { mark: string; className: string; labelKey: string }
+> = {
+  verified: {
+    mark: "✓",
+    className: "text-emerald-600 dark:text-emerald-400",
+    labelKey: "teamVault.audit.sig.verified",
+  },
+  invalid: {
+    mark: "✗",
+    className: "text-red-600 dark:text-red-400",
+    labelKey: "teamVault.audit.sig.invalid",
+  },
+  unsigned: {
+    mark: "—",
+    className: "text-muted-foreground",
+    labelKey: "teamVault.audit.sig.unsigned",
+  },
+  unverifiable: {
+    mark: "?",
+    className: "text-muted-foreground",
+    labelKey: "teamVault.audit.sig.unverifiable",
+  },
+};
 
 export type TeamVaultPanelProps = {
   hosts?: Host[];
@@ -113,6 +141,7 @@ export const TeamVaultPanel: React.FC<TeamVaultPanelProps> = ({
     memberCount: number;
   } | null>(null);
   const [auditEvents, setAuditEvents] = useState<TeamVaultAuditEvent[]>([]);
+  const [auditSignatures, setAuditSignatures] = useState<TeamVaultAuditSignatureState[]>([]);
   const [busy, setBusy] = useState(false);
 
   const hosts = hostsProp ?? loadHostsFromStorage();
@@ -129,6 +158,20 @@ export const TeamVaultPanel: React.FC<TeamVaultPanelProps> = ({
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // HMAC verification is async, so the column renders from this state rather
+  // than from the presence of a `sig` field.
+  useEffect(() => {
+    let cancelled = false;
+    void classifyTeamVaultAuditSignatures(auditEvents, policy?.auditKeyHex)
+      .then((states) => {
+        if (!cancelled) setAuditSignatures(states);
+      })
+      .catch(() => {
+        if (!cancelled) setAuditSignatures(auditEvents.map(() => "unverifiable"));
+      });
+    return () => { cancelled = true; };
+  }, [auditEvents, policy?.auditKeyHex]);
 
   useEffect(() => {
     if (policy) setTab((prev) => (prev === "overview" ? "overview" : prev));
@@ -693,7 +736,11 @@ export const TeamVaultPanel: React.FC<TeamVaultPanelProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {[...auditEvents].reverse().map((e, i) => (
+                  {[...auditEvents].reverse().map((e, i) => {
+                    const signature = AUDIT_SIGNATURE_STYLES[
+                      auditSignatures[auditEvents.length - 1 - i] ?? "unverifiable"
+                    ];
+                    return (
                     <tr key={`${e.ts}-${e.type}-${i}`} className="bg-background/30">
                       <td className="whitespace-nowrap px-2.5 py-1.5 text-muted-foreground">
                         {formatAuditTime(e.ts)}
@@ -709,16 +756,13 @@ export const TeamVaultPanel: React.FC<TeamVaultPanelProps> = ({
                         {e.detail || "—"}
                       </td>
                       <td className="px-2.5 py-1.5">
-                        {e.sig ? (
-                          <span className="text-emerald-600 dark:text-emerald-400" title={e.sig}>
-                            ✓
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <span className={signature.className} title={t(signature.labelKey)}>
+                          {signature.mark}
+                        </span>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

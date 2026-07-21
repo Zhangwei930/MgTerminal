@@ -187,6 +187,11 @@ export const LocalPrivacySetup: React.FC<{
                           : t('ai.localPrivacy.toolsUnsupported')}
                     </p>
                   )}
+                  {capability && !capability.supportsTools && !error && (
+                    <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
+                      {t('ai.localPrivacy.toolsUnsupportedAdvice')}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="button"

@@ -25,7 +25,7 @@ import {
     Server,
 } from 'lucide-react';
 import { useCloudSync } from '../application/state/useCloudSync';
-import { isProviderReadyForSync, type CloudProvider, formatSyncDateTime } from '../domain/sync';
+import { findLastSuccessfulSyncAt, isProviderReadyForSync, type CloudProvider, formatSyncDateTime } from '../domain/sync';
 import { useI18n } from '../application/i18n/I18nProvider';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
@@ -172,6 +172,10 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
         return formatSyncDateTime(timestamp);
     };
 
+    // Freshness belongs on the button itself: the popover already answers it,
+    // but only after a click.
+    const lastSuccessfulSyncAt = findLastSuccessfulSyncAt(sync.syncHistory);
+
     // Create a unique key based on sync state to force re-render
     const syncStateKey = `${sync.localVersion}-${sync.remoteVersion}-${sync.syncHistory.length}`;
 
@@ -201,7 +205,13 @@ export const SyncStatusButton: React.FC<SyncStatusButtonProps> = ({
                         </Button>
                     </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent>{t('sync.cloudSync')}</TooltipContent>
+                <TooltipContent>
+                    {!sync.hasAnyConnectedProvider
+                        ? t('sync.cloudSync')
+                        : lastSuccessfulSyncAt
+                            ? t('sync.tooltip.lastSynced', { time: formatTime(lastSuccessfulSyncAt) })
+                            : t('sync.tooltip.neverSynced')}
+                </TooltipContent>
             </Tooltip>
 
             <PopoverContent

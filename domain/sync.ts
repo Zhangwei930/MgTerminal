@@ -650,6 +650,21 @@ export const formatSyncDateTime = (timestamp: number): string => {
 };
 
 /**
+ * When data last actually landed, as opposed to when a sync was last attempted.
+ * History is not guaranteed sorted, so this scans rather than reading [0].
+ */
+export const findLastSuccessfulSyncAt = (
+  history: SyncHistoryEntry[],
+): number | undefined => {
+  let latest: number | undefined;
+  for (const entry of history) {
+    if (!entry.success) continue;
+    if (latest === undefined || entry.timestamp > latest) latest = entry.timestamp;
+  }
+  return latest;
+};
+
+/**
  * Format last sync time for display
  */
 export const formatLastSync = (timestamp?: number): string => {

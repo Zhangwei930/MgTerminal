@@ -816,6 +816,8 @@ export const enCoreMessages: Messages = {
 
   // Sync
   'sync.cloudSync': 'Cloud Sync',
+  'sync.tooltip.lastSynced': 'Cloud Sync · synced {time}',
+  'sync.tooltip.neverSynced': 'Cloud Sync · never synced',
   'sync.settings': 'Sync Settings',
   'sync.active': 'Cloud Sync Active',
   'sync.pending': 'Changes pending sync',

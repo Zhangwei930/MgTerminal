@@ -10,6 +10,7 @@ const {
   isEnabled,
   setEnabled,
   reportCrashEntry,
+  getStats,
   _resetForTest,
 } = require("./crashTelemetryBridge.cjs");
 
@@ -138,5 +139,57 @@ test("reportCrashEntry never throws when the network call fails", async () => {
   init({ app, fetchImpl: async () => { throw new Error("offline"); } });
   setEnabled(true);
   await assert.doesNotReject(() => reportCrashEntry(makeEntry()));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("stats start empty and survive a restart", async () => {
+  const { app, dir } = withTempApp();
+  init({ app, fetchImpl: async () => ({ ok: true }) });
+  assert.deepEqual(getStats(), { sentCount: 0, lastSentAt: null });
+
+  setEnabled(true);
+  await reportCrashEntry(makeEntry());
+  const afterFirst = getStats();
+  assert.equal(afterFirst.sentCount, 1);
+  assert.equal(typeof afterFirst.lastSentAt, "number");
+
+  // Counters are persisted, not session-scoped like the dedupe gate.
+  _resetForTest();
+  init({ app });
+  assert.deepEqual(getStats(), afterFirst);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("deduped and disabled reports do not advance the counter", async () => {
+  const { app, dir } = withTempApp();
+  init({ app, fetchImpl: async () => ({ ok: true }) });
+
+  await reportCrashEntry(makeEntry());
+  assert.equal(getStats().sentCount, 0, "disabled reports never count");
+
+  setEnabled(true);
+  await reportCrashEntry(makeEntry());
+  await reportCrashEntry(makeEntry());
+  assert.equal(getStats().sentCount, 1, "the deduped repeat must not count");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("a failed upload does not count as sent", async () => {
+  const { app, dir } = withTempApp();
+  init({ app, fetchImpl: async () => { throw new Error("offline"); } });
+  setEnabled(true);
+
+  await reportCrashEntry(makeEntry());
+  assert.deepEqual(getStats(), { sentCount: 0, lastSentAt: null });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("legacy state files without counters load as zeroed stats", () => {
+  const { app, dir } = withTempApp();
+  fs.writeFileSync(path.join(dir, "crash-telemetry.json"), JSON.stringify({ enabled: true }), "utf-8");
+  init({ app });
+
+  assert.equal(isEnabled(), true);
+  assert.deepEqual(getStats(), { sentCount: 0, lastSentAt: null });
   fs.rmSync(dir, { recursive: true, force: true });
 });

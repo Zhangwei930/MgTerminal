@@ -941,6 +941,9 @@ function createPreloadApi(ctx) {
   runConnectionDiagnostics: async (options) => {
     return ipcRenderer.invoke("magiesTerminal:diagnostics:run", options);
   },
+  testProxyConnection: async (payload) => {
+    return ipcRenderer.invoke("magiesTerminal:proxy:test", payload);
+  },
   cancelConnectionDiagnostics: async (runId) => {
     return ipcRenderer.invoke("magiesTerminal:diagnostics:cancel", { runId });
   },

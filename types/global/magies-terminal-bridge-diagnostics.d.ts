@@ -22,6 +22,19 @@ declare global {
       results: import("../../domain/connectionDiagnostics").DiagnosticStepResult[];
     }>;
     cancelConnectionDiagnostics?(runId: string): Promise<{ cancelled: boolean }>;
+    /**
+     * Opens and drops a proxied connection to a host. Failures come back as a
+     * code, never as the underlying message — proxy errors can carry the
+     * user's credentials.
+     */
+    testProxyConnection?(payload: {
+      proxy: import("../../domain/models").ProxyConfig;
+      hostname: string;
+      port?: number;
+    }): Promise<
+      | { success: true; elapsedMs: number }
+      | { success: false; error: "invalid" | "auth" | "timeout" | "refused" | "dns" | "failed" }
+    >;
     onConnectionDiagnosticsProgress?(
       cb: (event: MagiesTerminalDiagnosticsProgressEvent) => void,
     ): () => void;

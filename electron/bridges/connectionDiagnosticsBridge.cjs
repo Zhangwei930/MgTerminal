@@ -15,7 +15,7 @@ const { Client: SSHClient } = require("ssh2");
 
 const { runDiagnosticsWithDeps } = require("./connectionDiagnostics/runDiagnostics.cjs");
 const hostKeyVerifier = require("./hostKeyVerifier.cjs");
-const { createProxySocket } = require("./proxyUtils.cjs");
+const { classifyProxyTestError, createProxySocket } = require("./proxyUtils.cjs");
 const {
   expandIdentityFilePath,
   findAllDefaultPrivateKeys,
@@ -33,6 +33,8 @@ const { isHostKeyTrustedBySystem } = createSystemKnownHostsApi({
 });
 
 const DIAG_TCP_TIMEOUT_MS = 20000;
+/** Shorter than a diagnostics run: this is an interactive button. */
+const PROXY_TEST_TIMEOUT_MS = 12000;
 const DIAG_READY_TIMEOUT_MS = 45000;
 const DIAG_SFTP_TIMEOUT_MS = 15000;
 
@@ -453,15 +455,45 @@ async function runDiagnostics(event, options) {
   }
 }
 
+/**
+ * Open and immediately drop a proxied connection to a host, so the proxy's
+ * reachability and credentials can be checked without starting a session.
+ * Only a coded reason travels back — see classifyProxyTestError.
+ */
+async function testProxy(_event, payload) {
+  const proxy = payload?.proxy;
+  const hostname = String(payload?.hostname || "").trim();
+  const port = Number(payload?.port) || 22;
+  if (!proxy?.type || !hostname) {
+    return { success: false, error: "invalid" };
+  }
+
+  const startedAt = Date.now();
+  let socket = null;
+  try {
+    socket = await createProxySocket(proxy, hostname, port, {
+      timeoutMs: PROXY_TEST_TIMEOUT_MS,
+    });
+    return { success: true, elapsedMs: Date.now() - startedAt };
+  } catch (err) {
+    return { success: false, error: classifyProxyTestError(err) };
+  } finally {
+    try { socket?.destroy?.(); } catch { /* ignore */ }
+  }
+}
+
 function registerHandlers(ipcMain) {
   ipcMain.handle("magiesTerminal:diagnostics:run", (event, options) =>
     runDiagnostics(event, options || {}));
+  ipcMain.handle("magiesTerminal:proxy:test", (event, payload) =>
+    testProxy(event, payload || {}));
   ipcMain.handle("magiesTerminal:diagnostics:cancel", (_event, payload) =>
     cancelRun(payload?.runId));
 }
 
 module.exports = {
   registerHandlers,
+  testProxy,
   // Shared with hostHealthBridge (same probing primitives, no shell opened).
   connectTargetProbe,
   probeTcpForRun: probeTcp,

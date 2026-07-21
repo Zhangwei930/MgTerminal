@@ -1512,22 +1512,49 @@ function registerFollowHandlers(ipcMain, deps) {
   ipcMain.handle("magiesTerminal:follow:lanDecodeInvite", (_event, payload) => {
     return sessionFollowLan.decodeShare(payload?.shareString || payload?.value || "");
   });
+  // The join window only ever has the share string the user pasted, so these
+  // four handlers pick the transport from the invite version (v1 LAN, v2 WAN)
+  // and then from the viewer handle they issued.
   ipcMain.handle("magiesTerminal:follow:lanConnect", async (event, payload) => {
+    const shareString = payload?.shareString || payload?.value;
+    if (sessionFollowWan.isWanShareString(shareString)) {
+      const webContentsId = event.sender.id;
+      return sessionFollowWan.connectAsViewer({
+        shareString,
+        displayName: payload?.displayName || resolveDisplayName(),
+        onEvent: (clientEvent) => {
+          try {
+            const wc = electronModule?.webContents?.fromId?.(webContentsId);
+            if (wc && !wc.isDestroyed?.()) {
+              wc.send("magiesTerminal:follow:lanClientEvent", clientEvent);
+            }
+          } catch {
+            // ignore
+          }
+        },
+      });
+    }
     return sessionFollowLan.connectAsViewer({
-      shareString: payload?.shareString || payload?.value,
+      shareString,
       displayName: payload?.displayName || resolveDisplayName(),
       webContentsId: event.sender.id,
       electronModule,
     });
   });
   ipcMain.handle("magiesTerminal:follow:lanViewerInput", (_event, payload) => {
-    return sessionFollowLan.sendViewerInput(payload?.clientId, payload?.data);
+    return sessionFollowWan.ownsViewerClientId(payload?.clientId)
+      ? sessionFollowWan.viewerInput(payload?.clientId, payload?.data)
+      : sessionFollowLan.sendViewerInput(payload?.clientId, payload?.data);
   });
   ipcMain.handle("magiesTerminal:follow:lanViewerRequestControl", (_event, payload) => {
-    return sessionFollowLan.sendViewerRequestControl(payload?.clientId);
+    return sessionFollowWan.ownsViewerClientId(payload?.clientId)
+      ? sessionFollowWan.viewerRequestControl(payload?.clientId)
+      : sessionFollowLan.sendViewerRequestControl(payload?.clientId);
   });
   ipcMain.handle("magiesTerminal:follow:lanViewerDisconnect", (_event, payload) => {
-    return sessionFollowLan.disconnectViewer(payload?.clientId);
+    return sessionFollowWan.ownsViewerClientId(payload?.clientId)
+      ? sessionFollowWan.viewerDisconnect(payload?.clientId)
+      : sessionFollowLan.disconnectViewer(payload?.clientId);
   });
   // WAN follow (TCP relay) — host dials out; viewers join via share string.
   ipcMain.handle("magiesTerminal:follow:wanCreateInvite", async (event, payload) => {

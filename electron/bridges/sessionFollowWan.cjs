@@ -14,6 +14,8 @@ const { openFollowFrame, writeSealed } = require("./sessionFollowCrypto.cjs");
 
 const INVITE_TTL_MS = 30 * 60 * 1000;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+/** Distinguishes WAN viewer handles from the LAN bridge's `out-` ones. */
+const WAN_CLIENT_ID_PREFIX = "wan-view-";
 
 /** sessionId -> host-side runtime */
 const hostRuntimes = new Map();
@@ -405,6 +407,8 @@ function getWanInvite(sessionId) {
 
 /**
  * Viewer: connect to relay and surface events via callback registration.
+ * Mirrors the LAN viewer contract: an opaque clientId identifies the connection
+ * and every event is delivered as `{ clientId, message }`.
  */
 function connectAsViewer({ shareString, displayName, onEvent }) {
   const decoded = decodeShare(shareString);
@@ -414,12 +418,13 @@ function connectAsViewer({ shareString, displayName, onEvent }) {
     return Promise.resolve({ success: false, error: "expired" });
   }
 
-  const clientKey = `${payload.roomId}:${payload.token}`;
-  const existing = viewerClients.get(clientKey);
-  if (existing) {
-    try { existing.socket.destroy(); } catch { /* ignore */ }
-    viewerClients.delete(clientKey);
+  // Re-joining the same room replaces the previous connection.
+  for (const [key, client] of viewerClients) {
+    if (client.payload.roomId !== payload.roomId || client.payload.token !== payload.token) continue;
+    try { client.socket.destroy(); } catch { /* ignore */ }
+    viewerClients.delete(key);
   }
+  const clientId = `${WAN_CLIENT_ID_PREFIX}${crypto.randomBytes(4).toString("hex")}`;
 
   return new Promise((resolve) => {
     const socket = net.connect({ host: payload.relayHost, port: payload.relayPort });
@@ -468,9 +473,10 @@ function connectAsViewer({ shareString, displayName, onEvent }) {
         }
         if (msg.type === "relayWelcome" && !settled) {
           clearTimeout(timer);
-          viewerClients.set(clientKey, { socket, payload, peerId: msg.peerId });
+          viewerClients.set(clientId, { socket, payload, peerId: msg.peerId });
           finish({
             success: true,
+            clientId,
             peerId: msg.peerId,
             sessionId: payload.sessionId,
             hostLabel: payload.hostLabel,
@@ -484,7 +490,7 @@ function connectAsViewer({ shareString, displayName, onEvent }) {
           continue;
         }
         if (typeof onEvent === "function") {
-          try { onEvent(msg); } catch { /* ignore */ }
+          try { onEvent({ clientId, message: msg }); } catch { /* ignore */ }
         }
       }
     });
@@ -494,34 +500,44 @@ function connectAsViewer({ shareString, displayName, onEvent }) {
       finish({ success: false, error: err?.message || "connect_failed" });
     });
     socket.on("close", () => {
-      viewerClients.delete(clientKey);
+      viewerClients.delete(clientId);
       if (typeof onEvent === "function") {
-        try { onEvent({ type: "closed" }); } catch { /* ignore */ }
+        try { onEvent({ clientId, message: { type: "closed" } }); } catch { /* ignore */ }
       }
     });
   });
 }
 
-function viewerInput(clientKey, data) {
-  const client = viewerClients.get(clientKey);
+function viewerInput(clientId, data) {
+  const client = viewerClients.get(clientId);
   if (!client?.socket) return { success: false, error: "not_connected" };
   sendAppJson(client.socket, { type: "input", data: String(data ?? "") }, client.payload.token);
   return { success: true };
 }
 
-function viewerRequestControl(clientKey) {
-  const client = viewerClients.get(clientKey);
+function viewerRequestControl(clientId) {
+  const client = viewerClients.get(clientId);
   if (!client?.socket) return { success: false, error: "not_connected" };
   sendAppJson(client.socket, { type: "requestControl" }, client.payload.token);
   return { success: true };
 }
 
-function viewerDisconnect(clientKey) {
-  const client = viewerClients.get(clientKey);
+function viewerDisconnect(clientId) {
+  const client = viewerClients.get(clientId);
   if (!client) return { success: true };
   try { client.socket.destroy(); } catch { /* ignore */ }
-  viewerClients.delete(clientKey);
+  viewerClients.delete(clientId);
   return { success: true };
+}
+
+/** True when a viewer handle belongs to this transport rather than the LAN one. */
+function ownsViewerClientId(clientId) {
+  return typeof clientId === "string" && clientId.startsWith(WAN_CLIENT_ID_PREFIX);
+}
+
+/** True when a pasted share string is a WAN invite rather than a LAN one. */
+function isWanShareString(value) {
+  return /^magies-follow:2:/.test(String(value || "").trim());
 }
 
 function configure({ writeToSession, addDataTap: tap }) {
@@ -584,6 +600,8 @@ module.exports = {
   viewerInput,
   viewerRequestControl,
   viewerDisconnect,
+  ownsViewerClientId,
+  isWanShareString,
   createFollowRelayServer,
   formatCode,
   _resetForTests() {

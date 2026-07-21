@@ -24,8 +24,10 @@ export default [
       ".worktrees/**",
       ".venv*/**",
       "**/.venv*/**",
-      // Separate Capacitor Android companion (own package.json / storage model).
-      "mobile/**",
+      // Capacitor companion: lint its source, skip everything generated.
+      "mobile/node_modules/**",
+      "mobile/dist/**",
+      "mobile/android/**",
     ],
   },
   {
@@ -161,6 +163,15 @@ export default [
   },
   {
     files: ["infrastructure/persistence/localStorageAdapter.ts"],
+    rules: {
+      "no-restricted-globals": "off",
+    },
+  },
+  {
+    // The Capacitor companion is a separate app with its own storage model —
+    // localStorageAdapter does not exist there, so the rule that forces the
+    // desktop renderer through it has nothing to point at.
+    files: ["mobile/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-globals": "off",
     },

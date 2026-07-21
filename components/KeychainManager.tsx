@@ -17,6 +17,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useI18n } from "../application/i18n/I18nProvider";
 import { useStoredViewMode } from "../application/state/useStoredViewMode";
 import type { GroupConfig } from "../domain/models";
+import { collectSshKeyImportFiles } from "../domain/sshKeyImportFiles";
 import { reorderVaultItems, sortByVaultOrder } from "../domain/vaultOrder";
 import { STORAGE_KEY_VAULT_KEYS_VIEW_MODE } from "../infrastructure/config/storageKeys";
 import { logger } from "../lib/logger";
@@ -533,41 +534,43 @@ echo $3 >> "$FILE"`);
   // File input ref for import
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Handle file import
+  // Handle file import. Accepts the whole set a user may have selected — a
+  // private key on its own, or alongside its .pub and its -cert.pub — because
+  // a certificate cannot be recognised from its extension.
   const handleFileImport = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        if (content) {
-          // Try to detect key type from content
-          let detectedType: KeyType = "ED25519";
-          const lc = content.toLowerCase();
-          if (lc.includes("rsa")) detectedType = "RSA";
-          else if (lc.includes("ecdsa") || lc.includes("ec private"))
-            detectedType = "ECDSA";
-          else if (lc.includes("ed25519")) detectedType = "ED25519";
-
-          // Extract label from filename (remove extension)
-          const label = file.name.replace(/\.(pem|key|pub|ppk)$/i, "");
-
-          setDraftKey((prev) => ({
-            ...prev,
-            privateKey: content,
-            label: prev.label || label,
-            type: detectedType,
-          }));
-        }
-      };
-      reader.readAsText(file);
-
-      // Reset input so same file can be selected again
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      // Reset input so the same file can be selected again.
       event.target.value = "";
+      if (files.length === 0) return;
+
+      const read = await Promise.all(
+        files.map(async (file) => ({ name: file.name, content: await file.text() })),
+      );
+      const selection = collectSshKeyImportFiles(read);
+      if (!selection.privateKey) {
+        showError(t("keychain.validation.noPrivateKeyInSelection"), t("common.validation"));
+        return;
+      }
+
+      // Try to detect key type from content
+      let detectedType: KeyType = "ED25519";
+      const lc = selection.privateKey.toLowerCase();
+      if (lc.includes("rsa")) detectedType = "RSA";
+      else if (lc.includes("ecdsa") || lc.includes("ec private"))
+        detectedType = "ECDSA";
+      else if (lc.includes("ed25519")) detectedType = "ED25519";
+
+      setDraftKey((prev) => ({
+        ...prev,
+        privateKey: selection.privateKey,
+        publicKey: selection.publicKey ?? prev.publicKey,
+        certificate: selection.certificate ?? prev.certificate,
+        label: prev.label || selection.label,
+        type: detectedType,
+      }));
     },
-    [],
+    [showError, t],
   );
 
   return (
@@ -577,8 +580,9 @@ echo $3 >> "$FILE"`);
         ref={fileInputRef}
         type="file"
         accept=".pem,.key,.pub,.ppk,*"
+        multiple
         className="hidden"
-        onChange={handleFileImport}
+        onChange={(event) => void handleFileImport(event)}
       />
 
       {/* Main Content */}

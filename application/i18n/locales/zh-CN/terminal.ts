@@ -648,6 +648,7 @@ export const zhCNTerminalMessages: Messages = {
   'keychain.panel.keyExport': '密钥导出',
   'keychain.validation.labelRequired': '请填写密钥的 Label',
   'keychain.validation.labelAndPrivateKeyRequired': 'Label 和私钥为必填项',
+  'keychain.validation.noPrivateKeyInSelection': '所选文件中没有找到私钥',
   'keychain.validation.labelAndUsernameRequired': 'Label 和用户名为必填项',
   'keychain.error.generationUnavailable': '无法生成密钥：请确保应用运行在 Electron 环境',
   'keychain.error.generateKeyPairFailed': '生成密钥对失败',

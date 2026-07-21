@@ -621,6 +621,7 @@ export const ruTerminalMessages: Messages = {
   'keychain.panel.keyExport': 'Экспорт ключа',
   'keychain.validation.labelRequired': 'Пожалуйста, введите метку для ключа',
   'keychain.validation.labelAndPrivateKeyRequired': 'Метка и приватный ключ обязательны',
+  'keychain.validation.noPrivateKeyInSelection': 'В выбранных файлах не найден закрытый ключ',
   'keychain.validation.labelAndUsernameRequired': 'Метка и имя пользователя обязательны',
   'keychain.error.generationUnavailable': 'Генератор ключей не работает - пожалуйста, убедитесь, что приложение работает в Electron',
   'keychain.error.generateKeyPairFailed': 'Не удалось сгенерировать пару ключей',

@@ -521,6 +521,8 @@ export const zhCNCoreMessages: Messages = {
 
   // Sync
   'sync.cloudSync': '云同步',
+  'sync.tooltip.lastSynced': '云同步 · 上次同步 {time}',
+  'sync.tooltip.neverSynced': '云同步 · 从未同步',
   'sync.settings': '同步设置',
   'sync.active': '云同步已启用',
   'sync.pending': '有待同步的更改',

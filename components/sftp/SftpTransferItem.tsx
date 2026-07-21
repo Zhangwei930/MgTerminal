@@ -25,7 +25,7 @@ import { cn } from '../../lib/utils';
 import { TransferTask } from '../../types';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { formatSpeed, formatTransferBytes } from './utils';
+import { formatEta, formatSpeed, formatTransferBytes } from './utils';
 
 interface SftpTransferItemProps {
     task: TransferTask;
@@ -132,6 +132,10 @@ const SftpTransferItemInner: React.FC<SftpTransferItemProps> = ({
             : '';
 
     const speedFormatted = effectiveSpeed > 0 ? formatSpeed(effectiveSpeed) : '';
+    // Directory parents count files rather than bytes, so their totals can't drive an ETA.
+    const etaFormatted = task.status === 'transferring' && hasKnownTotal && !isDirParent
+        ? formatEta(task.totalBytes - task.transferredBytes, effectiveSpeed)
+        : '';
     const targetDirectoryPath = task.isDirectory ? task.targetPath : getParentPath(task.targetPath);
 
     const progressOverlayText = task.status === 'pending'
@@ -207,7 +211,7 @@ const SftpTransferItemInner: React.FC<SftpTransferItemProps> = ({
     );
 
     const progressSummaryText = task.status === 'transferring' || task.status === 'pending'
-        ? [speedFormatted, progressOverlayText].filter(Boolean).join(' • ')
+        ? [speedFormatted, etaFormatted, progressOverlayText].filter(Boolean).join(' • ')
         : '';
     const showTransferSizeCalculation = task.status === 'transferring' && !hasKnownTotal && !isDirParent;
     const showFailedError = task.status === 'failed' && !!task.error;

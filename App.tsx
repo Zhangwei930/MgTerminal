@@ -41,6 +41,7 @@ import { resolveSnippetsShortcutIntent } from './application/state/resolveSnippe
 import { resolveWindowCommandCloseIntent } from './application/state/windowCommandClose';
 import { TERMINAL_THEMES } from './infrastructure/config/terminalThemes';
 import { useThemeRuntime, useTerminalAppearanceInjection } from './application/state/useThemeRuntime';
+import { usePetStatusBroadcaster } from './application/state/usePetStatusBroadcaster';
 import { useCustomThemes } from './application/state/customThemeStore';
 import type { SyncPayload } from './domain/sync';
 import { applySyncPayload, buildLocalVaultPayload, hasMeaningfulSyncData } from './application/syncPayload';
@@ -50,6 +51,7 @@ import {
 } from './application/localVaultBackups';
 import { getCredentialProtectionAvailability } from './infrastructure/services/credentialProtection';
 import { magiesTerminalBridge } from './infrastructure/services/magiesTerminalBridge';
+import { getRelevantBusyScope } from './application/state/petActivityStore';
 import { localStorageAdapter } from './infrastructure/persistence/localStorageAdapter';
 import { syncExternalMcpStartupState } from './application/state/useExternalMcpToggleState';
 import { useExternalMcpSessionSync } from './application/state/useExternalMcpSessionSync';
@@ -128,6 +130,7 @@ function App({ settings }: { settings: SettingsState }) {
   const [pendingNewWindowSession, setPendingNewWindowSession] = useState<OpenSessionInNewWindowPayload | null>(null);
   const [pendingTrayPanelConnectHostIds, setPendingTrayPanelConnectHostIds] = useState<string[]>([]);
   const isPeerSessionWindow = typeof window !== 'undefined' && window.location.hash.startsWith('#/session-window');
+  usePetStatusBroadcaster(isPeerSessionWindow);
 
   const {
     theme,
@@ -641,6 +644,21 @@ function App({ settings }: { settings: SettingsState }) {
       unsubscribeJump?.();
       unsubscribeConnect?.();
     };
+  }, [isPeerSessionWindow]);
+
+  useEffect(() => {
+    if (isPeerSessionWindow) return;
+    const unsubscribe = magiesTerminalBridge.get()?.onPetOpenAiPanel?.(() => {
+      window.dispatchEvent(new CustomEvent('magiesTerminal:open-ai-panel'));
+      // Best-effort: if the pet's activity was tied to a single terminal session
+      // (not a multi-session workspace, which has no direct "jump to" target),
+      // bring that session's tab forward too — not just the AI panel.
+      const busyScope = getRelevantBusyScope();
+      if (busyScope?.scopeType === 'terminal' && busyScope.scopeTargetId) {
+        _handleTrayJumpToSession(busyScope.scopeTargetId);
+      }
+    });
+    return () => unsubscribe?.();
   }, [isPeerSessionWindow]);
 
   useEffect(() => {

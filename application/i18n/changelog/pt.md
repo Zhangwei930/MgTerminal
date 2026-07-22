@@ -1,6 +1,15 @@
 # Registro de alterações
 
 
+## [0.5.25] - 2026-07-22
+
+### Funcionalidades
+- **Bichinho de desktop**: ative em Configurações → IA → Bichinho e um bichinho flutuante e arrastável aparece em qualquer lugar da tela, animando-se conforme o estado da IA — respirando parado, pulando enquanto trabalha, balançando enquanto espera sua aprovação, acenando ao concluir, tremendo em caso de falha. Como o bichinho raramente tem o foco do sistema, a limitação de animação do Electron para janelas sem foco foi desativada especificamente para ele, para não parecer congelado
+- **Interações diretas**: clique para abrir/focar o painel de chat de IA, pulando para a sessão de terminal ocupada quando possível; duplo clique foca a janela principal; clique direito abre um menu para executar um comando configurado nas definições, abrir as definições de IA, redefinir a posição do bichinho ou escondê-lo; passar o mouse mostra um balão de status mais detalhado
+- **Aparência personalizada**: você pode enviar sua própria imagem ou sprite sheet, com intervalos de quadros por estado (parado/executando/aguardando/concluído/falhou) para sprite sheets; tamanho, opacidade, sempre visível e visibilidade do balão são ajustáveis
+- **Modo privado e avisos de conclusão**: o modo privado limita o balão a um status genérico como "executando" em vez de nomear a ferramenta ativa; tarefas com 10 segundos ou mais podem opcionalmente disparar uma notificação de desktop ao concluir ou falhar
+- **Persistência de posição e suporte a múltiplos monitores**: o bichinho lembra onde você o arrastou, mesmo após reinicializações ou reativação; ele volta automaticamente ao canto padrão se um monitor for desconectado ou tiver a resolução alterada
+
 ## [0.5.24] - 2026-07-22
 
 ### Correções

@@ -1,6 +1,15 @@
 # Journal des modifications
 
 
+## [0.5.25] - 2026-07-22
+
+### Fonctionnalités
+- **Animal de bureau**: activez-le dans Réglages → IA → Animal, et un animal flottant déplaçable apparaît n'importe où à l'écran, s'animant selon l'état de l'IA — respiration au repos, rebond pendant l'exécution, balancement en attente de votre approbation, signe de la main à la fin, tremblement en cas d'échec. Comme l'animal a rarement le focus système, la limitation d'animation d'Electron pour les fenêtres non focalisées a été spécifiquement désactivée pour lui, afin qu'il ne paraisse pas figé
+- **Interactions directes**: cliquer ouvre/active le panneau de chat IA, en sautant si possible vers la session de terminal occupée; double-clic active la fenêtre principale; clic droit ouvre un menu pour exécuter une commande configurée dans les réglages, ouvrir les réglages IA, réinitialiser la position de l'animal ou le masquer; le survol affiche une bulle de statut plus détaillée
+- **Apparence personnalisée**: vous pouvez importer votre propre image ou feuille de sprites, avec des plages d'images par statut (repos/exécution/attente/terminé/échec) pour les feuilles de sprites; taille, opacité, toujours au premier plan et visibilité de la bulle sont réglables
+- **Mode privé et alertes de fin**: le mode privé limite la bulle à un statut générique comme « en cours » plutôt que de nommer l'outil actif; les tâches de 10 secondes ou plus peuvent déclencher une notification de bureau optionnelle à la fin ou en cas d'échec
+- **Persistance de la position et prise en charge multi-écrans**: l'animal se souvient de l'endroit où vous l'avez déplacé, même après redémarrage ou réactivation; il revient automatiquement au coin par défaut si un écran est déconnecté ou change de résolution
+
 ## [0.5.24] - 2026-07-22
 
 ### Corrections

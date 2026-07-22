@@ -1178,6 +1178,30 @@ function createPreloadApi(ctx) {
     return () => ipcRenderer.removeListener("magiesTerminal:trayPanel:setMenuData", handler);
   },
 
+  // Desktop pet overlay window
+  setPetEnabled: (enabled) => ipcRenderer.invoke("magiesTerminal:pet:setEnabled", enabled),
+  movePetWindowBy: (dx, dy) => ipcRenderer.send("magiesTerminal:pet:moveBy", { dx, dy }),
+  openAiPanelFromPet: () => ipcRenderer.invoke("magiesTerminal:pet:openAiPanel"),
+  savePetImage: (dataUrl) => ipcRenderer.invoke("magiesTerminal:pet:saveImage", dataUrl),
+  readPetImage: () => ipcRenderer.invoke("magiesTerminal:pet:readImage"),
+  clearPetImage: () => ipcRenderer.invoke("magiesTerminal:pet:clearImage"),
+  testPetCommand: (argv) => ipcRenderer.invoke("magiesTerminal:pet:testCommand", argv),
+  setPetOpacity: (opacity) => ipcRenderer.send("magiesTerminal:pet:setOpacity", opacity),
+  setPetAlwaysOnTop: (enabled) => ipcRenderer.send("magiesTerminal:pet:setAlwaysOnTop", enabled),
+  showPetNotification: (payload) => ipcRenderer.invoke("magiesTerminal:pet:notify", payload),
+  showPetContextMenu: (customCommandArgv) =>
+    ipcRenderer.invoke("magiesTerminal:pet:showContextMenu", customCommandArgv ?? null),
+  onPetOpenAiPanel: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("magiesTerminal:pet:openAiPanel", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:pet:openAiPanel", handler);
+  },
+  onPetHideRequested: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on("magiesTerminal:pet:hideRequested", handler);
+    return () => ipcRenderer.removeListener("magiesTerminal:pet:hideRequested", handler);
+  },
+
   // Get file path from File object (for drag-and-drop)
   getPathForFile: (file) => {
     try {

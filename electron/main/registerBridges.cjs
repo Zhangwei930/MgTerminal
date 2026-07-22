@@ -5,6 +5,8 @@ let cloudSyncSessionPassword = null;
 const { readClipboardFiles, readClipboardImage } = require("../bridges/clipboardFiles.cjs");
 const crashTelemetryBridge = require("../bridges/crashTelemetryBridge.cjs");
 const { TRANSFER_CHUNK_SIZE, TRANSFER_CONCURRENCY } = require("../bridges/transferLimits.cjs");
+const petImageBridge = require("../bridges/petImageBridge.cjs");
+const { buildPetCommandSpawnOptions } = require("../bridges/petCommandBridge.cjs");
 
 const excludedFigSpecPrefixes = ["aws", "gcloud", "az"];
 
@@ -629,7 +631,211 @@ function createBridgeRegistrar(context) {
         return { success: false, error: err?.message || "Failed to open terminal popup" };
       }
     });
-  
+
+    // Desktop pet overlay window (Settings → AI → Pet)
+    ipcMain.handle("magiesTerminal:pet:setEnabled", async (_event, enabled) => {
+      try {
+        if (enabled) {
+          getWindowManager().showPetWindow(electronModule, {
+            preload,
+            devServerUrl: effectiveDevServerUrl,
+            isDev,
+          });
+        } else {
+          getWindowManager().closePetWindow();
+        }
+        return { success: true };
+      } catch (err) {
+        console.error("[Main] Failed to toggle desktop pet window:", err);
+        return { success: false, error: err?.message || "Failed to toggle desktop pet window" };
+      }
+    });
+
+    // Custom pet image bytes live on disk (userData/pet-assets/), not in localStorage —
+    // see electron/bridges/petImageBridge.cjs for why.
+    ipcMain.handle("magiesTerminal:pet:saveImage", (_event, dataUrl) => {
+      return petImageBridge.savePetImageFile(app.getPath("userData"), dataUrl);
+    });
+    ipcMain.handle("magiesTerminal:pet:readImage", () => {
+      return petImageBridge.readPetImageFile(app.getPath("userData"));
+    });
+    ipcMain.handle("magiesTerminal:pet:clearImage", () => {
+      return petImageBridge.clearPetImageFile(app.getPath("userData"));
+    });
+
+    // Settings → AI → Pet "Test Run": launches the configured command and reports
+    // whether it started cleanly (missing binary / immediate non-zero exit) within
+    // a short grace window. A command still running after the window (e.g. it opened
+    // an app and stays open) counts as a pass — we're only catching obvious breakage.
+    ipcMain.handle("magiesTerminal:pet:testCommand", (_event, argv) => {
+      const clean = Array.isArray(argv) ? argv.filter((token) => typeof token === "string" && token.length > 0) : [];
+      if (clean.length === 0) return Promise.resolve({ success: false, error: "No command configured" });
+
+      return new Promise((resolve) => {
+        let settled = false;
+        let stderr = "";
+        let timer = null;
+        const settle = (result) => {
+          if (settled) return;
+          settled = true;
+          if (timer) clearTimeout(timer);
+          resolve(result);
+        };
+
+        let child;
+        try {
+          const { spawn: cpSpawn } = require("node:child_process");
+          child = cpSpawn(clean[0], clean.slice(1), buildPetCommandSpawnOptions(process.platform, { stdio: ["ignore", "ignore", "pipe"] }));
+        } catch (err) {
+          settle({ success: false, error: err?.message || "Failed to launch command" });
+          return;
+        }
+
+        child.stderr?.on("data", (chunk) => {
+          stderr = (stderr + chunk.toString()).slice(0, 2000);
+        });
+        child.on("error", (err) => settle({ success: false, error: err.message }));
+        child.on("exit", (code) => {
+          if (code === 0 || code === null) settle({ success: true });
+          else settle({ success: false, error: stderr.trim() || `Exited with code ${code}` });
+        });
+        timer = setTimeout(() => settle({ success: true }), 1500);
+      });
+    });
+
+    ipcMain.on("magiesTerminal:pet:moveBy", (_event, delta) => {
+      const dx = Number(delta?.dx);
+      const dy = Number(delta?.dy);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      try {
+        getWindowManager().movePetWindowBy(dx, dy);
+      } catch (err) {
+        console.error("[Main] Failed to move desktop pet window:", err);
+      }
+    });
+
+    ipcMain.on("magiesTerminal:pet:setOpacity", (_event, opacity) => {
+      try {
+        getWindowManager().setPetWindowOpacity(opacity);
+      } catch (err) {
+        console.error("[Main] Failed to set desktop pet opacity:", err);
+      }
+    });
+
+    ipcMain.on("magiesTerminal:pet:setAlwaysOnTop", (_event, enabled) => {
+      try {
+        getWindowManager().setPetWindowAlwaysOnTop(Boolean(enabled));
+      } catch (err) {
+        console.error("[Main] Failed to set desktop pet always-on-top:", err);
+      }
+    });
+
+    // Desktop notification for a long-running AI task finishing while the user may
+    // not be looking at the pet.
+    ipcMain.handle("magiesTerminal:pet:notify", (_event, payload) => {
+      try {
+        const { Notification } = electronModule;
+        if (!Notification || !Notification.isSupported()) return { success: false, error: "Notifications unsupported" };
+        const title = typeof payload?.title === "string" ? payload.title.slice(0, 200) : "";
+        const body = typeof payload?.body === "string" ? payload.body.slice(0, 500) : "";
+        new Notification({ title, body, silent: false }).show();
+        return { success: true };
+      } catch (err) {
+        console.error("[Main] Failed to show pet notification:", err);
+        return { success: false, error: err?.message || "Failed to show notification" };
+      }
+    });
+
+    // Left-click: bring the main window forward and ask its renderer to open the AI panel.
+    ipcMain.handle("magiesTerminal:pet:openAiPanel", async () => {
+      try {
+        const win = getWindowManager().getMainWindow();
+        if (win) {
+          getWindowManager().showAndFocusMainWindow(win);
+          win.webContents.send("magiesTerminal:pet:openAiPanel");
+        }
+        return { success: true };
+      } catch (err) {
+        console.error("[Main] Failed to open AI panel from pet:", err);
+        return { success: false, error: err?.message || "Failed to open AI panel" };
+      }
+    });
+
+    // Right-click menu: run a fixed user-configured command, open Settings, hide the
+    // pet, or reset its position. The custom-command argv is sanity-checked (bounded
+    // count/length, no control characters) but is otherwise trusted as-is: it only
+    // ever reaches here from the app's own pet renderer, which read it straight back
+    // out of the same Settings → AI → Pet field the user typed it into.
+    ipcMain.handle("magiesTerminal:pet:showContextMenu", (event, customCommandArgv) => {
+      const { Menu } = electronModule;
+      const windowManager = getWindowManager();
+      const language = windowManager.getCurrentLanguage();
+      const label = (key) => windowManager.tMenu(language, key);
+      const petWin = BrowserWindow.fromWebContents(event.sender);
+      const MAX_ARGV_TOKENS = 32;
+      const MAX_TOKEN_LENGTH = 1024;
+      const hasControlChars = (value) => /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(value);
+      const argv = Array.isArray(customCommandArgv)
+        ? customCommandArgv
+            .filter((token) => typeof token === "string" && token.length > 0 && token.length <= MAX_TOKEN_LENGTH && !hasControlChars(token))
+            .slice(0, MAX_ARGV_TOKENS)
+        : null;
+
+      const template = [];
+      if (argv && argv.length > 0) {
+        template.push({
+          label: label("petRunCommand"),
+          click: () => {
+            try {
+              const { spawn: cpSpawn } = require("node:child_process");
+              const child = cpSpawn(argv[0], argv.slice(1), buildPetCommandSpawnOptions(process.platform, { detached: true, stdio: "ignore" }));
+              child.on("error", (err) => console.error("[Main] Pet custom command failed:", err));
+              child.unref();
+            } catch (err) {
+              console.error("[Main] Failed to run pet custom command:", err);
+            }
+          },
+        });
+        template.push({ type: "separator" });
+      }
+      template.push({
+        label: label("petOpenSettings"),
+        click: () => {
+          getWindowManager().openSettingsWindow(electronModule, {
+            preload,
+            devServerUrl: effectiveDevServerUrl,
+            isDev,
+            appIcon: getAppIconPath(),
+            isMac,
+            electronDir,
+            sourceWindow: petWin,
+            hashQuery: "tab=ai&sub=pet",
+          }).catch((err) => console.error("[Main] Failed to open settings from pet menu:", err));
+        },
+      });
+      template.push({
+        label: label("petResetPosition"),
+        click: () => {
+          try {
+            getWindowManager().resetPetWindowPosition(electronModule);
+          } catch (err) {
+            console.error("[Main] Failed to reset pet position:", err);
+          }
+        },
+      });
+      template.push({
+        label: label("petHide"),
+        click: () => {
+          if (petWin && !petWin.isDestroyed()) {
+            petWin.webContents.send("magiesTerminal:pet:hideRequested");
+          }
+        },
+      });
+
+      Menu.buildFromTemplate(template).popup({ window: petWin || undefined });
+      return { success: true };
+    });
+
     // Cloud sync master password (stored in-memory + persisted via safeStorage)
     ipcMain.handle("magiesTerminal:cloudSync:session:setPassword", async (_event, password) => {
       cloudSyncSessionPassword = typeof password === "string" && password.length ? password : null;

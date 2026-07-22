@@ -1,6 +1,15 @@
 # Registro de cambios
 
 
+## [0.5.25] - 2026-07-22
+
+### Funcionalidades
+- **Mascota de escritorio**: actívala en Ajustes → IA → Mascota y aparecerá una mascota flotante y arrastrable en cualquier parte de la pantalla, animándose según el estado de la IA: respiración en reposo, salto mientras trabaja, balanceo mientras espera tu aprobación, saludo al terminar, temblor si falla. Como la mascota rara vez tiene el foco del sistema, se desactivó específicamente la limitación de animaciones de Electron para ventanas sin foco, para que no parezca congelada
+- **Interacciones directas**: clic para abrir/enfocar el panel de chat de IA, saltando a la sesión de terminal ocupada cuando es posible; doble clic para enfocar la ventana principal; clic derecho abre un menú para ejecutar un comando configurado en ajustes, abrir los ajustes de IA, restablecer la posición de la mascota u ocultarla; al pasar el cursor se muestra una burbuja de estado más detallada
+- **Apariencia personalizada**: puedes subir tu propia imagen o sprite sheet, con rangos de fotogramas por estado (reposo/ejecutando/esperando/hecho/error) para sprite sheets; tamaño, opacidad, mantener siempre visible y visibilidad de la burbuja son ajustables
+- **Modo privado y avisos de finalización**: el modo privado limita la burbuja a un estado genérico como "ejecutando" en lugar de nombrar la herramienta activa; las tareas de 10 segundos o más pueden disparar opcionalmente una notificación de escritorio al terminar o fallar
+- **Persistencia de posición y soporte multi-monitor**: la mascota recuerda dónde la arrastraste, incluso tras reinicios o al volver a activarla; vuelve automáticamente a la esquina predeterminada si un monitor se desconecta o cambia de resolución
+
 ## [0.5.24] - 2026-07-22
 
 ### Correcciones

@@ -95,6 +95,17 @@ const listeners = new Set<ApprovalRequestListener>();
 type ApprovalClearedListener = (toolCallIds: string[]) => void;
 const clearedListeners = new Set<ApprovalClearedListener>();
 
+// Subscribers for pending-approval count changes (e.g. the desktop pet's "waiting" state)
+type ApprovalCountListener = (count: number) => void;
+const countListeners = new Set<ApprovalCountListener>();
+
+function notifyPendingApprovalCountChange(): void {
+  const count = pendingApprovals.size;
+  for (const listener of countListeners) {
+    try { listener(count); } catch { /* ignore listener errors */ }
+  }
+}
+
 let approvalEventCounter = 0;
 
 function nextApprovalEventId(prefix: string): string {
@@ -212,6 +223,7 @@ export function requestApproval(
     };
 
     pendingApprovals.set(toolCallId, { resolve: wrappedResolve, request });
+    notifyPendingApprovalCountChange();
 
     // Auto-deny after timeout so the session doesn't hang indefinitely
     timerId = setTimeout(() => {
@@ -219,6 +231,7 @@ export function requestApproval(
         pendingApprovals.delete(toolCallId);
         wrappedResolve(false);
         emitApprovalEvent('approval_resolved', request, { outcome: 'timeout' });
+        notifyPendingApprovalCountChange();
         // Notify UI to remove the stale card
         for (const cl of clearedListeners) {
           try { cl([toolCallId]); } catch { /* ignore */ }
@@ -252,6 +265,7 @@ export function resolveApproval(
 
   if (entry) {
     pendingApprovals.delete(toolCallId);
+    notifyPendingApprovalCountChange();
     entry.resolve(approved);
   }
 
@@ -347,10 +361,27 @@ export function clearAllPendingApprovals(chatSessionId?: string): void {
 
   // Notify UI listeners to remove the cards
   if (clearedIds.length > 0) {
+    notifyPendingApprovalCountChange();
     for (const cl of clearedListeners) {
       try { cl(clearedIds); } catch { /* ignore */ }
     }
   }
+}
+
+/**
+ * Current number of tool calls awaiting user approval, across all sessions.
+ * Used by the desktop pet to show a "waiting for you" state.
+ */
+export function getPendingApprovalCount(): number {
+  return pendingApprovals.size;
+}
+
+/**
+ * Subscribe to pending-approval count changes. Returns an unsubscribe function.
+ */
+export function onPendingApprovalCountChange(listener: ApprovalCountListener): () => void {
+  countListeners.add(listener);
+  return () => { countListeners.delete(listener); };
 }
 
 /**
@@ -398,6 +429,7 @@ export function setupMcpApprovalBridge(): () => void {
         resolve: () => {}, // no-op; real resolution is via IPC
         request,
       });
+      notifyPendingApprovalCountChange();
     }
 
     // Notify all UI listeners
@@ -417,6 +449,7 @@ export function setupMcpApprovalBridge(): () => void {
       }
     }
     if (clearedIds.length > 0) {
+      notifyPendingApprovalCountChange();
       for (const cl of clearedListeners) {
         try { cl(clearedIds); } catch { /* ignore */ }
       }

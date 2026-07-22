@@ -305,8 +305,16 @@ const SettingsPageContent: React.FC<{ settings: SettingsState }> = ({ settings }
         onNeedsSave: () => toast.warning(t('update.needsSave.message'), t('update.needsSave.title')),
         onInstallFailed: (message) => toast.error(message, t('update.downloadFailed.title')),
     });
-    const [activeTab, setActiveTab] = useState("application");
-    const [mountedTabs, setMountedTabs] = useState(() => new Set(["application"]));
+    const initialTab = useMemo(() => {
+        try {
+            const query = new URLSearchParams(window.location.hash.split('?')[1] || '');
+            return query.get('tab') || 'application';
+        } catch {
+            return 'application';
+        }
+    }, []);
+    const [activeTab, setActiveTab] = useState(initialTab);
+    const [mountedTabs, setMountedTabs] = useState(() => new Set([initialTab]));
 
     useEffect(() => {
         notifyRendererReady();

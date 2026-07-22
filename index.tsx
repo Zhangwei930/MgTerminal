@@ -20,6 +20,7 @@ const LazyTrayPanel = lazy(() => import('./components/TrayPanel'));
 const LazyTerminalPopupPage = lazy(() => import('./components/TerminalPopupPage'));
 const LazyFollowSessionPage = lazy(() => import('./components/FollowSessionPage'));
 const LazyLanFollowJoinPage = lazy(() => import('./components/LanFollowJoinPage'));
+const LazyPetWindow = lazy(() => import('./components/PetWindow'));
 
 function SettingsWindowFallback() {
   return (
@@ -143,6 +144,9 @@ const getRoute = () => {
   if (hash === '#/lan-follow' || hash.startsWith('#/lan-follow')) {
     return 'lan-follow';
   }
+  if (hash === '#/pet' || hash.startsWith('#/pet')) {
+    return 'pet';
+  }
   return 'main';
 };
 
@@ -189,6 +193,12 @@ const renderApp = () => {
           </Suspense>
         </TooltipProvider>
       </ToastProvider>
+    );
+  } else if (route === 'pet') {
+    root.render(
+      <Suspense fallback={null}>
+        <LazyPetWindow />
+      </Suspense>
     );
   } else if (route === 'lan-follow') {
     root.render(

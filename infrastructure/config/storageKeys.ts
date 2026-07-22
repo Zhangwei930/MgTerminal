@@ -202,6 +202,26 @@ export const STORAGE_KEY_AI_EXTERNAL_MCP_ENABLED = 'magiesTerminal_ai_external_m
 export const STORAGE_KEY_AI_EXTERNAL_MCP_MODE = 'magiesTerminal_ai_external_mcp_mode_v1';
 /** External MCP idle timeout in minutes (temporary mode only). */
 export const STORAGE_KEY_AI_EXTERNAL_MCP_IDLE_TIMEOUT_MINUTES = 'magiesTerminal_ai_external_mcp_idle_timeout_minutes_v1';
+/** Desktop pet: whether the floating AI-status pet overlay is enabled. */
+export const STORAGE_KEY_AI_PET_ENABLED = 'magiesTerminal_ai_pet_enabled_v1';
+/** Desktop pet: custom image config (dataUrl + sprite grid), or absent for the default pet. */
+export const STORAGE_KEY_AI_PET_IMAGE = 'magiesTerminal_ai_pet_image_v1';
+/** Desktop pet: latest broadcast AI status, written by the main window and read by the pet window. */
+export const STORAGE_KEY_AI_PET_STATE = 'magiesTerminal_ai_pet_state_v1';
+/** Desktop pet: one fixed command line run via the pet's right-click menu (argv, no shell). */
+export const STORAGE_KEY_AI_PET_CUSTOM_COMMAND = 'magiesTerminal_ai_pet_custom_command_v1';
+/** Desktop pet: sprite/content scale factor (0.5-2). */
+export const STORAGE_KEY_AI_PET_SCALE = 'magiesTerminal_ai_pet_scale_v1';
+/** Desktop pet: window opacity (0.3-1), applied to the whole overlay window. */
+export const STORAGE_KEY_AI_PET_OPACITY = 'magiesTerminal_ai_pet_opacity_v1';
+/** Desktop pet: whether the overlay stays pinned above other windows. */
+export const STORAGE_KEY_AI_PET_ALWAYS_ON_TOP = 'magiesTerminal_ai_pet_always_on_top_v1';
+/** Desktop pet: whether the status speech bubble is shown at all. */
+export const STORAGE_KEY_AI_PET_SHOW_BUBBLE = 'magiesTerminal_ai_pet_show_bubble_v1';
+/** Desktop pet: suppress the active tool/task name in the bubble, show only a generic status. */
+export const STORAGE_KEY_AI_PET_PRIVACY_MODE = 'magiesTerminal_ai_pet_privacy_mode_v1';
+/** Desktop pet: whether a completed/failed long-running task shows an OS notification. */
+export const STORAGE_KEY_AI_PET_NOTIFICATIONS_ENABLED = 'magiesTerminal_ai_pet_notifications_enabled_v1';
 
 // SFTP Transfer Concurrency
 export const STORAGE_KEY_SFTP_TRANSFER_CONCURRENCY = 'magiesTerminal_sftp_transfer_concurrency_v1';

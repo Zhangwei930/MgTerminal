@@ -50,6 +50,7 @@ import { buildExternalAgentHistoryMessagesForBridge } from './ai/externalAgentHi
 import { canSendWithAgent, findEnabledExternalAgent } from './ai/agentSendEligibility';
 import { getStrictLocalPrivacyViolation } from '../infrastructure/ai/localPrivacy';
 import { registerGrantPersister } from '../infrastructure/ai/shared/approvalGate';
+import { reportTabStreaming, reportTabFinished, reportTabToolName } from '../application/state/petActivityStore';
 import { stopAgentTurn } from '../infrastructure/ai/harness/agentStop';
 import { getAgentRuntime } from '../infrastructure/ai/harness/globalAgentRuntime';
 import { useAIPermissionGrantsState } from '../application/state/useAIPermissionGrantsState';
@@ -356,6 +357,42 @@ const AIChatSidePanelActive: React.FC<AIChatSidePanelProps> = ({
   );
   const activeSessionId = normalizedPanelView.mode === 'session' ? normalizedPanelView.sessionId : null;
   const isStreaming = activeSessionId ? streamingSessionIds.has(activeSessionId) : false;
+
+  // Feed the desktop pet's aggregate "is the AI busy" signal (see petActivityStore).
+  // This panel instance is scoped to one tab, so we diff against the previous
+  // streamingSessionIds to detect a stream that just finished (and how).
+  const prevStreamingSessionIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const previouslyStreaming = prevStreamingSessionIdsRef.current;
+    const justFinishedSessionIds = [...previouslyStreaming].filter((id) => !streamingSessionIds.has(id));
+    prevStreamingSessionIdsRef.current = new Set(streamingSessionIds);
+
+    reportTabStreaming(scopeKey, streamingSessionIds.size > 0, { scopeType, scopeTargetId: scopeTargetId ?? null });
+
+    // Surface the name of the tool actively running (if any) for the pet's bubble.
+    let activeToolName: string | null = null;
+    for (const id of streamingSessionIds) {
+      const streamingSession = sessions.find((s) => s.id === id);
+      const lastMessage = streamingSession?.messages[streamingSession.messages.length - 1];
+      const lastToolCall = lastMessage?.toolCalls?.[lastMessage.toolCalls.length - 1];
+      if (lastToolCall?.name) { activeToolName = lastToolCall.name; break; }
+    }
+    reportTabToolName(scopeKey, activeToolName);
+
+    for (const finishedSessionId of justFinishedSessionIds) {
+      const finishedSession = sessions.find((s) => s.id === finishedSessionId);
+      const lastMessage = finishedSession?.messages[finishedSession.messages.length - 1];
+      // A user-initiated stop isn't a success (skip the celebratory wave) or an
+      // error (skip the shake) — settle quietly back to idle instead. A failed
+      // turn often only sets errorInfo, not executionStatus, so check both.
+      if (lastMessage?.executionStatus === 'cancelled') continue;
+      const failed = lastMessage?.executionStatus === 'failed' || Boolean(lastMessage?.errorInfo);
+      reportTabFinished(failed ? 'failed' : 'done');
+    }
+  }, [streamingSessionIds, sessions, scopeKey, scopeType, scopeTargetId]);
+
+  useEffect(() => () => reportTabStreaming(scopeKey, false), [scopeKey]);
+
   const currentAgentId = activeSession?.agentId ?? currentDraft?.agentId ?? defaultAgentId;
   const inputValue = currentDraft?.text ?? '';
   const files = currentDraft?.attachments ?? [];

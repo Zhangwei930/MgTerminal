@@ -1,6 +1,15 @@
 # Änderungsprotokoll
 
 
+## [0.5.25] - 2026-07-22
+
+### Funktionen
+- **Desktop-Haustier**: In Einstellungen → KI → Haustier aktivieren, und ein verschiebbares, schwebendes Haustier erscheint irgendwo auf dem Bildschirm und animiert sich passend zum KI-Status – Atmen im Leerlauf, Hüpfen während der Ausführung, Wackeln beim Warten auf Ihre Bestätigung, Winken bei Abschluss, Zittern bei Fehlern. Da das Haustier selten den Systemfokus hält, wurde die Animationsdrosselung von Electron für nicht fokussierte Fenster hier gezielt deaktiviert, damit es nicht eingefroren wirkt
+- **Direkte Interaktionen**: Klick öffnet/fokussiert das KI-Chat-Panel und springt nach Möglichkeit zur gerade beschäftigten Terminal-Sitzung; Doppelklick fokussiert das Hauptfenster; Rechtsklick öffnet ein Menü zum Ausführen eines in den Einstellungen konfigurierten Befehls, zum Öffnen der KI-Einstellungen, zum Zurücksetzen der Position oder zum Ausblenden des Haustiers; beim Hover erscheint eine ausführlichere Statusblase
+- **Individuelles Aussehen**: eigenes Bild oder Sprite-Sheet hochladbar, mit pro Status (Leerlauf/Ausführung/Warten/Fertig/Fehler) einstellbaren Frame-Bereichen für Sprite-Sheets; Größe, Deckkraft, Immer-im-Vordergrund und Sichtbarkeit der Sprechblase sind einstellbar
+- **Privatmodus und Abschlussbenachrichtigungen**: Der Privatmodus zeigt in der Blase nur einen allgemeinen Status wie "läuft" statt den aktiven Tool-Namen; Aufgaben ab 10 Sekunden Laufzeit können bei Abschluss oder Fehlschlag optional eine Desktop-Benachrichtigung auslösen
+- **Positionsspeicherung und Mehrbildschirm-Unterstützung**: Die Position, an die das Haustier gezogen wurde, bleibt über Neustarts und erneutes Aktivieren hinweg erhalten; wird ein Bildschirm getrennt oder die Auflösung geändert, springt das Haustier automatisch zurück in die Standardecke
+
 ## [0.5.24] - 2026-07-22
 
 ### Fehlerbehebungen

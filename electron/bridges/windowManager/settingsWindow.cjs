@@ -101,7 +101,7 @@ function createSettingsWindowApi(ctx) {
     
     async function openSettingsWindow(electronModule, options, { showOnLoad = true } = {}) {
       const { BrowserWindow, shell } = electronModule;
-      const { preload, devServerUrl, isDev, appIcon, isMac, electronDir, sourceWindow } = options;
+      const { preload, devServerUrl, isDev, appIcon, isMac, electronDir, sourceWindow, hashQuery } = options;
     
       // If settings window already exists, show and focus it
       if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -266,9 +266,12 @@ function createSettingsWindowApi(ctx) {
       // Prevent HTML <title> from overriding the window title
       win.on('page-title-updated', (e) => { e.preventDefault(); });
     
-      // Load the settings page
-      const settingsPath = '/#/settings';
-    
+      // Load the settings page. hashQuery (e.g. "tab=ai&sub=pet") lets a caller like
+      // the pet's right-click menu land directly on a specific settings section —
+      // only honored on a fresh window; an already-open one is just refocused above.
+      const settingsPath = hashQuery ? `/#/settings?${hashQuery}` : '/#/settings';
+      const packagedSettingsPath = hashQuery ? `#/settings?${hashQuery}` : '#/settings';
+
       try {
         if (isDev) {
           try {
@@ -280,9 +283,9 @@ function createSettingsWindowApi(ctx) {
             console.warn("Dev server not reachable for settings window", e);
           }
         }
-    
+
         // Production mode - load via custom protocol.
-        await win.loadURL("app://magiesTerminal/index.html#/settings");
+        await win.loadURL(`app://magiesTerminal/index.html${packagedSettingsPath}`);
         if (showOnLoad) { showAndFocusWindow(win); }
         return win;
       } catch (err) {

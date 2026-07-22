@@ -101,6 +101,21 @@ declare global {
     onTrayPanelJumpToSession?(callback: (sessionId: string) => void): () => void;
     onTrayPanelConnectToHost?(callback: (hostId: string) => void): () => void;
 
+    // Desktop pet overlay window
+    setPetEnabled?(enabled: boolean): Promise<{ success: boolean }>;
+    movePetWindowBy?(dx: number, dy: number): void;
+    openAiPanelFromPet?(): Promise<{ success: boolean }>;
+    savePetImage?(dataUrl: string): Promise<{ success: boolean; error?: string }>;
+    readPetImage?(): Promise<{ success: boolean; dataUrl?: string; error?: string }>;
+    clearPetImage?(): Promise<{ success: boolean; error?: string }>;
+    testPetCommand?(argv: string[]): Promise<{ success: boolean; error?: string }>;
+    setPetOpacity?(opacity: number): void;
+    setPetAlwaysOnTop?(enabled: boolean): void;
+    showPetNotification?(payload: { title: string; body: string }): Promise<{ success: boolean; error?: string }>;
+    showPetContextMenu?(customCommandArgv: string[] | null): Promise<{ success: boolean }>;
+    onPetOpenAiPanel?(callback: () => void): () => void;
+    onPetHideRequested?(callback: () => void): () => void;
+
     hideTrayPanel?(): Promise<{ success: boolean }>;
     openMainWindow?(): Promise<{ success: boolean }>;
     quitApp?(): Promise<{ success: boolean }>;

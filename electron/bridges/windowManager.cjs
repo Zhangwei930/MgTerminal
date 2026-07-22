@@ -248,9 +248,21 @@ function getWindowBoundsState(win, overrideBounds) {
 }
 
 const MENU_LABELS = {
-  en: { edit: "Edit", view: "View", window: "Window", reload: "Reload", closeWindow: "Close Window" },
-  "zh-CN": { edit: "编辑", view: "视图", window: "窗口", reload: "重新加载", closeWindow: "关闭窗口" },
-  "zh-TW": { edit: "編輯", view: "檢視", window: "視窗", reload: "重新載入", closeWindow: "關閉視窗" },
+  en: {
+    edit: "Edit", view: "View", window: "Window", reload: "Reload", closeWindow: "Close Window",
+    petRunCommand: "Run Command", petOpenSettings: "Open AI Settings", petHide: "Hide Pet",
+    petResetPosition: "Reset Pet Position",
+  },
+  "zh-CN": {
+    edit: "编辑", view: "视图", window: "窗口", reload: "重新加载", closeWindow: "关闭窗口",
+    petRunCommand: "运行自定义命令", petOpenSettings: "打开 AI 设置", petHide: "隐藏宠物",
+    petResetPosition: "重置宠物位置",
+  },
+  "zh-TW": {
+    edit: "編輯", view: "檢視", window: "視窗", reload: "重新載入", closeWindow: "關閉視窗",
+    petRunCommand: "執行自訂命令", petOpenSettings: "開啟 AI 設定", petHide: "隱藏寵物",
+    petResetPosition: "重置寵物位置",
+  },
 };
 
 function tMenu(language, key) {
@@ -975,6 +987,22 @@ const terminalPopupWindowApi = createTerminalPopupWindowApi({
 });
 const { openTerminalPopupWindow, closeTerminalPopupWindow } = terminalPopupWindowApi;
 
+const { createPetWindowApi } = require("./windowManager/petWindow.cjs");
+const petWindowApi = createPetWindowApi({
+  getDevRendererBaseUrl,
+  get electronApp() { return electronApp; },
+});
+const {
+  showPetWindow,
+  hidePetWindow,
+  closePetWindow,
+  isPetWindowVisible,
+  movePetWindowBy,
+  resetPetWindowPosition,
+  setPetWindowOpacity,
+  setPetWindowAlwaysOnTop,
+} = petWindowApi;
+
 /**
  * Register window control IPC handlers (only once)
  */
@@ -1306,6 +1334,14 @@ module.exports = {
   closeSettingsWindow,
   openTerminalPopupWindow,
   closeTerminalPopupWindow,
+  showPetWindow,
+  hidePetWindow,
+  closePetWindow,
+  isPetWindowVisible,
+  movePetWindowBy,
+  resetPetWindowPosition,
+  setPetWindowOpacity,
+  setPetWindowAlwaysOnTop,
   prewarmSettingsWindow,
   buildAppMenu,
   getMainWindow,
@@ -1340,4 +1376,6 @@ module.exports = {
   clampWindowOpacity,
   applyWindowOpacity,
   applyWindowOpacityToWindow,
+  tMenu,
+  getCurrentLanguage: () => currentLanguage,
 };

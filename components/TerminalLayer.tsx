@@ -1368,6 +1368,15 @@ const TerminalLayerInner: React.FC<TerminalLayerProps> = ({
     handleSwitchSidePanelTab('ai');
   }, [handleCloseSidePanel, handleSwitchSidePanelTab]);
 
+  // The desktop pet's click always wants the AI panel open (never toggled shut) —
+  // unlike the top-bar button, a pet click shouldn't be able to close a panel the
+  // user already has open elsewhere.
+  useEffect(() => {
+    const handler = () => handleSwitchSidePanelTab('ai');
+    window.addEventListener('magiesTerminal:open-ai-panel', handler);
+    return () => window.removeEventListener('magiesTerminal:open-ai-panel', handler);
+  }, [handleSwitchSidePanelTab]);
+
   // Execute snippet on the focused terminal session
   const handleSnippetClickForFocusedSession = useCallback((
     command: string,

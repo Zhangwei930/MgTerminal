@@ -45,6 +45,7 @@ import { ClaudeCodeCard } from "./ai/ClaudeCodeCard";
 import { CopilotCliCard } from "./ai/CopilotCliCard";
 import { CodebuddyCard } from "./ai/CodebuddyCard";
 import { SafetySettings } from "./ai/SafetySettings";
+import { PetSettings } from "./ai/PetSettings";
 import { LocalPrivacySetup } from "./ai/LocalPrivacySetup";
 import { ExternalMcpCard } from "./ai/ExternalMcpCard";
 import { PermissionGrantsSettings } from "./ai/PermissionGrantsSettings";
@@ -92,7 +93,7 @@ function scheduleAfterFirstPaint(callback: () => void, delayMs = 0): () => void 
   };
 }
 
-type AISettingsSubTab = "providers" | "agents" | "tools" | "search" | "safety";
+type AISettingsSubTab = "providers" | "agents" | "tools" | "search" | "safety" | "pet";
 
 function getSavedManagedAgentPathInfo(
   agents: ExternalAgentConfig[],
@@ -229,7 +230,16 @@ const SettingsAITab: React.FC<SettingsAITabProps> = ({
   );
   const [codexCustomPath, setCodexCustomPath] = useState(() => initialManagedPathsRef.current?.codex ?? "");
   const [isResolvingCodex, setIsResolvingCodex] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<AISettingsSubTab>("providers");
+  const [activeSubTab, setActiveSubTab] = useState<AISettingsSubTab>(() => {
+    try {
+      const query = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      const sub = query.get('sub');
+      if (sub === 'pet') return 'pet';
+    } catch {
+      // ignore malformed hash
+    }
+    return "providers";
+  });
 
   const [claudePathInfo, setClaudePathInfo] = useState<AgentPathInfo | null>(
     () => getSavedManagedAgentPathInfo(externalAgents, "claude"),
@@ -842,6 +852,7 @@ const SettingsAITab: React.FC<SettingsAITabProps> = ({
           <TabsTrigger value="tools">{t('ai.toolAccess.title')}</TabsTrigger>
           <TabsTrigger value="search">{t("ai.webSearch.title")}</TabsTrigger>
           <TabsTrigger value="safety">{t('ai.safety.title')}</TabsTrigger>
+          <TabsTrigger value="pet">{t('ai.pet.title')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers" className="m-0 space-y-6">
@@ -1198,6 +1209,10 @@ const SettingsAITab: React.FC<SettingsAITabProps> = ({
             importGrants={importGrants}
             exportGrants={exportGrants}
           />
+        </TabsContent>
+
+        <TabsContent value="pet" className="m-0 space-y-6">
+          <PetSettings />
         </TabsContent>
       </Tabs>
       <ConfirmDialog

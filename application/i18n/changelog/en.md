@@ -1,6 +1,15 @@
 # Changelog
 
 
+## [0.5.25] - 2026-07-22
+
+### Features
+- **Desktop pet**: enable it in Settings → AI → Pet and a draggable floating pet appears anywhere on screen, animating with the AI's status — idle breathing, a bounce while running, a wobble while waiting on your approval, a wave on completion, a shake on failure. Since the pet rarely holds OS focus, Electron's background-window animation throttling is explicitly disabled for it so it doesn't look frozen
+- **Click-through interactions**: click the pet to open/focus the AI chat panel, jumping to whichever terminal session is currently busy when possible; double-click focuses the main window; right-click opens a menu to run a command you've configured in settings, open AI settings, reset the pet's position, or hide it; hovering shows a more detailed status bubble
+- **Custom appearance**: upload your own image or sprite sheet for the pet, with per-status (idle/running/waiting/done/failed) frame ranges for sprite sheets; size, opacity, always-on-top, and bubble visibility are all adjustable
+- **Privacy mode and completion alerts**: privacy mode limits the bubble to a generic status like "running" instead of naming the active tool; tasks that take 10 seconds or longer can optionally trigger a desktop notification when they finish or fail
+- **Position persistence and multi-monitor support**: the pet remembers where you dragged it, across restarts and re-enabling; it snaps back to the default corner automatically if a monitor is disconnected or resized out from under it
+
 ## [0.5.24] - 2026-07-22
 
 ### Fixes

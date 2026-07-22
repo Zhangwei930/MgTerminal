@@ -5,7 +5,7 @@ const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
 
-test('renderer CSP blocks inline scripts and framing', () => {
+test('renderer CSP blocks inline scripts', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const csp = html.match(/Content-Security-Policy"\s+content="([^"]+)"/)?.[1] || '';
   const scriptSource = csp.match(/script-src ([^;]+)/)?.[1] || '';
@@ -13,7 +13,31 @@ test('renderer CSP blocks inline scripts and framing', () => {
   assert.doesNotMatch(scriptSource, /'unsafe-inline'/);
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /base-uri 'none'/);
-  assert.match(csp, /frame-ancestors 'none'/);
+});
+
+test('index.html ships no inline script for that CSP to block', () => {
+  // script-src has no 'unsafe-inline', so an inline <script> is not merely
+  // discouraged — the browser refuses to run it. The pre-paint theme script
+  // was silently dead this way.
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .filter(([, body]) => body.trim().length > 0);
+
+  assert.deepEqual(inline.map(([, body]) => body.trim().slice(0, 60)), []);
+});
+
+test('frame-ancestors is delivered as a header, where it actually applies', () => {
+  // A <meta> CSP silently ignores frame-ancestors — the browser logs a warning
+  // and the directive does nothing. It has to come from a response header.
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const metaCsp = html.match(/Content-Security-Policy"\s+content="([^"]+)"/)?.[1] || '';
+  assert.doesNotMatch(metaCsp, /frame-ancestors/, 'meta must not pretend to set it');
+
+  const main = fs.readFileSync(path.join(root, 'electron/main.cjs'), 'utf8');
+  assert.match(main, /"Content-Security-Policy":\s*"frame-ancestors 'none'"/);
+
+  const viteConfig = fs.readFileSync(path.join(root, 'vite.config.ts'), 'utf8');
+  assert.match(viteConfig, /'Content-Security-Policy': "frame-ancestors 'none'"/);
 });
 
 test('packaged Electron disables unsafe runtime switches and validates app.asar', () => {

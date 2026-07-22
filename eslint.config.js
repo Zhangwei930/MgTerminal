@@ -168,6 +168,16 @@ export default [
     },
   },
   {
+    // Plain browser script served as-is from public/ — it runs before any
+    // bundling, so it gets browser globals rather than the renderer's config.
+    files: ["public/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "script",
+      globals: globals.browser,
+    },
+  },
+  {
     // The Capacitor companion is a separate app with its own storage model —
     // localStorageAdapter does not exist there, so the rule that forces the
     // desktop renderer through it has nothing to point at.

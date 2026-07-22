@@ -49,6 +49,9 @@ export default defineConfig(() => {
           // Use credentialless to allow loading cross-origin images (e.g. Google avatars)
           // while still enabling crossOriginIsolated.
           'Cross-Origin-Embedder-Policy': 'credentialless',
+          // Matches the app:// headers in electron/main.cjs. A <meta> CSP
+          // cannot deliver frame-ancestors, so it comes from here in dev.
+          'Content-Security-Policy': "frame-ancestors 'none'",
         },
         hmr: {
           overlay: true,

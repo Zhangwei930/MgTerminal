@@ -227,6 +227,9 @@ const APP_PROTOCOL_HEADERS = {
   // Mirrors the dev-server headers in `vite.config.ts`.
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Embedder-Policy": "credentialless",
+  // frame-ancestors is ignored when it arrives in a <meta> CSP, so the
+  // renderer's meta tag cannot carry it — it has to be a response header.
+  "Content-Security-Policy": "frame-ancestors 'none'",
 };
 
 const DIST_MIME_TYPES = {

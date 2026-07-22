@@ -177,7 +177,7 @@ export function useHostDataSourceSync({
           };
         }
 
-        const inventory = parseInventoryDocument(raw);
+        const inventory = parseInventoryDocument(raw, source.fieldMapping);
         const result = syncHostsFromInventory({
           existingHosts: hostsRef.current,
           customGroups: customGroupsRef.current,

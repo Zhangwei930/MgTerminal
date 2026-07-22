@@ -94,6 +94,12 @@ export interface ManagedSource {
    * Undefined or 0 = manual only. Min 60s when set.
    */
   autoSyncIntervalMs?: number;
+  /**
+   * Rename a feed's field names onto the canonical inventory ones, for JSON
+   * sources that do not already use them. Never a way past the secret check:
+   * that runs on the raw payload before any renaming.
+   */
+  fieldMapping?: import("../hostFieldMapping").HostFieldMapping;
   /** Result of the last inventory pull (ok / unchanged / error). */
   lastSyncStatus?: 'ok' | 'unchanged' | 'error';
   /** Last pull error message when lastSyncStatus is error (truncated). */

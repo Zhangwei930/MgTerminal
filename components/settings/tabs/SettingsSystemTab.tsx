@@ -1,7 +1,7 @@
 /**
  * Settings System Tab - System information, temp file management, session logs, and global hotkey
  */
-import { ChevronDown, ChevronRight, Download, ExternalLink, FolderOpen, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, ExternalLink, FolderOpen, PlayCircle, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../../application/i18n/I18nProvider";
 import { getCredentialProtectionAvailability } from "../../../infrastructure/services/credentialProtection";
@@ -25,6 +25,7 @@ import { Toggle, Select, SettingRow, SectionHeader, SettingCard, SettingsTabCont
 import { cn } from "../../../lib/utils";
 import { toast } from "../../ui/toast";
 import { TeamVaultPanelWithVault } from "../TeamVaultPanelWithVault";
+import { CastPlayerDialog } from "../../log/CastPlayerDialog";
 
 interface CrashLogFile {
   fileName: string;
@@ -482,6 +483,8 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
     }
   }, [sessionLogsDir]);
 
+  const [castPlayerOpen, setCastPlayerOpen] = useState(false);
+
   const handleOpenSshDebugLogDir = useCallback(async () => {
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.openSshDebugLogDir) return;
@@ -546,6 +549,7 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   ];
 
   return (
+    <>
     <SettingsTabContent value="system">
           <SectionHeader title={t('settings.update.title')} />
             <SettingCard className="space-y-3 py-4">
@@ -1398,6 +1402,15 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
                 <p className="text-xs text-muted-foreground">
                   {t("settings.sessionLogs.directoryHint")}
                 </p>
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => setCastPlayerOpen(true)}>
+                    <PlayCircle size={14} className="mr-1.5 shrink-0" />
+                    {t("settings.sessionLogs.playCast")}
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t("settings.sessionLogs.playCastHint")}
+                  </p>
+                </div>
               </div>
 
               {/* Format Selection */}
@@ -1597,6 +1610,8 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
               {t("settings.globalHotkey.hint")}
             </p>
     </SettingsTabContent>
+    <CastPlayerDialog open={castPlayerOpen} onOpenChange={setCastPlayerOpen} />
+    </>
   );
 };
 

@@ -665,13 +665,13 @@ const PortForwarding: React.FC<PortForwardingProps> = ({
                   <ChevronDown size={10} className="ml-0.5" />
                 </Button>
               </DropdownTrigger>
-              <DropdownContent className="w-32" align="end">
+              <DropdownContent className="w-max min-w-[8rem] max-w-[20rem]" align="end">
                 <Button
                   variant={viewMode === "grid" ? "secondary" : "ghost"}
                   className="w-full justify-start gap-2 h-9"
                   onClick={() => setViewMode("grid")}
                 >
-                  <LayoutGrid size={14} /> {t("pf.view.grid")}
+                  <LayoutGrid size={14} className="shrink-0" /> {t("pf.view.grid")}
                   {viewMode === "grid" && (
                     <Check size={12} className="ml-auto" />
                   )}
@@ -681,7 +681,7 @@ const PortForwarding: React.FC<PortForwardingProps> = ({
                   className="w-full justify-start gap-2 h-9"
                   onClick={() => setViewMode("list")}
                 >
-                  <ListIcon size={14} /> {t("pf.view.list")}
+                  <ListIcon size={14} className="shrink-0" /> {t("pf.view.list")}
                   {viewMode === "list" && (
                     <Check size={12} className="ml-auto" />
                   )}

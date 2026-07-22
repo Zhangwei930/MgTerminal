@@ -476,7 +476,14 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                     </Button>
                   </DropdownTrigger>
                 </div>
-                <DropdownContent className="w-44" align="end" alignToParent>
+                <DropdownContent
+                  // Sized to its widest item: Button is whitespace-nowrap, so a fixed
+                  // width made long labels (e.g. the Ansible share/copy entries in
+                  // Chinese) spill past the menu while their icons collapsed to zero.
+                  className="w-max min-w-[11rem] max-w-[24rem]"
+                  align="end"
+                  alignToParent
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
@@ -486,7 +493,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                       setIsNewFolderOpen(true);
                     }}
                   >
-                    <FolderTree size={14} /> {t("vault.hosts.newGroup")}
+                    <FolderTree size={14} className="shrink-0" /> {t("vault.hosts.newGroup")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -495,7 +502,7 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                       setIsImportOpen(true);
                     }}
                   >
-                    <Upload size={14} /> {t("vault.hosts.import")}
+                    <Upload size={14} className="shrink-0" /> {t("vault.hosts.import")}
                   </Button>
                   <Button
                     variant="ghost"
@@ -504,56 +511,56 @@ export function VaultViewLayout({ ctx }: { ctx: VaultViewLayoutContext }) {
                       setIsDataSourcesOpen(true);
                     }}
                   >
-                    <Database size={14} /> {t("vault.hosts.dataSources")}
+                    <Database size={14} className="shrink-0" /> {t("vault.hosts.dataSources")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleShareInventory}
                   >
-                    <Share2 size={14} /> {t("vault.hosts.share")}
+                    <Share2 size={14} className="shrink-0" /> {t("vault.hosts.share")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleShareInventoryAnsible}
                   >
-                    <Share2 size={14} /> {t("vault.hosts.shareAnsible")}
+                    <Share2 size={14} className="shrink-0" /> {t("vault.hosts.shareAnsible")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleShareInventoryYaml}
                   >
-                    <Share2 size={14} /> {t("vault.hosts.shareYaml")}
+                    <Share2 size={14} className="shrink-0" /> {t("vault.hosts.shareYaml")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleCopyInventoryJson}
                   >
-                    <ClipboardCopy size={14} /> {t("vault.hosts.copyJson")}
+                    <ClipboardCopy size={14} className="shrink-0" /> {t("vault.hosts.copyJson")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleCopyInventoryAnsible}
                   >
-                    <ClipboardCopy size={14} /> {t("vault.hosts.copyAnsible")}
+                    <ClipboardCopy size={14} className="shrink-0" /> {t("vault.hosts.copyAnsible")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleCopyInventoryYaml}
                   >
-                    <ClipboardCopy size={14} /> {t("vault.hosts.copyYaml")}
+                    <ClipboardCopy size={14} className="shrink-0" /> {t("vault.hosts.copyYaml")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full justify-start gap-2"
                     onClick={handleExportHosts}
                   >
-                    <Download size={14} /> {t("vault.hosts.export")}
+                    <Download size={14} className="shrink-0" /> {t("vault.hosts.export")}
                   </Button>
                 </DropdownContent>
               </Dropdown>

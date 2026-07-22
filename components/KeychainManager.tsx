@@ -620,20 +620,20 @@ echo $3 >> "$FILE"`);
                   </Button>
                 </DropdownTrigger>
               </div>
-              <DropdownContent className="w-44" align="start" alignToParent>
+              <DropdownContent className="w-max min-w-[11rem] max-w-[24rem]" align="start" alignToParent>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2"
                   onClick={openGenerate}
                 >
-                  <Plus size={14} /> {t("keychain.action.generateKey")}
+                  <Plus size={14} className="shrink-0" /> {t("keychain.action.generateKey")}
                 </Button>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2"
                   onClick={openImport}
                 >
-                  <Upload size={14} /> {t("keychain.action.importKey")}
+                  <Upload size={14} className="shrink-0" /> {t("keychain.action.importKey")}
                 </Button>
                 {onSaveIdentity && (
                   <Button
@@ -641,7 +641,7 @@ echo $3 >> "$FILE"`);
                     className="w-full justify-start gap-2"
                     onClick={openNewIdentity}
                   >
-                    <UserPlus size={14} /> {t("keychain.action.newIdentity")}
+                    <UserPlus size={14} className="shrink-0" /> {t("keychain.action.newIdentity")}
                   </Button>
                 )}
               </DropdownContent>
@@ -676,13 +676,13 @@ echo $3 >> "$FILE"`);
                   </Button>
                 </DropdownTrigger>
               </div>
-              <DropdownContent className="w-48" align="start" alignToParent>
+              <DropdownContent className="w-max min-w-[12rem] max-w-[24rem]" align="start" alignToParent>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2"
                   onClick={openImport}
                 >
-                  <Upload size={14} /> {t("keychain.action.importCertificate")}
+                  <Upload size={14} className="shrink-0" /> {t("keychain.action.importCertificate")}
                 </Button>
               </DropdownContent>
             </Dropdown>
@@ -713,20 +713,20 @@ echo $3 >> "$FILE"`);
                   <ChevronDown size={10} className="ml-0.5" />
                 </Button>
               </DropdownTrigger>
-              <DropdownContent className="w-32" align="end">
+              <DropdownContent className="w-max min-w-[8rem] max-w-[20rem]" align="end">
                 <Button
                   variant={viewMode === "grid" ? "secondary" : "ghost"}
                   className="w-full justify-start gap-2 h-9"
                   onClick={() => setViewMode("grid")}
                 >
-                  <LayoutGrid size={14} /> {t("keychain.view.grid")}
+                  <LayoutGrid size={14} className="shrink-0" /> {t("keychain.view.grid")}
                 </Button>
                 <Button
                   variant={viewMode === "list" ? "secondary" : "ghost"}
                   className="w-full justify-start gap-2 h-9"
                   onClick={() => setViewMode("list")}
                 >
-                  <ListIcon size={14} /> {t("keychain.view.list")}
+                  <ListIcon size={14} className="shrink-0" /> {t("keychain.view.list")}
                 </Button>
               </DropdownContent>
             </Dropdown>

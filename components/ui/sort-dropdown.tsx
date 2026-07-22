@@ -35,7 +35,7 @@ export const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange, cla
                     {open ? <ChevronUp size={10} className="ml-0.5 opacity-70" /> : <ChevronDown size={10} className="ml-0.5 opacity-70" />}
                 </Button>
             </DropdownTrigger>
-            <DropdownContent className="w-44" align="end">
+            <DropdownContent className="w-max min-w-[11rem] max-w-[24rem]" align="end">
                 {visibleModes.map(mode => (
                     <Button
                         key={mode}

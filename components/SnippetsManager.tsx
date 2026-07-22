@@ -1722,20 +1722,20 @@ const SnippetsManager: React.FC<SnippetsManagerProps> = ({
                     <ChevronDown size={10} className="ml-0.5" />
                   </Button>
                 </DropdownTrigger>
-                <DropdownContent className="w-32" align="end">
+                <DropdownContent className="w-max min-w-[8rem] max-w-[20rem]" align="end">
                   <Button
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                     className="w-full justify-start gap-2 h-9"
                     onClick={() => setViewMode('grid')}
                   >
-                    <LayoutGrid size={14} /> {t('snippets.view.grid')}
+                    <LayoutGrid size={14} className="shrink-0" /> {t('snippets.view.grid')}
                   </Button>
                   <Button
                     variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                     className="w-full justify-start gap-2 h-9"
                     onClick={() => setViewMode('list')}
                   >
-                    <ListIcon size={14} /> {t('snippets.view.list')}
+                    <ListIcon size={14} className="shrink-0" /> {t('snippets.view.list')}
                   </Button>
                 </DropdownContent>
               </Dropdown>

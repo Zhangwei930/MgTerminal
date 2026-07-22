@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { getFileName, getParentPath } from "../../application/state/sftp/utils";
+import { buildBulkRenamePlan } from "../../domain/sftpBulkRename";
 import { SftpHostPicker } from "./SftpHostPicker";
 import type { Host } from "../../types";
 
@@ -46,6 +47,17 @@ interface SftpPaneDialogsProps {
   renameName: string;
   setRenameName: (value: string) => void;
   handleRename: () => void;
+  // Bulk rename
+  showBulkRenameDialog: boolean;
+  setShowBulkRenameDialog: (open: boolean) => void;
+  bulkRenameNames: string[];
+  bulkRenamePattern: string;
+  setBulkRenamePattern: (value: string) => void;
+  bulkRenameStartAt: number;
+  setBulkRenameStartAt: (value: number) => void;
+  bulkRenamePadding: number;
+  setBulkRenamePadding: (value: number) => void;
+  handleBulkRename: () => void;
   isRenaming: boolean;
   // Delete
   showDeleteConfirm: boolean;
@@ -100,6 +112,16 @@ export const SftpPaneDialogs: React.FC<SftpPaneDialogsProps> = ({
   renameName,
   setRenameName,
   handleRename,
+  showBulkRenameDialog,
+  setShowBulkRenameDialog,
+  bulkRenameNames,
+  bulkRenamePattern,
+  setBulkRenamePattern,
+  bulkRenameStartAt,
+  setBulkRenameStartAt,
+  bulkRenamePadding,
+  setBulkRenamePadding,
+  handleBulkRename,
   isRenaming,
   showDeleteConfirm,
   setShowDeleteConfirm,
@@ -142,6 +164,16 @@ export const SftpPaneDialogs: React.FC<SftpPaneDialogsProps> = ({
     }
     return deleteTargets;
   })();
+
+  const bulkRenamePlan = useMemo(
+    () => buildBulkRenamePlan({
+      names: bulkRenameNames,
+      pattern: bulkRenamePattern,
+      startAt: bulkRenameStartAt,
+      padding: bulkRenamePadding,
+    }),
+    [bulkRenameNames, bulkRenamePattern, bulkRenameStartAt, bulkRenamePadding],
+  );
 
   return (
   <>
@@ -262,6 +294,81 @@ export const SftpPaneDialogs: React.FC<SftpPaneDialogsProps> = ({
             onClick={handleOverwriteConfirm}
           >
             {t("sftp.overwrite.confirm")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={showBulkRenameDialog} onOpenChange={setShowBulkRenameDialog}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <HostHint label={hostLabel} />
+          <DialogTitle>{t("sftp.bulkRename.title")}</DialogTitle>
+          <DialogDescription>
+            {t("sftp.bulkRename.description", { count: bulkRenameNames.length })}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("sftp.bulkRename.pattern")}</Label>
+            <Input
+              value={bulkRenamePattern}
+              onChange={(e) => setBulkRenamePattern(e.target.value)}
+              placeholder="{name}{ext}"
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">{t("sftp.bulkRename.tokens")}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>{t("sftp.bulkRename.startAt")}</Label>
+              <Input
+                type="number"
+                value={bulkRenameStartAt}
+                onChange={(e) => setBulkRenameStartAt(Number(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("sftp.bulkRename.padding")}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={bulkRenamePadding}
+                onChange={(e) => setBulkRenamePadding(Math.max(0, Number(e.target.value) || 0))}
+              />
+            </div>
+          </div>
+          {bulkRenamePlan.error ? (
+            <p className="text-xs text-destructive">
+              {t(`sftp.bulkRename.error.${bulkRenamePlan.error}`)}
+            </p>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-xs">{t("sftp.bulkRename.preview")}</Label>
+              <div className="max-h-40 overflow-y-auto rounded-md border border-border/60 bg-muted/30 p-2 text-xs font-mono space-y-0.5">
+                {bulkRenamePlan.entries.length === 0 ? (
+                  <p className="text-muted-foreground font-sans">{t("sftp.bulkRename.noChanges")}</p>
+                ) : bulkRenamePlan.entries.map((entry) => (
+                  <div key={entry.from} className="flex items-center gap-1.5 min-w-0">
+                    <span className="truncate text-muted-foreground">{entry.from}</span>
+                    <span className="shrink-0 text-muted-foreground/60">&rarr;</span>
+                    <span className="truncate">{entry.to}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowBulkRenameDialog(false)}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={handleBulkRename}
+            disabled={Boolean(bulkRenamePlan.error) || bulkRenamePlan.entries.length === 0 || isRenaming}
+          >
+            {isRenaming && <Loader2 size={14} className="mr-2 animate-spin" />}
+            {t("sftp.bulkRename.confirm", { count: bulkRenamePlan.entries.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

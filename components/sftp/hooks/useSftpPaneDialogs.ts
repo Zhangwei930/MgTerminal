@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import type { SftpPaneCallbacks } from "../SftpContext";
 import type { SftpPane } from "../../../application/state/sftp/types";
-import { getFileName, getParentPath } from "../../../application/state/sftp/utils";
+import { getFileName, getParentPath, joinPath } from "../../../application/state/sftp/utils";
+import { buildBulkRenamePlan } from "../../../domain/sftpBulkRename";
 import { logger } from "../../../lib/logger";
 
 const INVALID_FILENAME_CHARS = /[/\\:*?"<>|]/;
@@ -56,6 +57,11 @@ interface UseSftpPaneDialogsResult {
   showRenameDialog: boolean;
   renameTarget: string | null;
   renameName: string;
+  showBulkRenameDialog: boolean;
+  bulkRenameNames: string[];
+  bulkRenamePattern: string;
+  bulkRenameStartAt: number;
+  bulkRenamePadding: number;
   showDeleteConfirm: boolean;
   deleteTargets: string[];
   isCreating: boolean;
@@ -72,15 +78,21 @@ interface UseSftpPaneDialogsResult {
   setShowOverwriteConfirm: (open: boolean) => void;
   setShowRenameDialog: (open: boolean) => void;
   setRenameName: (value: string) => void;
+  setShowBulkRenameDialog: (open: boolean) => void;
+  setBulkRenamePattern: (value: string) => void;
+  setBulkRenameStartAt: (value: number) => void;
+  setBulkRenamePadding: (value: number) => void;
   setShowDeleteConfirm: (open: boolean) => void;
   handleCreateFolder: () => Promise<void>;
   handleCreateFile: (forceOverwrite?: boolean) => Promise<void>;
   handleConfirmOverwrite: () => Promise<void>;
   handleRename: () => Promise<void>;
+  handleBulkRename: () => Promise<void>;
   handleDelete: () => Promise<void>;
   openNewFolderDialogAtPath: (path: string) => void;
   openNewFileDialogAtPath: (path: string) => void;
   openRenameDialog: (name: string) => void;
+  openBulkRenameDialog: (names: string[]) => void;
   openDeleteConfirm: (names: string[]) => void;
   getNextUntitledName: (existingFiles: string[]) => string;
 }
@@ -115,6 +127,11 @@ export const useSftpPaneDialogs = ({
   const [isCreating, setIsCreating] = useState(false);
   const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
+  const [showBulkRenameDialog, setShowBulkRenameDialog] = useState(false);
+  const [bulkRenameNames, setBulkRenameNames] = useState<string[]>([]);
+  const [bulkRenamePattern, setBulkRenamePattern] = useState("{name}{ext}");
+  const [bulkRenameStartAt, setBulkRenameStartAt] = useState(1);
+  const [bulkRenamePadding, setBulkRenamePadding] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Refs for values accessed inside useCallback to avoid stale closures
@@ -128,6 +145,8 @@ export const useSftpPaneDialogs = ({
   renameTargetRef.current = renameTarget;
   const renameNameRef = useRef(renameName);
   renameNameRef.current = renameName;
+  const bulkRenameRef = useRef({ names: bulkRenameNames, pattern: bulkRenamePattern, startAt: bulkRenameStartAt, padding: bulkRenamePadding });
+  bulkRenameRef.current = { names: bulkRenameNames, pattern: bulkRenamePattern, startAt: bulkRenameStartAt, padding: bulkRenamePadding };
   const deleteTargetsRef = useRef(deleteTargets);
   deleteTargetsRef.current = deleteTargets;
   const paneRef = useRef(pane);
@@ -259,6 +278,34 @@ export const useSftpPaneDialogs = ({
     }
   }, [isRenaming, onRenameFileAtPath, onMutateSuccess]);
 
+  const handleBulkRename = useCallback(async () => {
+    const { names, pattern, startAt, padding } = bulkRenameRef.current;
+    if (isRenaming) return;
+    const directory = paneRef.current.connection?.currentPath ?? "";
+    const plan = buildBulkRenamePlan({ names, pattern, startAt, padding });
+    // The dialog blocks the confirm button on a bad plan; this is the guard
+    // for anything that slips past it.
+    if (plan.error || plan.entries.length === 0) return;
+
+    setIsRenaming(true);
+    try {
+      // Sequential: the server has no batch rename, and stopping on the first
+      // failure leaves a partially applied batch the user can still read.
+      for (const entry of plan.entries) {
+        await onRenameFileAtPath(joinPath(directory, entry.from), entry.to);
+      }
+      onMutateSuccess?.([directory]);
+      onClearSelection();
+      setShowBulkRenameDialog(false);
+      setBulkRenameNames([]);
+    } catch (err) {
+      logger.warn("Failed to bulk rename files", err);
+      onMutateSuccess?.([directory]);
+    } finally {
+      setIsRenaming(false);
+    }
+  }, [isRenaming, onRenameFileAtPath, onMutateSuccess, onClearSelection]);
+
   const handleDelete = useCallback(async () => {
     if (deleteTargetsRef.current.length === 0 || isDeleting) return;
     setIsDeleting(true);
@@ -291,6 +338,14 @@ export const useSftpPaneDialogs = ({
   }, [isDeleting, onDeleteFilesAtPath, onMutateSuccess, onClearSelection]);
 
   // entryPath is the full path; renameName is initialized to the basename
+  const openBulkRenameDialog = useCallback((entryPaths: string[]) => {
+    setBulkRenameNames(entryPaths.map((p) => getFileName(p) || p));
+    setBulkRenamePattern("{name}{ext}");
+    setBulkRenameStartAt(1);
+    setBulkRenamePadding(0);
+    setShowBulkRenameDialog(true);
+  }, []);
+
   const openRenameDialog = useCallback((entryPath: string) => {
     setRenameTarget(entryPath);
     setRenameName(getFileName(entryPath) || entryPath);
@@ -330,6 +385,17 @@ export const useSftpPaneDialogs = ({
   }, []);
 
   return {
+    showBulkRenameDialog,
+    bulkRenameNames,
+    bulkRenamePattern,
+    bulkRenameStartAt,
+    bulkRenamePadding,
+    setShowBulkRenameDialog,
+    setBulkRenamePattern,
+    setBulkRenameStartAt,
+    setBulkRenamePadding,
+    handleBulkRename,
+    openBulkRenameDialog,
     showHostPicker,
     hostSearch,
     showNewFolderDialog: showNewFolderDialogState,

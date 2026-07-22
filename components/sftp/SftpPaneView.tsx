@@ -276,6 +276,17 @@ const SftpPaneViewInner: React.FC<SftpPaneViewProps> = ({
     openNewFolderDialogAtPath,
     openNewFileDialogAtPath,
     openRenameDialog,
+    openBulkRenameDialog,
+    showBulkRenameDialog,
+    setShowBulkRenameDialog,
+    bulkRenameNames,
+    bulkRenamePattern,
+    setBulkRenamePattern,
+    bulkRenameStartAt,
+    setBulkRenameStartAt,
+    bulkRenamePadding,
+    setBulkRenamePadding,
+    handleBulkRename,
     openDeleteConfirm,
     getNextUntitledName,
   } = useSftpPaneDialogs({
@@ -558,6 +569,8 @@ const SftpPaneViewInner: React.FC<SftpPaneViewProps> = ({
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             openRenameDialog={openRenameDialog}
+            openBulkRenameDialog={openBulkRenameDialog}
+          openBulkRenameDialog={openBulkRenameDialog}
             openDeleteConfirm={openDeleteConfirm}
             onCopyToOtherPane={callbacks.onCopyToOtherPane}
             onReceiveFromOtherPane={callbacks.onReceiveFromOtherPane}
@@ -629,6 +642,7 @@ const SftpPaneViewInner: React.FC<SftpPaneViewProps> = ({
           onUploadExternalFolder={handleUploadExternalFolder}
           isLocal={!!pane.connection?.isLocal}
           openRenameDialog={openRenameDialog}
+          openBulkRenameDialog={openBulkRenameDialog}
           openDeleteConfirm={openDeleteConfirm}
           rowHeight={rowHeight}
           visibleRows={visibleRows}
@@ -662,6 +676,16 @@ const SftpPaneViewInner: React.FC<SftpPaneViewProps> = ({
         renameName={renameName}
         setRenameName={setRenameName}
         handleRename={handleRename}
+        showBulkRenameDialog={showBulkRenameDialog}
+        setShowBulkRenameDialog={setShowBulkRenameDialog}
+        bulkRenameNames={bulkRenameNames}
+        bulkRenamePattern={bulkRenamePattern}
+        setBulkRenamePattern={setBulkRenamePattern}
+        bulkRenameStartAt={bulkRenameStartAt}
+        setBulkRenameStartAt={setBulkRenameStartAt}
+        bulkRenamePadding={bulkRenamePadding}
+        setBulkRenamePadding={setBulkRenamePadding}
+        handleBulkRename={handleBulkRename}
         isRenaming={isRenaming}
         showDeleteConfirm={showDeleteConfirm}
         setShowDeleteConfirm={setShowDeleteConfirm}

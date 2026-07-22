@@ -48,3 +48,36 @@ test("line/offset helpers round-trip roughly", () => {
   assert.equal(labelFromTerminalDataLine(data, 1), "two");
   assert.equal(labelFromTerminalDataLine("\x1b[31merr\x1b[0m boom", 0).includes("err"), true);
 });
+
+test("terminalDataOffsetToLine inverts terminalDataLineToOffset", () => {
+  const data = "one\ntwo\nthree\nfour";
+  // A live annotation knows only how many bytes have been captured; the line
+  // has to be derived from the data, because xterm's visual line depends on
+  // the terminal width at the time and will not survive replay at another size.
+  for (const line of [0, 1, 2, 3]) {
+    const offset = terminalDataLineToOffset(data, line);
+    assert.equal(terminalDataOffsetToLine(data, offset), line, `line ${line}`);
+  }
+});
+
+test("terminalDataOffsetToLine counts the line an offset falls inside", () => {
+  const data = "one\ntwo\nthree";
+  assert.equal(terminalDataOffsetToLine(data, 0), 0);
+  assert.equal(terminalDataOffsetToLine(data, 2), 0, "mid-line stays on that line");
+  assert.equal(terminalDataOffsetToLine(data, 3), 0, "the newline itself ends line 0");
+  assert.equal(terminalDataOffsetToLine(data, 4), 1);
+  assert.equal(terminalDataOffsetToLine(data, 8), 2);
+});
+
+test("terminalDataOffsetToLine clamps out-of-range offsets", () => {
+  const data = "one\ntwo";
+  assert.equal(terminalDataOffsetToLine(data, -5), 0);
+  assert.equal(terminalDataOffsetToLine(data, 9999), 1, "past the end is the last line");
+  assert.equal(terminalDataOffsetToLine("", 0), 0);
+});
+
+test("terminalDataOffsetToLine handles CRLF without counting twice", () => {
+  const data = "one\r\ntwo\r\nthree";
+  assert.equal(terminalDataOffsetToLine(data, 5), 1);
+  assert.equal(terminalDataOffsetToLine(data, 10), 2);
+});

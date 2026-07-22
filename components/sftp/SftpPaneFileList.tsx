@@ -73,6 +73,7 @@ interface SftpPaneFileListProps {
   // make sense for remote (SFTP) panes, so they are suppressed when isLocal.
   isLocal?: boolean;
   openRenameDialog: (name: string) => void;
+  openBulkRenameDialog: (names: string[]) => void;
   openDeleteConfirm: (targets: string[]) => void;
   rowHeight: number;
   visibleRows: { entry: SftpFileEntry; index: number; top: number }[];
@@ -163,6 +164,7 @@ export const SftpPaneFileList: React.FC<SftpPaneFileListProps> = React.memo(({
   onUploadExternalFolder,
   isLocal = false,
   openRenameDialog,
+  openBulkRenameDialog,
   openDeleteConfirm,
   rowHeight,
   visibleRows,
@@ -382,6 +384,17 @@ export const SftpPaneFileList: React.FC<SftpPaneFileListProps> = React.memo(({
             <ContextMenuItem onClick={() => openRenameDialog(joinPath(pane.connection?.currentPath ?? "", entry.name))}>
               <Pencil size={14} className="mr-2" /> {t("common.rename")}
             </ContextMenuItem>
+            {pane.selectedFiles.size > 1 && pane.selectedFiles.has(entry.name) && (
+              <ContextMenuItem
+                onClick={() => openBulkRenameDialog(
+                  Array.from(selectedFilesRef.current as Set<string>)
+                    .map((n) => joinPath(pane.connection?.currentPath ?? "", n)),
+                )}
+              >
+                <Pencil size={14} className="mr-2" />{" "}
+                {t("sftp.context.bulkRename", { count: pane.selectedFiles.size })}
+              </ContextMenuItem>
+            )}
             {onEditPermissions && pane.connection && !pane.connection.isLocal && (
               <ContextMenuItem onClick={() => onEditPermissions(entry)}>
                 <Shield size={14} className="mr-2" />{" "}
@@ -464,6 +477,7 @@ export const SftpPaneFileList: React.FC<SftpPaneFileListProps> = React.memo(({
       folderUploadEnabled,
       openDeleteConfirm,
       openRenameDialog,
+      openBulkRenameDialog,
       pane.connection,
       pane.selectedFiles,
       setShowNewFolderDialog,

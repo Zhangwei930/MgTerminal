@@ -263,7 +263,6 @@ export const enCoreMessages: Messages = {
   'teamVault.audit.type.member_role_changed': 'Role changed',
   'teamVault.audit.type.inventory_exported': 'Inventory exported',
   'teamVault.audit.type.inventory_imported': 'Inventory imported',
-  'teamVault.audit.type.inventory_synced': 'Inventory synced',
   'teamVault.audit.type.package_shared': 'Package shared',
   'teamVault.audit.type.audit_cleared': 'Audit cleared',
   'settings.system.credentials.repair.success': 'Secure storage is available again.',

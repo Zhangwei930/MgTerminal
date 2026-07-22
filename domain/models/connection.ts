@@ -399,7 +399,6 @@ export interface GroupConfig {
   hostChain?: HostChainConfig;
   startupCommand?: string;
   startupCommandRunMode?: MultiLineRunMode;
-  loginScriptId?: string;
   legacyAlgorithms?: boolean;
   skipEcdsaHostKey?: boolean;
   algorithms?: HostAlgorithmOverrides;

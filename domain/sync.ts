@@ -526,7 +526,6 @@ export interface PKCEChallenge {
  */
 export type SyncEvent = 
   | { type: 'SYNC_STARTED'; provider: CloudProvider }
-  | { type: 'SYNC_PROGRESS'; provider: CloudProvider; progress: number; message: string }
   | { type: 'SYNC_COMPLETED'; provider: CloudProvider; result: SyncResult }
   | { type: 'SYNC_ERROR'; provider: CloudProvider; error: string }
   | { type: 'CONFLICT_DETECTED'; conflict: ConflictInfo }

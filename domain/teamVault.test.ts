@@ -39,7 +39,6 @@ test("createTeamVaultPolicy makes a local owner", () => {
   assert.equal(policy.members[0]!.role, "owner");
   assert.equal(policy.localMemberId, policy.members[0]!.memberId);
   assert.equal(teamVaultCan(policy, "manage_members"), true);
-  assert.equal(teamVaultCan(policy, "edit_hosts"), true);
 });
 
 test("team vault package strips secrets from inventory", () => {
@@ -84,7 +83,6 @@ test("join package assigns viewer role by default", () => {
     displayName: "Bob",
   });
   assert.equal(joined.teamId, owner.teamId);
-  assert.equal(teamVaultCan(joined, "edit_hosts"), false);
   assert.equal(teamVaultCan(joined, "view_audit"), true);
   assert.equal(joined.members.some((m) => m.displayName === "Bob"), true);
 });
@@ -98,8 +96,6 @@ test("owner can change member roles", () => {
   let joined = joinTeamVaultFromPackage({ package: pkg, displayName: "Bob" });
   const bob = joined.members.find((m) => m.displayName === "Bob")!;
   joined = setTeamVaultMemberRole(joined, bob.memberId, "editor");
-  // local member is still Bob (viewer→editor)
-  assert.equal(teamVaultCan(joined, "edit_hosts"), true);
   assert.equal(teamVaultCan(joined, "manage_members"), false);
 });
 

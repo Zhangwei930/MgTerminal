@@ -21,7 +21,6 @@ export type CommandPaletteActionId =
   | "open-settings"
   | "new-host"
   | "import-hosts"
-  | "open-sftp-help"
   | "run-host-health"
   | "local-terminal";
 

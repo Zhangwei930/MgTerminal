@@ -56,7 +56,6 @@ export type TeamVaultAuditType =
   | "member_role_changed"
   | "inventory_exported"
   | "inventory_imported"
-  | "inventory_synced"
   | "package_shared"
   | "audit_cleared";
 
@@ -71,7 +70,6 @@ export type TeamVaultAuditEvent = {
 };
 
 export type TeamVaultPermission =
-  | "edit_hosts"
   | "share_package"
   | "manage_members"
   | "import_inventory"
@@ -79,14 +77,12 @@ export type TeamVaultPermission =
 
 const ROLE_PERMISSIONS: Record<TeamVaultRole, ReadonlySet<TeamVaultPermission>> = {
   owner: new Set([
-    "edit_hosts",
     "share_package",
     "manage_members",
     "import_inventory",
     "view_audit",
   ]),
   editor: new Set([
-    "edit_hosts",
     "share_package",
     "import_inventory",
     "view_audit",

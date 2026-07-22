@@ -545,52 +545,8 @@ function configure({ writeToSession, addDataTap: tap }) {
   if (typeof tap === "function") addDataTap = tap;
 }
 
-function registerHandlers(ipcMain, opts = {}) {
-  if (!ipcMain) return;
-  configure(opts);
-
-  ipcMain.handle("magiesTerminal:followWan:createInvite", async (event, payload) => {
-    try {
-      return await createWanInvite({
-        sessionId: payload?.sessionId,
-        hostLabel: payload?.hostLabel,
-        webContentsId: event.sender?.id,
-        displayName: payload?.displayName || "Host",
-        relayHost: payload?.relayHost,
-        relayPort: payload?.relayPort,
-        useLocalRelay: payload?.useLocalRelay !== false && !payload?.relayHost,
-      });
-    } catch (err) {
-      return { success: false, error: err?.message || "wan_invite_failed" };
-    }
-  });
-
-  ipcMain.handle("magiesTerminal:followWan:stopInvite", (_event, payload) =>
-    stopWanInvite(payload?.sessionId));
-
-  ipcMain.handle("magiesTerminal:followWan:getInvite", (_event, payload) =>
-    getWanInvite(payload?.sessionId));
-
-  ipcMain.handle("magiesTerminal:followWan:decodeInvite", (_event, payload) => {
-    const decoded = decodeShare(payload?.shareString || payload);
-    return decoded.ok
-      ? { success: true, invite: decoded.payload }
-      : { success: false, error: decoded.error };
-  });
-
-  ipcMain.handle("magiesTerminal:followWan:startLocalRelay", async () => {
-    try {
-      const endpoint = await ensureLocalRelay();
-      return { success: true, ...endpoint };
-    } catch (err) {
-      return { success: false, error: err?.message || "relay_start_failed" };
-    }
-  });
-}
-
 module.exports = {
   configure,
-  registerHandlers,
   createWanInvite,
   stopWanInvite,
   startLocalRelay,

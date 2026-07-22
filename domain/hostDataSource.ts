@@ -621,10 +621,12 @@ export function createJsonManagedSource(input: {
   autoSyncIntervalMs?: number;
   httpAuthHeaderName?: string;
   httpAuthHeaderValue?: string;
+  fieldMapping?: HostFieldMapping;
   id?: string;
   now?: number;
 }): ManagedSource {
   const now = input.now ?? Date.now();
+  const fieldMapping = normalizeHostFieldMapping(input.fieldMapping);
   return {
     id: input.id || `mds-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     type: input.type,
@@ -641,7 +643,31 @@ export function createJsonManagedSource(input: {
     httpAuthHeaderValue: input.type === "json_http"
       ? normalizeHttpAuthHeaderValue(input.httpAuthHeaderValue)
       : undefined,
+    fieldMapping,
   };
+}
+
+/**
+ * Drop blank entries and reject a mapping that reads from a secret, so a bad
+ * configuration fails here rather than silently at the next sync.
+ */
+function normalizeHostFieldMapping(
+  mapping: HostFieldMapping | undefined,
+): HostFieldMapping | undefined {
+  const entries = Object.entries(mapping ?? {})
+    .filter(([, source]) => typeof source === "string" && source.trim())
+    .map(([field, source]) => [field, (source as string).trim()] as const);
+  if (entries.length === 0) return undefined;
+
+  const normalized = Object.fromEntries(entries) as HostFieldMapping;
+  const check = validateHostFieldMapping(normalized);
+  if (!check.ok) {
+    throw new Error(
+      `Field mapping must not read ${check.field} from a secret field `
+      + `(${check.sourceField}). Use Keychain identities in MagiesTerminal.`,
+    );
+  }
+  return normalized;
 }
 
 export function isHttpInventoryUrl(value: string): boolean {

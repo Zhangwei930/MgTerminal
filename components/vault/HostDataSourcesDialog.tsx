@@ -9,6 +9,11 @@ import {
   normalizeAutoSyncIntervalMs,
   parseInventoryDocument,
 } from "../../domain/hostDataSource";
+import {
+  isSecretSourceField,
+  type HostFieldMapping,
+  type MappableHostField,
+} from "../../domain/hostFieldMapping";
 import type { ManagedSource } from "../../domain/models";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
 import { cn } from "../../lib/utils";
@@ -40,6 +45,7 @@ export type HostDataSourcesDialogProps = {
     autoSyncIntervalMs?: number;
     httpAuthHeaderName?: string;
     httpAuthHeaderValue?: string;
+    fieldMapping?: HostFieldMapping;
     syncNow?: boolean;
   }) => Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }>;
   onSyncSource: (sourceId: string, options?: { force?: boolean }) => Promise<HostDataSourceSyncOutcome>;
@@ -53,6 +59,11 @@ export type HostDataSourcesDialogProps = {
     httpAuthHeaderValue: string | undefined,
   ) => void;
 };
+
+/** Canonical fields a source can be remapped onto. */
+const MAPPABLE_FIELDS: MappableHostField[] = [
+  "id", "label", "hostname", "port", "username", "group", "tags",
+];
 
 function formatAutoSyncLabel(
   t: (key: string, values?: Record<string, unknown>) => string,
@@ -119,6 +130,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const [syncMode, setSyncMode] = useState<"merge" | "replace_group">("merge");
   const [autoSyncIntervalMs, setAutoSyncIntervalMs] = useState(0);
   const [httpAuthHeaderName, setHttpAuthHeaderName] = useState("Authorization");
+  const [fieldMap, setFieldMap] = useState<Record<string, string>>({});
   const [httpAuthHeaderValue, setHttpAuthHeaderValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
@@ -127,6 +139,13 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
   const jsonSources = useMemo(
     () => managedSources.filter((source) => isJsonManagedSourceType(source.type)),
     [managedSources],
+  );
+
+  // Surfaced before submit so a bad mapping is caught while typing, not by an
+  // exception on save.
+  const mappingSecretField = useMemo(
+    () => Object.values(fieldMap).find((source) => source && isSecretSourceField(source)),
+    [fieldMap],
   );
 
   const sshConfigSources = useMemo(
@@ -143,6 +162,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     setAutoSyncIntervalMs(0);
     setHttpAuthHeaderName("Authorization");
     setHttpAuthHeaderValue("");
+    setFieldMap({});
   }, []);
 
   const handlePickFile = useCallback(async () => {
@@ -188,6 +208,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
         autoSyncIntervalMs: autoSyncIntervalMs || undefined,
         httpAuthHeaderName: sourceType === "json_http" ? httpAuthHeaderName : undefined,
         httpAuthHeaderValue: sourceType === "json_http" ? httpAuthHeaderValue : undefined,
+        fieldMapping: fieldMap as HostFieldMapping,
         syncNow: true,
       });
       if (outcome && !outcome.success) {
@@ -214,6 +235,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
     filePath,
     groupName,
     httpAuthHeaderName,
+    fieldMap,
     httpAuthHeaderValue,
     label,
     onAddJsonSource,
@@ -718,6 +740,36 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                 </div>
               )}
 
+              <details className="rounded-md border border-border/60 p-2">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                  {t("vault.dataSources.fieldMapping.title")}
+                </summary>
+                <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                  {t("vault.dataSources.fieldMapping.hint")}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {MAPPABLE_FIELDS.map((field) => (
+                    <div key={field} className="space-y-1">
+                      <Label htmlFor={`ds-map-${field}`} className="text-xs text-muted-foreground">
+                        {field}
+                      </Label>
+                      <Input
+                        id={`ds-map-${field}`}
+                        value={fieldMap[field] ?? ""}
+                        onChange={(e) => setFieldMap((prev) => ({ ...prev, [field]: e.target.value }))}
+                        placeholder={field}
+                        aria-invalid={isSecretSourceField(fieldMap[field] ?? "") || undefined}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {mappingSecretField && (
+                  <p className="mt-2 text-xs text-destructive">
+                    {t("vault.dataSources.fieldMapping.secretRejected", { field: mappingSecretField })}
+                  </p>
+                )}
+              </details>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="ds-group">{t("vault.dataSources.field.group")}</Label>
@@ -811,7 +863,7 @@ export const HostDataSourcesDialog: React.FC<HostDataSourcesDialogProps> = ({
                 >
                   {t("common.cancel")}
                 </Button>
-                <Button type="button" disabled={submitting} onClick={() => void handleAdd()}>
+                <Button type="button" disabled={submitting || Boolean(mappingSecretField)} onClick={() => void handleAdd()}>
                   {submitting && <Loader2 size={14} className="mr-2 animate-spin" />}
                   {t("vault.dataSources.addAndSync")}
                 </Button>

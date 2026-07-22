@@ -115,3 +115,24 @@ test("parseHostInventoryDocument applies a mapping to non-canonical feeds", asyn
   assert.equal(doc.hosts[0]?.hostname, "10.0.0.5");
   assert.equal(doc.hosts[0]?.port, 2222);
 });
+
+test("createJsonManagedSource stores a mapping and refuses a secret source", async () => {
+  const { createJsonManagedSource } = await import("./hostDataSource");
+  const base = { type: "json_http" as const, filePath: "https://x/i.json", groupName: "Inv" };
+
+  const source = createJsonManagedSource({ ...base, fieldMapping: { hostname: "ip", label: "name" } });
+  assert.deepEqual(source.fieldMapping, { hostname: "ip", label: "name" });
+
+  // Blank entries are dropped rather than stored as noise.
+  assert.equal(
+    createJsonManagedSource({ ...base, fieldMapping: { hostname: "  " } }).fieldMapping,
+    undefined,
+  );
+
+  // The same guard as the parser: configuring this must fail loudly, not at
+  // the next sync.
+  assert.throws(
+    () => createJsonManagedSource({ ...base, fieldMapping: { hostname: "password" } }),
+    /secret/i,
+  );
+});

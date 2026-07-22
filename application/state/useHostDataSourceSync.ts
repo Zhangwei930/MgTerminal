@@ -16,6 +16,7 @@ import {
   withHostDataSourceSyncOutcome,
   type HostDataSourceSyncStats,
 } from "../../domain/hostDataSource";
+import type { HostFieldMapping } from "../../domain/hostFieldMapping";
 import { magiesTerminalBridge } from "../../infrastructure/services/magiesTerminalBridge";
 
 export const MAX_INVENTORY_BYTES = 5 * 1024 * 1024;
@@ -266,6 +267,7 @@ export function useHostDataSourceSync({
       autoSyncIntervalMs?: number;
       httpAuthHeaderName?: string;
       httpAuthHeaderValue?: string;
+      fieldMapping?: HostFieldMapping;
       syncNow?: boolean;
     }): Promise<{ source: ManagedSource; outcome?: HostDataSourceSyncOutcome }> => {
       const path = input.filePath.trim();
@@ -296,6 +298,7 @@ export function useHostDataSourceSync({
         autoSyncIntervalMs: input.autoSyncIntervalMs,
         httpAuthHeaderName: input.httpAuthHeaderName,
         httpAuthHeaderValue: input.httpAuthHeaderValue,
+        fieldMapping: input.fieldMapping,
       });
 
       const nextSources = [...managedSourcesRef.current, source];

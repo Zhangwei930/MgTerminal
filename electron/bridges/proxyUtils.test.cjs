@@ -1,5 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+/**
+ * These two tests spawn a real Node process and wait for its first write. One
+ * second was enough on an idle machine but not on a loaded one — starting an
+ * interpreter while the rest of the suite (and anything else on the box)
+ * competes for CPU regularly takes longer, which made them fail at random.
+ * The ceiling is only here to stop a genuinely broken implementation hanging
+ * the run, so it can be generous without weakening anything.
+ */
+const SPAWN_TIMEOUT_MS = 15_000;
+
 const { EventEmitter } = require("node:events");
 const { once } = require("node:events");
 const net = require("node:net");
@@ -54,7 +64,7 @@ test("createProxySocket exposes ProxyCommand stdout as socket data", async () =>
   );
 
   const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error("Timed out waiting for ProxyCommand output")), 1000).unref();
+    setTimeout(() => reject(new Error("Timed out waiting for ProxyCommand output")), SPAWN_TIMEOUT_MS).unref();
   });
 
   try {
@@ -100,7 +110,7 @@ test("ProxyCommand spawn restores launch-time proxy env under Direct mode", asyn
     const data = await Promise.race([
       once(socket, "data").then(([chunk]) => chunk.toString()),
       new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timed out waiting for ProxyCommand env")), 1000).unref();
+        setTimeout(() => reject(new Error("Timed out waiting for ProxyCommand env")), SPAWN_TIMEOUT_MS).unref();
       }),
     ]);
     assert.equal(data, "launch-proxy");

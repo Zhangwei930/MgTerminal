@@ -273,7 +273,6 @@ export const zhCNCoreMessages: Messages = {
   'teamVault.audit.type.member_role_changed': '角色变更',
   'teamVault.audit.type.inventory_exported': '导出清单',
   'teamVault.audit.type.inventory_imported': '导入清单',
-  'teamVault.audit.type.inventory_synced': '同步清单',
   'teamVault.audit.type.package_shared': '分享包',
   'teamVault.audit.type.audit_cleared': '清空审计',
   'settings.system.credentials.repair.success': '安全存储已恢复可用。',

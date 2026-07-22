@@ -1030,7 +1030,6 @@ export const ruCoreMessages: Messages = {
   'teamVault.audit.type.member_role_changed': 'Роль изменена',
   'teamVault.audit.type.inventory_exported': 'Инвентарь экспортирован',
   'teamVault.audit.type.inventory_imported': 'Инвентарь импортирован',
-  'teamVault.audit.type.inventory_synced': 'Инвентарь синхронизирован',
   'teamVault.audit.type.package_shared': 'Пакет отправлен',
   'teamVault.audit.type.audit_cleared': 'Аудит очищен',
   'settings.application.whatsNew.summary': '{versions} версий · {changes} изменений',

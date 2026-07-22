@@ -35,7 +35,6 @@ interface MergeSummary {
 interface MergeResult {
   payload: SyncPayload;
   /** True when both sides modified the same entity (resolved by preferring local) */
-  hadConflicts: boolean;
   summary: MergeSummary;
 }
 
@@ -520,7 +519,6 @@ export function mergeSyncPayloads(
 
   return {
     payload,
-    hadConflicts: summary.modified.conflicts > 0,
     summary,
   };
 }

@@ -146,3 +146,30 @@ test("describeFailedProbe prefers interactive over an untrusted key", () => {
   });
   assert.equal(result.status, "auth-failed");
 });
+
+test("a skipped passphrase-protected key is reported even when fallbacks were tried", () => {
+  // loadProbeKey skips an encrypted key when no passphrase is saved, then the
+  // probe falls back to the ssh-agent. That fallback fills methodsTried, so
+  // gating the message on an empty methodsTried hid the real cause: the
+  // configured key was never offered. Interactive connections do not hit this
+  // because they can prompt for the passphrase.
+  const result = describeFailedProbe({
+    encryptedKeySkipped: true,
+    methodsTried: ["agent"],
+    error: "All configured authentication methods failed",
+  });
+  assert.equal(result.status, "auth-failed");
+  assert.match(result.error, /passphrase/i);
+  assert.doesNotMatch(result.error, /authentication methods failed/);
+});
+
+test("an untrusted host key still outranks a skipped key", () => {
+  // Nothing was offered at all in that case, so the key is not the story.
+  const result = describeFailedProbe({
+    hostKeyRejected: true,
+    hostKeyStatus: "unknown",
+    encryptedKeySkipped: true,
+    methodsTried: [],
+  });
+  assert.equal(result.status, "host-key-untrusted");
+});

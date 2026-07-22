@@ -80,7 +80,12 @@ function describeFailedProbe(probe = {}) {
     };
   }
 
-  if (probe.encryptedKeySkipped && methodsTried.length === 0) {
+  // Reported regardless of methodsTried. loadProbeKey skips an encrypted key
+  // when no passphrase is saved and the probe then falls back to the agent or
+  // a default key, which fills methodsTried — so requiring it to be empty hid
+  // the one fact the user can act on: the configured key was never offered.
+  // Interactive connections do not hit this because they can prompt.
+  if (probe.encryptedKeySkipped) {
     return {
       status: "auth-failed",
       error: "Configured private key is encrypted and no passphrase is saved",

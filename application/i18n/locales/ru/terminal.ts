@@ -958,6 +958,7 @@ export const ruTerminalMessages: Messages = {
   'health.status.healthy': 'Норма',
   'health.status.degraded': 'Нагрузка',
   'health.status.auth-failed': 'Ошибка auth',
+  'health.status.host-key-untrusted': 'Ключ хоста не проверен — подключитесь один раз, чтобы просмотреть и доверять ему',
   'health.status.credentials-locked': 'Учётные данные не удалось расшифровать на этом устройстве — разблокируйте хранилище или восстановите защищённое хранилище',
   'health.status.unreachable': 'Недоступен',
   'health.status.error': 'Ошибка',

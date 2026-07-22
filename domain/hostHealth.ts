@@ -11,6 +11,7 @@ export type HostHealthStatus =
   | "auth-failed"
   | "unreachable"
   | "credentials-locked"
+  | "host-key-untrusted"
   | "error";
 
 export interface HostHealthResult {
@@ -26,6 +27,7 @@ export interface HostHealthResult {
   diskTotalKb?: number;
   diskUsedKb?: number;
   needsInteractive?: boolean;
+  hostKeyStatus?: string;
   error?: string;
   checkedAt?: number;
 }

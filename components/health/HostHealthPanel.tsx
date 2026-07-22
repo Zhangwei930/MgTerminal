@@ -11,6 +11,7 @@ import {
   Loader2,
   Play,
   RotateCw,
+  ShieldQuestion,
   ShieldX,
   WifiOff,
 } from "lucide-react";
@@ -60,6 +61,9 @@ const STATUS_META: Record<string, { icon: React.ReactNode; className: string }> 
   // Amber, not red: nothing is wrong with the host — this device cannot
   // decrypt the stored credentials.
   "credentials-locked": { icon: <KeyRound size={13} />, className: "text-amber-500" },
+  // Amber as well: the host is reachable and the credentials are fine — the
+  // host key simply has not been verified yet.
+  "host-key-untrusted": { icon: <ShieldQuestion size={13} />, className: "text-amber-500" },
   error: { icon: <AlertTriangle size={13} />, className: "text-red-500" },
   running: {
     icon: <Loader2 size={13} className="animate-spin" />,

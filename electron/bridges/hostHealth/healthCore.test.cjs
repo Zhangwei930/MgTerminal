@@ -5,6 +5,7 @@ const {
   HEALTH_SNAPSHOT_SCRIPT,
   parseHealthSnapshot,
   summarizeHealthStatus,
+  describeFailedProbe,
 } = require("./healthCore.cjs");
 
 test("snapshot script emits LOAD/MEM/DISK markers", () => {
@@ -86,4 +87,62 @@ test("summarizeHealthStatus: healthy otherwise", () => {
     summarizeHealthStatus({ tcpOk: true, authOk: true }),
     "healthy",
   );
+});
+
+test("describeFailedProbe distinguishes an untrusted host key from a rejected login", () => {
+  // The probe withholds every auth method when the host key is not trusted, so
+  // ssh2 reports a generic auth failure. Passing that through blames the
+  // credentials for what is really an unverified host.
+  const rejected = describeFailedProbe({
+    hostKeyRejected: true,
+    hostKeyStatus: "unknown",
+    methodsTried: [],
+    error: "All configured authentication methods failed",
+  });
+  assert.equal(rejected.status, "host-key-untrusted");
+  assert.match(rejected.error, /host key/i);
+  assert.equal(rejected.hostKeyStatus, "unknown");
+
+  const changed = describeFailedProbe({
+    hostKeyRejected: true,
+    hostKeyStatus: "changed",
+    methodsTried: [],
+    error: "whatever ssh2 said",
+  });
+  assert.equal(changed.status, "host-key-untrusted");
+  assert.equal(changed.hostKeyStatus, "changed");
+});
+
+test("describeFailedProbe keeps the existing reasons for real auth failures", () => {
+  assert.equal(
+    describeFailedProbe({ needsInteractive: true, methodsTried: ["password"] }).error,
+    "Server requires interactive authentication (e.g. MFA)",
+  );
+  assert.equal(
+    describeFailedProbe({ encryptedKeySkipped: true, methodsTried: [] }).error,
+    "Configured private key is encrypted and no passphrase is saved",
+  );
+  assert.equal(
+    describeFailedProbe({ methodsTried: [] }).error,
+    "No usable authentication credentials available",
+  );
+
+  // Methods were genuinely tried and refused: keep the server's own wording.
+  const real = describeFailedProbe({
+    methodsTried: ["agent"],
+    error: "All configured authentication methods failed",
+  });
+  assert.equal(real.status, "auth-failed");
+  assert.equal(real.error, "All configured authentication methods failed");
+});
+
+test("describeFailedProbe prefers interactive over an untrusted key", () => {
+  // needsInteractive means the server answered; that is more actionable.
+  const result = describeFailedProbe({
+    needsInteractive: true,
+    hostKeyRejected: true,
+    hostKeyStatus: "unknown",
+    methodsTried: [],
+  });
+  assert.equal(result.status, "auth-failed");
 });

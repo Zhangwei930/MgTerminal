@@ -942,6 +942,7 @@ export const enTerminalMessages: Messages = {
   'health.status.healthy': 'Healthy',
   'health.status.degraded': 'Degraded',
   'health.status.auth-failed': 'Auth failed',
+  'health.status.host-key-untrusted': 'Host key not verified — connect once to review and trust it',
   'health.status.credentials-locked': 'Credentials could not be decrypted on this device — unlock the vault or repair secure storage',
   'health.status.unreachable': 'Unreachable',
   'health.status.error': 'Error',

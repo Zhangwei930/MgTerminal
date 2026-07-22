@@ -52,8 +52,55 @@ function summarizeHealthStatus({ tcpOk, authOk, snapshot }) {
   return "healthy";
 }
 
+/**
+ * Turn a failed auth probe into a status plus a reason the user can act on.
+ *
+ * The probe withholds every authentication method while the host key is not
+ * trusted, so ssh2 answers with its generic "all methods failed". Relaying
+ * that blames the credentials for what is really an unverified host — the
+ * probe already reports `hostKeyRejected`, it was simply never read.
+ */
+function describeFailedProbe(probe = {}) {
+  const methodsTried = probe.methodsTried || [];
+
+  // The server actually answered and asked for interaction: more actionable
+  // than anything the host key can tell us.
+  if (probe.needsInteractive) {
+    return {
+      status: "auth-failed",
+      error: "Server requires interactive authentication (e.g. MFA)",
+    };
+  }
+
+  if (probe.hostKeyRejected) {
+    return {
+      status: "host-key-untrusted",
+      hostKeyStatus: probe.hostKeyStatus,
+      error: `Host key ${probe.hostKeyStatus || "unknown"}; authentication was not attempted`,
+    };
+  }
+
+  if (probe.encryptedKeySkipped && methodsTried.length === 0) {
+    return {
+      status: "auth-failed",
+      error: "Configured private key is encrypted and no passphrase is saved",
+    };
+  }
+
+  if (methodsTried.length === 0) {
+    return {
+      status: "auth-failed",
+      error: probe.error || "No usable authentication credentials available",
+    };
+  }
+
+  // Methods were offered and refused — the server's own wording is the truth.
+  return { status: "auth-failed", error: probe.error };
+}
+
 module.exports = {
   HEALTH_SNAPSHOT_SCRIPT,
   parseHealthSnapshot,
   summarizeHealthStatus,
+  describeFailedProbe,
 };

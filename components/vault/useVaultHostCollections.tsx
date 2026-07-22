@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 
 import { upsertKnownHost } from "../../domain/knownHosts";
 import { sortByVaultOrder, sortVaultStringsByOrder } from "../../domain/vaultOrder";
-import { matchesHostSearchQuery, matchesSearchQuery } from "../../lib/searchMatcher";
+import { matchesStructuredHostSearch } from "../../domain/hostSearchQuery";
 import type { GroupConfig, GroupNode, Host, KnownHost } from "../../types";
 import KnownHostsManager from "../KnownHostsManager";
 import type { SortMode } from "../ui/sort-dropdown";
@@ -89,9 +89,9 @@ export function useVaultHostCollections({
 
   const hostMatchesSearchAndTags = useCallback((host: Host): boolean => {
     if (searchTerm) {
-      const matchesSearch =
-        matchesHostSearchQuery(searchTerm, host) ||
-        matchesSearchQuery(searchTerm, host.username, host.notes);
+      const matchesSearch = matchesStructuredHostSearch(searchTerm, host, {
+        extraFreeTextFields: [host.username, host.notes],
+      });
       if (!matchesSearch) return false;
     }
     if (hasSelectedTags && !host.tags?.some((tag) => selectedTagSet.has(tag))) {

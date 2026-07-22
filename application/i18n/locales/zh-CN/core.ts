@@ -672,7 +672,7 @@ export const zhCNCoreMessages: Messages = {
   'vault.hosts.header.live': '{count} 个在线',
 
   // Vault hosts header/actions
-  'vault.hosts.search.placeholder': '查找主机或 ssh user@hostname / ssh -p 2222 user@hostname…',
+  'vault.hosts.search.placeholder': '查找主机、tag:web user:root，或 ssh user@hostname…',
   'vault.hosts.connect': '连接',
   'vault.view.grid': '网格',
   'vault.view.list': '列表',

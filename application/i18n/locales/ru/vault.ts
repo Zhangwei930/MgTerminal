@@ -36,7 +36,7 @@ export const ruVaultMessages: Messages = {
   'notes.search.noResults': 'Заметки не найдены.',
 
   // Vault hosts header/actions
-  'vault.hosts.search.placeholder': 'Найти хост или ssh user@hostname / ssh -p 2222 user@hostname...',
+  'vault.hosts.search.placeholder': 'Найти хост, tag:web user:root или ssh user@hostname...',
   'vault.hosts.connect': 'Подключиться',
   'vault.view.grid': 'Сетка',
   'vault.view.list': 'Список',

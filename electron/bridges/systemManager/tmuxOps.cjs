@@ -740,7 +740,9 @@ function createTmuxOpsApi({ execOnSession }) {
       }
       case "sendKeys": {
         const { sessionName, windowIndex, paneIndex, keys, enter } = payload;
-        if (!sessionName || windowIndex === undefined || paneIndex === undefined) {
+        // paneIndex is optional: tmux resolves `session:window` to the active
+        // pane, which is what a caller that does not enumerate panes wants.
+        if (!sessionName || windowIndex === undefined) {
           return { success: false, error: "Missing params" };
         }
         const keyText = String(keys ?? "");

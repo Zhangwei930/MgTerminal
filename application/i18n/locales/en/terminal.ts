@@ -608,6 +608,7 @@ export const enTerminalMessages: Messages = {
   'keychain.panel.keyExport': 'Key Export',
   'keychain.validation.labelRequired': 'Please enter a label for the key',
   'keychain.validation.labelAndPrivateKeyRequired': 'Label and private key are required',
+  'keychain.validation.noPrivateKeyInSelection': 'No private key found in the selected files',
   'keychain.validation.labelAndUsernameRequired': 'Label and username are required',
   'keychain.error.generationUnavailable':
     'Key generation not available - please ensure the app is running in Electron',

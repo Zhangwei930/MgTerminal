@@ -35,3 +35,50 @@ export function getProcessStatusLabelKey(proc: SystemProcessInfo): ProcessStatus
   if (isRunning) return 'systemManager.processes.state.running';
   return 'systemManager.processes.state.sleeping';
 }
+
+export type ProcessSignalLabelKey =
+  | 'systemManager.processes.term'
+  | 'systemManager.processes.kill'
+  | 'systemManager.processes.stop'
+  | 'systemManager.processes.cont'
+  | 'systemManager.processes.hup';
+
+export interface ProcessSignalConfirm {
+  titleKey: ProcessSignalLabelKey;
+  messageKey:
+    | 'systemManager.processes.confirmKill'
+    | 'systemManager.processes.confirmSignal';
+  destructive: boolean;
+}
+
+const SIGNAL_CONFIRMS: Record<string, ProcessSignalConfirm> = {
+  KILL: {
+    titleKey: 'systemManager.processes.kill',
+    messageKey: 'systemManager.processes.confirmKill',
+    destructive: true,
+  },
+  TERM: {
+    titleKey: 'systemManager.processes.term',
+    messageKey: 'systemManager.processes.confirmSignal',
+    destructive: true,
+  },
+  HUP: {
+    titleKey: 'systemManager.processes.hup',
+    messageKey: 'systemManager.processes.confirmSignal',
+    destructive: true,
+  },
+  STOP: {
+    titleKey: 'systemManager.processes.stop',
+    messageKey: 'systemManager.processes.confirmSignal',
+    destructive: false,
+  },
+  CONT: {
+    titleKey: 'systemManager.processes.cont',
+    messageKey: 'systemManager.processes.confirmSignal',
+    destructive: false,
+  },
+};
+
+export function getProcessSignalConfirm(signal: string): ProcessSignalConfirm {
+  return SIGNAL_CONFIRMS[signal] ?? SIGNAL_CONFIRMS.TERM;
+}

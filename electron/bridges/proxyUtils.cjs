@@ -296,7 +296,32 @@ function createProxySocket(proxy, targetHost, targetPort, options = {}) {
     });
 }
 
+/**
+ * Reduce a proxy failure to a stable code for the UI.
+ *
+ * The raw message is deliberately discarded rather than scrubbed: HTTP CONNECT
+ * responses echo the request line (which carries Proxy-Authorization) and
+ * ProxyCommand failures echo the command line, so anything derived from the
+ * message risks carrying the user's credentials back to the renderer.
+ *
+ * @param {unknown} error
+ * @returns {'auth'|'timeout'|'refused'|'dns'|'failed'}
+ */
+function classifyProxyTestError(error) {
+    const code = String(error?.code || "");
+    if (code === "ETIMEDOUT") return "timeout";
+    if (code === "ECONNREFUSED") return "refused";
+    if (code === "ENOTFOUND" || code === "EAI_AGAIN") return "dns";
+
+    const message = String(error?.message || "");
+    if (/authentication|407/i.test(message)) return "auth";
+    if (/timeout/i.test(message)) return "timeout";
+    if (/refused/i.test(message)) return "refused";
+    return "failed";
+}
+
 module.exports = {
+    classifyProxyTestError,
     createProxySocket,
     substituteProxyCommand,
 };

@@ -6,6 +6,7 @@ import { useI18n } from '../../application/i18n/I18nProvider';
 import type { useSystemManagerBackend } from '../../application/state/useSystemManagerBackend';
 import {
   getProcessFlags,
+  getProcessSignalConfirm,
   getProcessStatusLabelKey,
   getProcessTone,
 } from '../../domain/systemManager/processState';
@@ -31,6 +32,7 @@ import {
   SystemPanelStatusBadge,
   SystemPanelToolbar,
 } from './SystemPanelUi';
+import { SystemPanelConfirmDialog } from './SystemPanelConfirmDialog';
 import { SystemPanelPromptDialog } from './SystemPanelPromptDialog';
 import { usePolling, useStableTranslate } from './hooks/useSystemManager';
 
@@ -255,6 +257,7 @@ export const ProcessManagerTab = memo(function ProcessManagerTab({
   const [filter, setFilter] = useState<ProcessFilter>('all');
   const [selectedPid, setSelectedPid] = useState<number | null>(null);
   const [reniceTarget, setReniceTarget] = useState<number | null>(null);
+  const [signalTarget, setSignalTarget] = useState<{ pid: number; signal: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [cachedProcesses, setCachedProcesses] = useState<SystemProcessInfo[] | null>(() => getCachedProcesses(sessionId));
   const [cachedProcessesSessionId, setCachedProcessesSessionId] = useState(sessionId);
@@ -377,12 +380,11 @@ export const ProcessManagerTab = memo(function ProcessManagerTab({
     setSelectedPid((cur) => (cur === pid ? null : pid));
   }, []);
 
+  const requestSignalProcess = useCallback((pid: number, signal: string) => {
+    setSignalTarget({ pid, signal });
+  }, []);
+
   const signalProcess = useCallback(async (pid: number, signal: string) => {
-    const confirmKey = signal === 'KILL'
-      ? 'systemManager.processes.confirmKill'
-      : 'systemManager.processes.confirmSignal';
-    const ok = window.confirm(t(confirmKey, { pid: String(pid), signal }));
-    if (!ok) return;
     setActionError(null);
     const result = await backend.signalSystemProcess({ sessionId, pid, signal });
     if (!result.success) {
@@ -478,10 +480,30 @@ export const ProcessManagerTab = memo(function ProcessManagerTab({
           processes={displayList}
           selectedPid={selectedPid}
           onToggle={togglePid}
-          onSignal={signalProcess}
+          onSignal={requestSignalProcess}
           onRenice={openRenicePrompt}
         />
       )}
+
+      <SystemPanelConfirmDialog
+        open={signalTarget !== null}
+        title={t(getProcessSignalConfirm(signalTarget?.signal ?? '').titleKey)}
+        message={signalTarget
+          ? t(getProcessSignalConfirm(signalTarget.signal).messageKey, {
+            pid: String(signalTarget.pid),
+            signal: signalTarget.signal,
+          })
+          : ''}
+        confirmLabel={t(getProcessSignalConfirm(signalTarget?.signal ?? '').titleKey)}
+        destructive={getProcessSignalConfirm(signalTarget?.signal ?? '').destructive}
+        onOpenChange={(open) => { if (!open) setSignalTarget(null); }}
+        onConfirm={() => {
+          const target = signalTarget;
+          setSignalTarget(null);
+          if (!target) return;
+          void signalProcess(target.pid, target.signal);
+        }}
+      />
 
       <SystemPanelPromptDialog
         open={reniceTarget !== null}

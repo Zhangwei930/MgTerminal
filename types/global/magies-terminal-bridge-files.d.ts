@@ -1,6 +1,14 @@
 import type { SftpFilenameEncoding } from "../../types";
 
 declare global {
+  /** Opt-in state plus the persisted delivery counters shown in Settings. */
+  interface CrashTelemetryState {
+    enabled: boolean;
+    sentCount: number;
+    /** Epoch ms of the last delivered report; null when nothing was ever sent. */
+    lastSentAt: number | null;
+  }
+
   interface MagiesTerminalBridge {
     // File opener helpers (for "Open With" feature)
     selectApplication?(): Promise<{ path: string; name: string } | null>;
@@ -56,8 +64,8 @@ declare global {
     }>>;
     clearCrashLogs?(): Promise<{ deletedCount: number }>;
     openCrashLogsDir?(): Promise<{ success: boolean }>;
-    getCrashTelemetry?(): Promise<{ enabled: boolean }>;
-    setCrashTelemetry?(enabled: boolean): Promise<{ enabled: boolean }>;
+    getCrashTelemetry?(): Promise<CrashTelemetryState>;
+    setCrashTelemetry?(enabled: boolean): Promise<CrashTelemetryState>;
 
     // Temp directory management
     getTempDirInfo?(): Promise<{ path: string; fileCount: number; totalSize: number }>;

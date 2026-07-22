@@ -5,11 +5,12 @@
  * system ssh-add -s (macOS/Linux).
  */
 import { Check, KeyRound, Loader2, Usb } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../application/i18n/I18nProvider";
 import { useApplicationBackend } from "../../application/state/useApplicationBackend";
 import { magiesTerminalBridge } from "@/infrastructure/services/magiesTerminalBridge";
-import { cn } from "../../lib/utils";
+import { getCommonPkcs11ModulePaths } from "../../domain/sshAgentPkcs11";
+import { cn, isMacPlatform } from "../../lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { toast } from "../ui/toast";
@@ -41,6 +42,10 @@ export const AgentAuthSection: React.FC<AgentAuthSectionProps> = ({
   const [modulePath, setModulePath] = useState("");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
+  const modulePathSuggestions = useMemo(
+    () => getCommonPkcs11ModulePaths(isMacPlatform() ? "darwin" : "linux"),
+    [],
+  );
 
   const refreshIdentities = useCallback(async () => {
     const result = await listSshAgentIdentities();
@@ -224,7 +229,13 @@ export const AgentAuthSection: React.FC<AgentAuthSectionProps> = ({
                   value={modulePath}
                   onChange={(e) => setModulePath(e.target.value)}
                   placeholder={t("hostDetails.agent.pkcs11.pathPlaceholder")}
+                  list="pkcs11-module-suggestions"
                 />
+                <datalist id="pkcs11-module-suggestions">
+                  {modulePathSuggestions.map((candidate) => (
+                    <option key={candidate} value={candidate} />
+                  ))}
+                </datalist>
                 <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" onClick={() => void handleBrowse()}>
                   {t("hostDetails.agent.pkcs11.browse")}
                 </Button>

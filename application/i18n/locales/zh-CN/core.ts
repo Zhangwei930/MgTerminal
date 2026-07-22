@@ -300,6 +300,8 @@ export const zhCNCoreMessages: Messages = {
   'settings.system.crashLogs.description': '查看主进程错误日志，帮助诊断异常行为。',
   'settings.system.crashLogs.telemetryLabel': '匿名崩溃报告',
   'settings.system.crashLogs.telemetryDescription': '默认关闭。开启后，将向 MagiesTerminal 团队发送脱敏后的崩溃摘要（不含路径、用户名、主机名或会话数据），帮助更快修复崩溃问题。',
+  'settings.system.crashLogs.telemetryStats': '已发送 {count} 份报告 · 上次 {date}',
+  'settings.system.crashLogs.telemetryNoneSent': '尚未发送任何报告。',
   'settings.system.crashLogs.noLogs': '未找到崩溃日志。',
   'settings.system.crashLogs.entries': '{count} 条记录',
   'settings.system.crashLogs.clear': '清除所有日志',
@@ -519,6 +521,8 @@ export const zhCNCoreMessages: Messages = {
 
   // Sync
   'sync.cloudSync': '云同步',
+  'sync.tooltip.lastSynced': '云同步 · 上次同步 {time}',
+  'sync.tooltip.neverSynced': '云同步 · 从未同步',
   'sync.settings': '同步设置',
   'sync.active': '云同步已启用',
   'sync.pending': '有待同步的更改',

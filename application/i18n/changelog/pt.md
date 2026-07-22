@@ -1,6 +1,15 @@
 # Registro de alterações
 
 
+## [0.5.24] - 2026-07-22
+
+### Correções
+- **A sonda de verificação de estado nunca tinha realmente lido um ficheiro de chave**: a função assíncrona que lê a chave privada era chamada sem `await`, pelo que examinava uma Promise não resolvida em vez do conteúdo do ficheiro, e cada chave era silenciosamente considerada «não é uma chave privada». Qualquer anfitrião que dependesse de um ficheiro de chave local em vez de uma chave guardada em linha falhava sempre a verificação de estado, apesar de a mesma ligação funcionar perfeitamente no terminal
+- **Uma falha de desencriptação local deixa de ser reportada como um início de sessão recusado**: uma palavra-passe ou chave que ainda era um marcador encriptado era esvaziada antes da sonda, pelo que o servidor recusava naturalmente um início de sessão sem quaisquer credenciais. A verificação reconhece agora «há credenciais configuradas, mas este dispositivo não as consegue desencriptar» e aponta para desbloquear o cofre ou reparar o armazenamento seguro
+- **Uma chave de anfitrião não fiável deixa de se fazer passar por uma falha de autenticação**: a sonda já retinha todos os métodos de autenticação quando a chave do anfitrião é desconhecida ou mudou, mas nunca reportava esse facto ao painel. Aparece agora um estado próprio de «chave de anfitrião não verificada», sugerindo ligar uma vez manualmente para estabelecer confiança
+- **O aviso de «chave encriptada ignorada» deixa de depender da sorte**: antes só aparecia quando nenhum método de autenticação tinha sido tentado, mas em qualquer máquina com um agente SSH em execução tenta-se sempre primeiro o agente, pelo que este aviso quase nunca era acionado
+- **A verificação de estado passa agora a reutilizar a frase-passe da chave guardada numa ligação interativa**: essa frase-passe antes só se aplicava a ligações normais e nunca era consultada pela verificação de estado, pelo que uma chave protegida por frase-passe que funciona bem no terminal falhava sempre a verificação de estado
+
 ## [0.5.23] - 2026-07-22
 
 ### Correções

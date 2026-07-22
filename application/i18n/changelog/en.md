@@ -1,6 +1,15 @@
 # Changelog
 
 
+## [0.5.24] - 2026-07-22
+
+### Fixes
+- **The health probe had never actually read a key file**: the async helper that reads private keys was called without `await`, so it examined an unresolved Promise instead of file content and silently judged every key "not a private key". Any host relying on a local key file rather than an inline stored key was guaranteed to fail the health check, even though the same key connects fine in the terminal
+- **A local decryption failure is no longer reported as a rejected login**: a password or key that is still an encrypted placeholder was stripped to nothing before probing, so the server naturally refused a login with zero credentials; the check now recognises "credentials are configured but this device cannot decrypt them" and points at unlocking the vault or repairing secure storage
+- **An untrusted host key no longer masquerades as an authentication failure**: the probe already withholds every authentication method when a host key is unknown or has changed, but never reported that fact to the panel; it now shows a dedicated "host key not verified" status and suggests connecting once manually to establish trust
+- **The "encrypted key skipped" notice no longer depends on luck**: it previously only appeared when no authentication method had been attempted at all, but any machine with an SSH agent running always tries the agent first — so the notice almost never fired
+- **The health check now reuses the key passphrase saved during an interactive connect**: that passphrase previously only applied to normal connections and was never consulted by the health check, so a passphrase-protected key that works fine in the terminal always failed the health check
+
 ## [0.5.23] - 2026-07-22
 
 ### Fixes

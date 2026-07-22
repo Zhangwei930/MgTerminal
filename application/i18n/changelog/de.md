@@ -1,6 +1,15 @@
 # Änderungsprotokoll
 
 
+## [0.5.24] - 2026-07-22
+
+### Fehlerbehebungen
+- **Die Zustandsprüfung hatte noch nie tatsächlich eine Schlüsseldatei gelesen**: die asynchrone Hilfsfunktion zum Lesen privater Schlüssel wurde ohne `await` aufgerufen, sodass ein noch nicht aufgelöstes Promise statt des Dateiinhalts geprüft wurde und jeder Schlüssel stillschweigend als „kein privater Schlüssel" eingestuft wurde. Jeder Host, der auf eine lokale Schlüsseldatei statt auf einen inline gespeicherten Schlüssel angewiesen ist, scheiterte garantiert an der Zustandsprüfung — obwohl dieselbe Verbindung im Terminal einwandfrei funktioniert
+- **Ein lokales Entschlüsselungsproblem wird nicht mehr als abgelehnter Login gemeldet**: ein Passwort oder Schlüssel, der noch als verschlüsselter Platzhalter vorlag, wurde vor der Prüfung auf nichts reduziert, sodass der Server folgerichtig einen Login ohne jegliche Zugangsdaten ablehnte. Die Prüfung erkennt jetzt „Zugangsdaten sind konfiguriert, können auf diesem Gerät aber nicht entschlüsselt werden" und verweist auf das Entsperren des Tresors oder die Reparatur des sicheren Speichers
+- **Ein nicht vertrauenswürdiger Host-Schlüssel gibt sich nicht mehr als Authentifizierungsfehler aus**: die Prüfung verweigerte schon immer sämtliche Authentifizierungsmethoden, wenn ein Host-Schlüssel unbekannt ist oder sich geändert hat, meldete diese Tatsache aber nie an das Panel. Jetzt erscheint ein eigener Status „Host-Schlüssel nicht verifiziert" mit dem Hinweis, einmal manuell zu verbinden, um Vertrauen herzustellen
+- **Der Hinweis „verschlüsselter Schlüssel übersprungen" hängt nicht mehr vom Zufall ab**: er erschien bisher nur, wenn überhaupt keine Authentifizierungsmethode versucht wurde — doch auf jeder Maschine mit laufendem SSH-Agent wird immer zuerst der Agent versucht, wodurch der Hinweis fast nie ausgelöst wurde
+- **Die Zustandsprüfung verwendet jetzt die beim interaktiven Verbinden gespeicherte Schlüssel-Passphrase**: diese Passphrase galt bisher nur für normale Verbindungen und wurde von der Zustandsprüfung nie abgefragt, sodass ein passphrasegeschützter Schlüssel, der im Terminal einwandfrei funktioniert, die Zustandsprüfung immer scheitern ließ
+
 ## [0.5.23] - 2026-07-22
 
 ### Fehlerbehebungen

@@ -1,6 +1,15 @@
 # Registro de cambios
 
 
+## [0.5.24] - 2026-07-22
+
+### Correcciones
+- **La sonda del diagnóstico nunca había leído realmente un archivo de clave**: la función asíncrona que lee la clave privada se llamaba sin `await`, por lo que examinaba una Promise sin resolver en lugar del contenido del archivo, y cada clave se consideraba silenciosamente «no es una clave privada». Cualquier host que dependiera de un archivo de clave local en lugar de una clave almacenada en línea fallaba siempre el diagnóstico, aunque la misma conexión funcionara perfectamente en la terminal
+- **Un fallo de descifrado local ya no se informa como un inicio de sesión rechazado**: una contraseña o clave que seguía siendo un marcador cifrado se vaciaba antes de la sonda, así que el servidor rechazaba lógicamente un inicio de sesión sin ninguna credencial. Ahora el diagnóstico reconoce que «hay credenciales configuradas pero este dispositivo no puede descifrarlas» y señala que hay que desbloquear la bóveda o reparar el almacenamiento seguro
+- **Una clave de host no confiable ya no se hace pasar por un fallo de autenticación**: la sonda ya retenía todos los métodos de autenticación cuando la clave del host es desconocida o ha cambiado, pero nunca informaba de ese hecho al panel. Ahora aparece un estado propio de «clave de host no verificada», sugiriendo conectarse una vez manualmente para establecer la confianza
+- **El aviso de «clave cifrada omitida» ya no depende de la suerte**: antes solo aparecía cuando no se había intentado ningún método de autenticación, pero en cualquier máquina con un agente SSH en ejecución siempre se prueba primero el agente, por lo que este aviso casi nunca se activaba
+- **El diagnóstico ahora reutiliza la frase de contraseña de la clave guardada durante una conexión interactiva**: antes esa frase de contraseña solo se aplicaba a las conexiones normales y el diagnóstico nunca la consultaba, así que una clave protegida con frase de contraseña que funciona perfectamente en la terminal siempre fallaba el diagnóstico
+
 ## [0.5.23] - 2026-07-22
 
 ### Correcciones

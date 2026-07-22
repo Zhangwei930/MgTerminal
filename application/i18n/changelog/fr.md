@@ -1,6 +1,15 @@
 # Journal des modifications
 
 
+## [0.5.24] - 2026-07-22
+
+### Corrections
+- **La sonde de bilan de santé n'avait en réalité jamais lu de fichier de clé** : la fonction asynchrone de lecture de clé privée était appelée sans `await`, si bien qu'elle examinait une Promise non résolue au lieu du contenu du fichier, et chaque clé était silencieusement jugée « pas une clé privée ». Tout hôte reposant sur un fichier de clé local plutôt que sur une clé stockée en ligne échouait invariablement au bilan de santé, alors que la même connexion fonctionnait très bien dans le terminal
+- **Un échec de déchiffrement local n'est plus signalé comme une connexion refusée** : un mot de passe ou une clé encore sous forme de substitut chiffré était vidé avant la sonde, si bien que le serveur refusait naturellement une connexion sans aucun identifiant. Le bilan reconnaît désormais « des identifiants sont configurés mais cet appareil ne peut pas les déchiffrer » et oriente vers le déverrouillage du coffre ou la réparation du stockage sécurisé
+- **Une clé d'hôte non approuvée ne se fait plus passer pour un échec d'authentification** : la sonde retenait déjà toutes les méthodes d'authentification lorsque la clé de l'hôte est inconnue ou a changé, mais ne le signalait jamais au panneau. Un statut dédié « clé d'hôte non vérifiée » s'affiche désormais, suggérant de se connecter une fois manuellement pour établir la confiance
+- **L'avis « clé chiffrée ignorée » ne dépend plus du hasard** : il n'apparaissait auparavant que si aucune méthode d'authentification n'avait été tentée, mais toute machine avec un agent SSH actif essaie toujours l'agent en premier, ce qui empêchait presque toujours cet avis de se déclencher
+- **Le bilan de santé réutilise désormais la phrase de passe de clé enregistrée lors d'une connexion interactive** : cette phrase de passe ne s'appliquait auparavant qu'aux connexions normales et n'était jamais consultée par le bilan de santé, si bien qu'une clé protégée par phrase de passe, parfaitement fonctionnelle dans le terminal, échouait toujours au bilan de santé
+
 ## [0.5.23] - 2026-07-22
 
 ### Corrections

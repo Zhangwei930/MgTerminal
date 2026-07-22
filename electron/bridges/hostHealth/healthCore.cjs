@@ -93,9 +93,15 @@ function describeFailedProbe(probe = {}) {
   }
 
   if (methodsTried.length === 0) {
+    // ssh2 says "All configured authentication methods failed" even when the
+    // auth handler had zero methods to offer. Passing that through claims the
+    // credentials were tried and refused; they were never sent.
+    const isGenericSsh2 = /authentication methods failed/i.test(probe.error || "");
     return {
       status: "auth-failed",
-      error: probe.error || "No usable authentication credentials available",
+      error: !probe.error || isGenericSsh2
+        ? "No usable authentication credentials available"
+        : probe.error,
     };
   }
 

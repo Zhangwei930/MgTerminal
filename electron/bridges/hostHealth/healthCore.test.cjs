@@ -173,3 +173,21 @@ test("an untrusted host key still outranks a skipped key", () => {
   });
   assert.equal(result.status, "host-key-untrusted");
 });
+
+test("nothing-was-tried never parrots ssh2's 'all methods failed'", () => {
+  // ssh2 emits that exact sentence when the auth handler runs out of methods —
+  // including when it had zero to begin with. Forwarding it then claims the
+  // credentials were tried and refused, when in truth nothing was offered.
+  const result = describeFailedProbe({
+    methodsTried: [],
+    error: "All configured authentication methods failed",
+  });
+  assert.equal(result.status, "auth-failed");
+  assert.doesNotMatch(result.error, /authentication methods failed/);
+  assert.match(result.error, /No usable authentication credentials/);
+});
+
+test("a distinct error still survives when nothing was tried", () => {
+  const result = describeFailedProbe({ methodsTried: [], error: "connect ETIMEDOUT" });
+  assert.equal(result.error, "connect ETIMEDOUT");
+});

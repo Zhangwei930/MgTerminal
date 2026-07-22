@@ -86,7 +86,7 @@ const probeTcp = (runId) => (host, port, timeoutMs) => new Promise((resolve, rej
 
 // Load the first usable inline/identity-file key. Encrypted keys without a
 // saved passphrase are skipped (diagnostics never prompts) but reported.
-const loadProbeKey = (options) => {
+const loadProbeKey = async (options) => {
   if (typeof options.privateKey === "string" && options.privateKey.trim()) {
     return {
       privateKey: options.privateKey,
@@ -99,7 +99,10 @@ const loadProbeKey = (options) => {
   const identityFilePaths = options.identityFilePaths || [];
   for (const keyPath of identityFilePaths) {
     try {
-      const content = readFileNoFollow(expandIdentityFilePath(keyPath), "utf8");
+      // readFileNoFollow is async. Without the await, `content` was a Promise:
+      // looksLikePrivateKey rejected it and every identity-file key was
+      // silently skipped, so the probe had nothing to offer.
+      const content = await readFileNoFollow(expandIdentityFilePath(keyPath), "utf8");
       if (!looksLikePrivateKey(content)) continue;
       if (isKeyEncrypted(content) && !options.passphrase) {
         encryptedKeySkipped = true;
@@ -191,7 +194,7 @@ const connectTargetProbe = (runId, buildAlgorithms) => async ({
     callback(true);
   };
 
-  const keyProbe = loadProbeKey(options);
+  const keyProbe = await loadProbeKey(options);
   const agentSocket = await getAvailableAgentSocket();
   const hasPassword = isPasswordProvided(options.password);
   const defaultKeys = keyProbe.hasConfiguredKey ? [] : await findAllDefaultPrivateKeys();

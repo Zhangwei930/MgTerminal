@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { cn } from '../lib/utils';
-import { matchesHostSearchQuery, matchesSearchQuery } from '../lib/searchMatcher';
+import { matchesStructuredHostSearch } from '../domain/hostSearchQuery';
 import { useI18n } from '../application/i18n/I18nProvider';
 import { Host, ProxyProfile, SSHKey } from '../types';
 import { ManagedSource } from '../domain/models';
@@ -152,11 +152,9 @@ export const SelectHostPanelContent: React.FC<SelectHostPanelContentProps> = ({
     }
 
     if (searchQuery) {
-      result = result.filter(
-        (host) =>
-          matchesHostSearchQuery(searchQuery, host)
-          || matchesSearchQuery(searchQuery, host.username, host.notes),
-      );
+      result = result.filter((host) => matchesStructuredHostSearch(searchQuery, host, {
+        extraFreeTextFields: [host.username, host.notes],
+      }));
     }
 
     if (selectedTags.length > 0) {

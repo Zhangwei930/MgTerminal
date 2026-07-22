@@ -39,7 +39,7 @@ import {
 import { themeFingerprint } from '../../application/state/useActiveChromeTheme';
 import { buildHostTreeThemeFromTerminalTheme } from '../../infrastructure/theme/terminalAppearanceTokens';
 import { cn } from '../../lib/utils';
-import { matchesHostSearchQuery, matchesSearchQuery } from '../../lib/searchMatcher';
+import { matchesStructuredHostSearch } from '../../domain/hostSearchQuery';
 import type { GroupConfig, GroupNode, Host, TerminalTheme } from '../../types';
 import { HostTreeGroupContextMenuContent, HostTreeHostContextMenuContent } from '../host/HostTreeContextMenus';
 import { HostTreeGroupInlineRenameInput } from '../host/HostTreeGroupInlineRenameInput';
@@ -202,8 +202,9 @@ export function getTerminalHostTreeMeasuredLayoutWidth(
 }
 
 function hostMatchesSearch(host: Host, search: string): boolean {
-  return matchesHostSearchQuery(search, host)
-    || matchesSearchQuery(search, host.username, host.notes);
+  return matchesStructuredHostSearch(search, host, {
+    extraFreeTextFields: [host.username, host.notes],
+  });
 }
 
 function filterGroupNode(

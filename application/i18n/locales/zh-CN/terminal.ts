@@ -984,6 +984,7 @@ export const zhCNTerminalMessages: Messages = {
   'health.status.healthy': '正常',
   'health.status.degraded': '资源紧张',
   'health.status.auth-failed': '认证失败',
+  'health.status.credentials-locked': '本机无法解密该主机的凭据——请解锁保险库或修复安全存储',
   'health.status.unreachable': '不可达',
   'health.status.error': '错误',
   'health.empty.allHealthy': '已检查的主机均正常。',

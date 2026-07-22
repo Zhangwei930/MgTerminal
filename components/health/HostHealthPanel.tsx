@@ -7,6 +7,7 @@ import {
   Activity,
   AlertTriangle,
   Check,
+  KeyRound,
   Loader2,
   Play,
   RotateCw,
@@ -19,6 +20,7 @@ import { useHostHealthBackend } from "../../application/state/useHostHealthBacke
 import {
   buildHostHealthRequests,
   isHealthCheckableHost,
+  partitionHostsByCredentialAvailability,
   isUnhealthyStatus,
   type HostHealthResult,
 } from "../../domain/hostHealth";
@@ -55,6 +57,9 @@ const STATUS_META: Record<string, { icon: React.ReactNode; className: string }> 
   degraded: { icon: <AlertTriangle size={13} />, className: "text-amber-500" },
   "auth-failed": { icon: <ShieldX size={13} />, className: "text-red-500" },
   unreachable: { icon: <WifiOff size={13} />, className: "text-red-500" },
+  // Amber, not red: nothing is wrong with the host — this device cannot
+  // decrypt the stored credentials.
+  "credentials-locked": { icon: <KeyRound size={13} />, className: "text-amber-500" },
   error: { icon: <AlertTriangle size={13} />, className: "text-red-500" },
   running: {
     icon: <Loader2 size={13} className="animate-spin" />,
@@ -90,17 +95,30 @@ export const HostHealthPanel: React.FC<HostHealthPanelProps> = ({
   );
 
   const startRun = useCallback(async () => {
-    const requests = buildHostHealthRequests({
+    // Hosts whose credentials are still ciphertext are answered locally: the
+    // probe would drop every credential and come back with a bare auth
+    // failure, which reads as "wrong password" rather than "this device
+    // cannot decrypt them".
+    const { checkable, credentialsLocked } = partitionHostsByCredentialAvailability({
       hosts: checkableHosts,
+      keys,
+      identities,
+    });
+    const requests = buildHostHealthRequests({
+      hosts: checkable,
       keys,
       identities,
       knownHosts,
       allHosts,
     });
-    if (requests.length === 0) return;
+    if (requests.length === 0 && credentialsLocked.length === 0) return;
     const runId = `health-${crypto.randomUUID()}`;
     runIdRef.current = runId;
-    setResults(new Map());
+    setResults(new Map(credentialsLocked.map((host) => [host.id, {
+      hostId: host.id,
+      status: "credentials-locked" as const,
+      checkedAt: Date.now(),
+    }])));
     setIsRunning(true);
     try {
       const response = await runHealthCheck({ runId, hosts: requests });

@@ -2,6 +2,7 @@
 // Reuses the connection diagnostics request builder for per-host credentials.
 
 import { buildConnectionDiagnosticsRequest } from "./connectionDiagnostics";
+import { hasOnlyEncryptedCredentials } from "./hostHealthCredentials";
 import type { Host, Identity, KnownHost, SSHKey } from "./models";
 
 export type HostHealthStatus =
@@ -9,6 +10,7 @@ export type HostHealthStatus =
   | "degraded"
   | "auth-failed"
   | "unreachable"
+  | "credentials-locked"
   | "error";
 
 export interface HostHealthResult {
@@ -39,6 +41,30 @@ export interface HostHealthRequest {
   hostId: string;
   options: MagiesTerminalSSHOptions;
 }
+
+/**
+ * Hosts whose credentials are all still ciphertext. Probing them would strip
+ * every credential and report a plain auth failure, blaming the host for a
+ * local decryption problem — so they are answered without opening a
+ * connection.
+ */
+export const partitionHostsByCredentialAvailability = ({
+  hosts,
+  keys,
+  identities,
+}: {
+  hosts: Host[];
+  keys: SSHKey[];
+  identities: Identity[];
+}): { checkable: Host[]; credentialsLocked: Host[] } => {
+  const checkable: Host[] = [];
+  const credentialsLocked: Host[] = [];
+  for (const host of hosts) {
+    if (hasOnlyEncryptedCredentials(host, keys, identities)) credentialsLocked.push(host);
+    else checkable.push(host);
+  }
+  return { checkable, credentialsLocked };
+};
 
 export const buildHostHealthRequests = ({
   hosts,

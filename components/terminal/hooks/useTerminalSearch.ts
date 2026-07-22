@@ -7,7 +7,8 @@ import { STORAGE_KEY_TERMINAL_SEARCH_OPEN } from "../../../infrastructure/config
 
 type SearchMatchCount = { current: number; total: number } | null;
 
-const SEARCH_DECORATIONS = {
+/** Shared with the log viewer so highlight styling cannot drift apart. */
+export const SEARCH_DECORATIONS = {
   matchBackground: "#FFFF0044",
   matchBorder: "#FFFF00",
   matchOverviewRuler: "#FFFF00",
@@ -16,7 +17,7 @@ const SEARCH_DECORATIONS = {
   activeMatchColorOverviewRuler: "#FF8800",
 } as const;
 
-const SEARCH_OPTIONS = {
+export const SEARCH_OPTIONS = {
   regex: false,
   caseSensitive: false,
   wholeWord: false,

@@ -1,5 +1,6 @@
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { FileText, Download, Palette, X } from "lucide-react";
@@ -17,6 +18,8 @@ import { TERMINAL_THEMES } from "../infrastructure/config/terminalThemes";
 import { useCustomThemes } from "../application/state/customThemeStore";
 import { Button } from "./ui/button";
 import { LogBookmarkPanel } from "./log/LogBookmarkPanel";
+import { TerminalSearchBar } from "./terminal/TerminalSearchBar";
+import { SEARCH_OPTIONS } from "./terminal/hooks/useTerminalSearch";
 import ThemeCustomizeModal from "./terminal/ThemeCustomizeModal";
 
 interface LogViewProps {
@@ -40,6 +43,14 @@ const LogViewComponent: React.FC<LogViewProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const termRef = useRef<XTerm | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
+    const searchAddonRef = useRef<SearchAddon | null>(null);
+    // Deliberately local state, not the terminal's persisted search key: the
+    // log viewer opening should not toggle search in live terminals.
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchFocusToken, setSearchFocusToken] = useState(0);
+    const [searchMatchCount, setSearchMatchCount] = useState<{ current: number; total: number } | null>(null);
+    const searchTermRef = useRef("");
+    const rootRef = useRef<HTMLDivElement | null>(null);
     const [isReady, setIsReady] = useState(false);
     const {
       bookmarks,
@@ -156,6 +167,10 @@ const LogViewComponent: React.FC<LogViewProps> = ({
         term.loadAddon(fitAddon);
         fitAddonRef.current = fitAddon;
 
+        const searchAddon = new SearchAddon();
+        term.loadAddon(searchAddon);
+        searchAddonRef.current = searchAddon;
+
         // Open terminal
         term.open(containerRef.current);
 
@@ -202,6 +217,7 @@ const LogViewComponent: React.FC<LogViewProps> = ({
             term.dispose();
             termRef.current = null;
             fitAddonRef.current = null;
+            searchAddonRef.current = null;
             setIsReady(false);
         };
         // Only re-create terminal when visibility or terminalData changes
@@ -257,6 +273,52 @@ const LogViewComponent: React.FC<LogViewProps> = ({
 
     const isLocal = log.protocol === "local" || log.hostname === "localhost";
 
+    const handleSearch = useCallback((term: string): boolean => {
+        const searchAddon = searchAddonRef.current;
+        if (!searchAddon || !term) {
+            setSearchMatchCount(null);
+            return false;
+        }
+        searchTermRef.current = term;
+        searchAddon.clearDecorations();
+        const found = searchAddon.findNext(term, SEARCH_OPTIONS);
+        setSearchMatchCount(found ? { current: 1, total: 1 } : { current: 0, total: 0 });
+        return found;
+    }, []);
+
+    const handleFindNext = useCallback((): boolean => {
+        const term = searchTermRef.current;
+        if (!searchAddonRef.current || !term) return false;
+        return searchAddonRef.current.findNext(term, SEARCH_OPTIONS);
+    }, []);
+
+    const handleFindPrevious = useCallback((): boolean => {
+        const term = searchTermRef.current;
+        if (!searchAddonRef.current || !term) return false;
+        return searchAddonRef.current.findPrevious(term, SEARCH_OPTIONS);
+    }, []);
+
+    const handleCloseSearch = useCallback(() => {
+        setIsSearchOpen(false);
+        setSearchMatchCount(null);
+        searchAddonRef.current?.clearDecorations();
+    }, []);
+
+    // Cmd/Ctrl+F while the log viewer is on screen. Scoped to this component so
+    // it cannot steal the shortcut from a terminal behind it.
+    useEffect(() => {
+        if (!isVisible) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() !== "f" || !(event.metaKey || event.ctrlKey)) return;
+            if (!rootRef.current?.contains(document.activeElement) && document.activeElement !== document.body) return;
+            event.preventDefault();
+            setIsSearchOpen(true);
+            setSearchFocusToken((n) => n + 1);
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [isVisible]);
+
     const handleAddBookmark = useCallback(() => {
       const term = termRef.current;
       if (!term) return;
@@ -291,7 +353,7 @@ const LogViewComponent: React.FC<LogViewProps> = ({
     }, [updateBookmark]);
 
     return (
-        <div className="h-full w-full flex flex-col bg-background">
+        <div ref={rootRef} className="h-full w-full flex flex-col bg-background">
             {/* Header */}
             <div className="flex h-9 items-center justify-between gap-3 px-3 py-1 border-b border-border/50 bg-secondary/30 shrink-0">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -352,10 +414,19 @@ const LogViewComponent: React.FC<LogViewProps> = ({
             {/* Terminal + bookmark side panel */}
             <div className="flex-1 min-h-0 flex">
               <div
-                  className="flex-1 overflow-hidden p-2 min-w-0"
+                  className="flex-1 overflow-hidden p-2 min-w-0 flex flex-col"
                   style={{ backgroundColor: currentTheme?.colors?.background || '#000000' }}
               >
-                  <div ref={containerRef} className="h-full w-full" />
+                  <div ref={containerRef} className="flex-1 min-h-0 w-full" />
+                  <TerminalSearchBar
+                    isOpen={isSearchOpen}
+                    focusToken={searchFocusToken}
+                    onClose={handleCloseSearch}
+                    onSearch={handleSearch}
+                    onFindNext={handleFindNext}
+                    onFindPrevious={handleFindPrevious}
+                    matchCount={searchMatchCount}
+                  />
               </div>
               <LogBookmarkPanel
                 bookmarks={bookmarks}

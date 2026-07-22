@@ -1,6 +1,22 @@
 # Änderungsprotokoll
 
 
+## [0.5.23] - 2026-07-22
+
+### Fehlerbehebungen
+- **Das Theme-Skript beim Start wurde nie ausgeführt**: es setzt gespeichertes Theme, Akzentfarbe und Sprache, bevor die Oberfläche zeichnet, wurde als eingebetteter Block aber von der CSP abgelehnt — beim Start blitzten die falschen Farben auf. Es liegt jetzt in einer eigenen Datei, ohne die Sicherheitsrichtlinie zu lockern
+- **frame-ancestors kommt jetzt als Header**: in einer `<meta>`-CSP ignoriert der Browser diese Direktive, sie bewirkte also nichts. Sie stammt nun aus den app://-Antwortheadern und vom Entwicklungsserver, und ein neuer Test schlägt fehl, sobald wieder ein eingebettetes Skript auftaucht
+
+### Funktionen
+- **Wiedergabe von cast-Aufzeichnungen**: die App konnte asciinema cast v2 aufzeichnen, aber nie öffnen. Abspielen, Pause, Spulen und 1x/2x/4x; eine abgebrochene Aufzeichnung überspringt beschädigte Zeilen und nennt deren Anzahl, statt die Datei abzulehnen
+- **Suche innerhalb eines Sitzungsprotokolls**: Cmd/Strg+F im Protokollbetrachter, unabhängig von der Suche im laufenden Terminal
+- **Bytes pro Zeile im Hex-Panel**: Umschalten zwischen 8 / 16 / 32, bereits erfasste Ausgabe wird sofort neu umbrochen
+- **Änderungsprotokoll nach Kategorie filtern**: Chips für Sicherheit / Funktionen / Fehlerbehebungen / Verbesserungen samt Anzahl
+
+### Verbesserungen
+- **Nicht erreichbare Deklarationen entfernt**: Code, der definiert und nie aufgerufen wurde — darunter eine Teamberechtigung, die nie geprüft wurde, aber zu existieren behauptete, ein Gruppenfeld ohne Wirkung und ein WAN-Einladungsparser, der die Implementierung des Hauptprozesses doppelte und nie geladen werden konnte
+- **Abdeckung des Lesezeichen-Ankers**: die Umrechnung von Byte-Offset zu Zeilennummer ist nun an CRLF, Bereichsüberschreitung und exaktem Hin- und Rückweg festgeschrieben
+
 ## [0.5.22] - 2026-07-21
 
 ### Sicherheit

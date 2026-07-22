@@ -1,6 +1,22 @@
 # Changelog
 
 
+## [0.5.23] - 2026-07-22
+
+### Fixes
+- **The startup theme script had never run**: it applies the saved theme, accent and language before the UI paints, but as an inline block the CSP refused to execute it, so the window flashed the wrong colours on launch. Moved to its own file with no security policy relaxed
+- **frame-ancestors is now delivered as a header**: the browser ignores that directive inside a `<meta>` CSP, so it was doing nothing. It now comes from the app:// response headers and the dev server, with a new test that fails if an inline script reappears
+
+### Features
+- **Cast recording playback**: the app could record asciinema cast v2 but never open one. Play, pause, seek and 1x/2x/4x are supported; a recording cut short skips its damaged lines and reports the count instead of refusing the file
+- **Search inside a session log**: Cmd/Ctrl+F in the log viewer, kept separate from the live terminal's own search
+- **Bytes per row in the hex panel**: switch between 8 / 16 / 32; already-captured output re-lays-out immediately
+- **Filter release notes by category**: security / features / fixes / improvements chips, each with its item count
+
+### Improvements
+- **Removed declarations that could never take effect**: a batch of code defined and never called, including a team permission that was never enforced yet claimed to exist, a group field that had no effect when set, and a WAN invite parser duplicating the main-process implementation that could never be loaded
+- **Bookmark anchor coverage**: byte-offset to line conversion is now pinned at CRLF, out-of-range and exact round-trip edges
+
 ## [0.5.22] - 2026-07-21
 
 ### Security

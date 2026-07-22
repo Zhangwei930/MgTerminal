@@ -1,6 +1,22 @@
 # Journal des modifications
 
 
+## [0.5.23] - 2026-07-22
+
+### Corrections
+- **Le script de thème au démarrage n'avait jamais été exécuté** : il applique le thème, la couleur d'accentuation et la langue enregistrés avant l'affichage, mais en tant que bloc en ligne la CSP refusait de l'exécuter, d'où un éclair de couleurs erronées au lancement. Il est désormais dans son propre fichier, sans assouplir la politique de sécurité
+- **frame-ancestors est maintenant transmis par en-tête** : le navigateur ignore cette directive dans une CSP en `<meta>`, elle ne faisait donc rien. Elle provient à présent des en-têtes app:// et du serveur de développement, avec un nouveau test qui échoue si un script en ligne réapparaît
+
+### Fonctionnalités
+- **Lecture des enregistrements cast** : l'application savait enregistrer en asciinema cast v2 sans jamais pouvoir les ouvrir. Lecture, pause, navigation et 1x/2x/4x ; un enregistrement interrompu ignore ses lignes endommagées et en indique le nombre au lieu de refuser le fichier
+- **Recherche dans un journal de session** : Cmd/Ctrl+F dans la visionneuse, indépendante de la recherche du terminal en cours
+- **Octets par ligne dans le panneau hexadécimal** : bascule entre 8 / 16 / 32, la sortie déjà capturée est réagencée immédiatement
+- **Filtrer les notes de version par catégorie** : puces sécurité / fonctionnalités / corrections / améliorations avec leur nombre d'entrées
+
+### Améliorations
+- **Suppression de déclarations sans effet possible** : du code défini et jamais appelé, dont une permission d'équipe jamais vérifiée mais affichée comme existante, un champ de groupe sans effet une fois défini, et un analyseur d'invitation WAN dupliquant l'implémentation du processus principal et ne pouvant jamais être chargé
+- **Couverture du point d'ancrage des signets** : la conversion décalage d'octets vers numéro de ligne est fixée sur CRLF, hors plage et aller-retour exact
+
 ## [0.5.22] - 2026-07-21
 
 ### Sécurité

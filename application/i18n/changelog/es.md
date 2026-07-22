@@ -1,6 +1,22 @@
 # Registro de cambios
 
 
+## [0.5.23] - 2026-07-22
+
+### Correcciones
+- **El script de tema del arranque nunca se había ejecutado**: aplica el tema, el color de acento y el idioma guardados antes de pintar la interfaz, pero como bloque en línea la CSP se negaba a ejecutarlo, de modo que al iniciar aparecían por un instante los colores equivocados. Ahora vive en su propio archivo, sin relajar la política de seguridad
+- **frame-ancestors se entrega ahora como cabecera**: el navegador ignora esa directiva dentro de una CSP en `<meta>`, así que no hacía nada. Ahora procede de las cabeceras app:// y del servidor de desarrollo, con una prueba nueva que falla si reaparece un script en línea
+
+### Funcionalidades
+- **Reproducción de grabaciones cast**: la aplicación sabía grabar en asciinema cast v2 pero nunca abrirlas. Hay reproducción, pausa, desplazamiento y 1x/2x/4x; una grabación truncada omite sus líneas dañadas e indica cuántas, en lugar de rechazar el archivo
+- **Búsqueda dentro de un registro de sesión**: Cmd/Ctrl+F en el visor, independiente de la búsqueda del terminal en vivo
+- **Bytes por fila en el panel hexadecimal**: alterna entre 8 / 16 / 32 y lo ya capturado se recompone al instante
+- **Filtrar las notas de versión por categoría**: fichas de seguridad / funcionalidades / correcciones / mejoras con su número de entradas
+
+### Mejoras
+- **Eliminadas declaraciones que no podían surtir efecto**: código definido y nunca invocado, entre ello un permiso de equipo que jamás se comprobaba pero decía existir, un campo de grupo sin efecto al establecerlo y un analizador de invitaciones WAN que duplicaba la implementación del proceso principal y no podía cargarse nunca
+- **Cobertura del anclaje de marcadores**: la conversión de desplazamiento en bytes a número de línea queda fijada en CRLF, fuera de rango e ida y vuelta exacta
+
 ## [0.5.22] - 2026-07-21
 
 ### Seguridad

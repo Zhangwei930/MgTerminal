@@ -1,6 +1,37 @@
 # Changelog
 
 
+## [0.5.22] - 2026-07-21
+
+### Security
+- **Team audit signatures are actually verified**: the table previously drew a check for any event carrying a `sig` field without ever checking it; each entry is now HMAC-verified and reported as verified, tampered, unsigned, or unverifiable
+- **Probes no longer carry credentials back**: the proxy connection test returns an error code rather than the underlying message (HTTP CONNECT echoes `Proxy-Authorization`, ProxyCommand echoes the command line); data-source field mapping cannot bypass the inventory secret check
+
+### Features
+- **SFTP bulk rename**: `{name}` / `{ext}` / `{n}` templates with counter padding, the whole batch planned and previewed before anything runs; any duplicate target or collision with a bystander file rejects the entire batch
+- **Bulk edit host fields**: change username, group, port and tags across a selection at once; tags are added rather than replacing the list, blank means leave alone, and hosts owned by a data source are excluded with a count
+- **Structured host search**: `tag:` `user:` `group:` `host:` filters mixed with free text; a term is only a filter when a known field name precedes the colon, so IPv6 addresses and CJK labels containing a full-width colon are unaffected
+- **F1 keyboard shortcut sheet**: searchable, grouped by category, and read from the bindings actually in effect; it is itself an ordinary remappable shortcut
+- **Serial hex send**: bytes are written to the device as typed, bypassing the charset encoder, with a byte preview and ASCII reading
+- **Data-source field mapping**: map names like `name` / `ip` / `ssh_port` onto the canonical fields, for external inventories that cannot be edited
+- **Reaching existing capabilities**: send a command to a tmux window, test a proxy connection, pick up a certificate when importing a key, and PKCS#11 module path suggestions
+
+### Fixes
+- **Team vault imports no longer report false success**: importing a share package announced "imported N hosts" while discarding them and leaving the list unchanged; hosts now reach the vault and the reported count is what actually landed, added without overwriting local edits or credentials
+- **WAN invite codes can be joined**: `magies-follow:2:` invites were always parsed as LAN and failed with `version`, despite the UI offering to accept them; transport is now chosen from the invite version
+- **Host export honours the selection**: exporting after ticking a subset still exported everything
+- **Long menu labels no longer spill out of dropdowns**: fixed widths pushed the longest entries past the menu edge and squeezed their icons to zero; three of the sort menu's options overflowed in French
+- **tmux send command is reachable**: the action demanded a pane index the UI had no way to supply, so it existed but could not be triggered
+
+### Improvements
+- **SFTP transfers show remaining time**: absent when the rate is unknown, and omitted for directory rows whose totals count files
+- **Sync freshness on the top bar**: hovering shows when data last actually landed, without opening the panel
+- **Exported AI conversations keep the reasoning**: collapsed in Markdown, indented in plain text, with the duration
+- **AI settings**: quick messages gained a search, and an unsupported local model now explains what that means for agent tools
+- **Crash reporting shows what it has sent**: counted only after a successful upload, so failures and duplicates do not inflate it
+- **Process and tmux actions use the in-app dialog**: no more native system prompts, and the confirmation follows the app theme
+- **Mobile is behind the quality gates**: `mobile/` was excluded from lint and tests entirely, and its test had never been executed by CI
+
 ## [0.5.21] - 2026-07-21
 
 ### Security

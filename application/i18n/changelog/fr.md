@@ -1,6 +1,37 @@
 # Journal des modifications
 
 
+## [0.5.22] - 2026-07-21
+
+### Sécurité
+- **Les signatures d'audit d'équipe sont réellement vérifiées** : une coche s'affichait dès qu'un champ `sig` était présent, sans aucune vérification ; chaque entrée est désormais validée par HMAC et signalée comme vérifiée, altérée, non signée ou invérifiable
+- **Les sondes ne ramènent plus d'identifiants** : le test de connexion au proxy renvoie un code d'erreur plutôt que le message d'origine (HTTP CONNECT renvoie `Proxy-Authorization`, ProxyCommand la ligne de commande) ; le mappage de champs d'une source ne peut pas contourner le contrôle des secrets de l'inventaire
+
+### Fonctionnalités
+- **Renommage par lot en SFTP** : modèles `{name}` / `{ext}` / `{n}` avec remplissage de zéros ; le lot entier est planifié et prévisualisé avant exécution, et tout doublon de nom ou collision avec un fichier non concerné annule l'ensemble
+- **Modification groupée des champs d'hôtes** : nom d'utilisateur, groupe, port et étiquettes pour toute une sélection ; les étiquettes s'ajoutent au lieu de remplacer la liste, un champ vide signifie inchangé, et les hôtes gérés par une source de données sont exclus avec leur nombre
+- **Recherche d'hôtes structurée** : filtres `tag:` `user:` `group:` `host:` mêlés au texte libre ; un terme n'est un filtre que si un nom de champ connu précède les deux-points, de sorte que les adresses IPv6 et les libellés contenant un deux-points pleine chasse ne sont pas affectés
+- **Aide-mémoire des raccourcis via F1** : consultable, groupé par catégorie et lu depuis les raccourcis réellement actifs ; il s'agit lui-même d'un raccourci ordinaire et reconfigurable
+- **Envoi hexadécimal sur le port série** : les octets sont écrits tels quels sur l'appareil en contournant l'encodeur de jeu de caractères, avec aperçu des octets et lecture ASCII
+- **Mappage des champs d'une source de données** : associer des noms tels que `name` / `ip` / `ssh_port` aux champs canoniques, pour des inventaires externes non modifiables
+- **Accès à des capacités déjà présentes** : envoyer une commande à une fenêtre tmux, tester une connexion proxy, reconnaître le certificat lors de l'import d'une clé et proposer les chemins de modules PKCS#11
+
+### Corrections
+- **L'import du coffre d'équipe ne signale plus une fausse réussite** : l'import d'un paquet annonçait « N hôtes importés » tout en les rejetant, et la liste restait inchangée ; les hôtes arrivent désormais réellement dans le coffre, le nombre annoncé correspond au résultat réel, et l'ajout n'écrase ni les modifications locales ni les identifiants
+- **Les codes d'invitation WAN permettent de rejoindre** : les invitations `magies-follow:2:` étaient toujours analysées comme du LAN et échouaient avec `version`, alors que l'interface proposait explicitement de les accepter ; le transport est maintenant choisi selon la version de l'invitation
+- **L'export d'hôtes respecte la sélection** : après avoir coché une partie des hôtes, tous étaient malgré tout exportés
+- **Les libellés longs ne débordent plus des menus** : des largeurs fixes poussaient les entrées les plus longues hors du menu et réduisaient leurs icônes à zéro ; trois options du menu de tri débordaient en français
+- **L'envoi de commande tmux est accessible** : l'action exigeait un numéro de panneau que l'interface ne pouvait pas fournir, la fonction existait donc sans pouvoir être déclenchée
+
+### Améliorations
+- **Les transferts SFTP affichent le temps restant** : absent lorsque le débit est inconnu, et omis pour les lignes de répertoire dont le total compte des fichiers
+- **Fraîcheur de la synchronisation dans la barre supérieure** : le survol indique quand les données ont réellement été enregistrées pour la dernière fois, sans ouvrir le panneau
+- **Les conversations IA exportées conservent le raisonnement** : replié en Markdown, indenté en texte brut, avec la durée
+- **Confort des réglages IA** : les messages rapides disposent d'une recherche, et lorsqu'un modèle local ne présente pas d'appel d'outils, la conséquence est expliquée
+- **Les rapports de plantage indiquent ce qui a été envoyé** : comptabilisé seulement après un envoi réussi, les échecs et doublons ne gonflent pas le compteur
+- **Les actions sur les processus et tmux utilisent la boîte de dialogue interne** : plus de fenêtres système, la confirmation suit le thème de l'application
+- **Le mobile passe par les contrôles qualité** : `mobile/` était entièrement exclu du lint et des tests, et son test n'avait jamais été exécuté par la CI
+
 ## [0.5.21] - 2026-07-21
 
 ### Sécurité

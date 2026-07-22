@@ -1,6 +1,37 @@
 # Registro de alterações
 
 
+## [0.5.22] - 2026-07-21
+
+### Segurança
+- **As assinaturas de auditoria da equipa passam a ser mesmo verificadas**: antes bastava o evento ter o campo `sig` para exibir um visto, sem qualquer verificação; agora cada entrada é validada por HMAC e apresentada como verificada, adulterada, sem assinatura ou não verificável
+- **As sondagens deixam de trazer credenciais**: o teste de ligação por proxy devolve um código de erro em vez da mensagem original (o HTTP CONNECT reflete `Proxy-Authorization` e o ProxyCommand a linha de comandos); o mapeamento de campos de uma fonte não consegue contornar a verificação de segredos do inventário
+
+### Funcionalidades
+- **Mudança de nome em lote no SFTP**: modelos `{name}` / `{ext}` / `{n}` com preenchimento de zeros; todo o lote é planeado e pré-visualizado antes de correr, e qualquer nome repetido ou colisão com um ficheiro alheio cancela a operação inteira
+- **Edição em lote de campos de anfitriões**: nome de utilizador, grupo, porta e etiquetas para toda uma seleção; as etiquetas são acrescentadas em vez de substituírem a lista, um campo vazio significa manter, e os anfitriões geridos por uma fonte de dados são excluídos com a respetiva contagem
+- **Pesquisa estruturada de anfitriões**: filtros `tag:` `user:` `group:` `host:` misturados com texto livre; um termo só é filtro quando antes dos dois pontos existe um nome de campo conhecido, pelo que endereços IPv6 e etiquetas com dois pontos de largura total não são afetados
+- **Folha de atalhos com F1**: pesquisável, agrupada por categoria e lida a partir das associações realmente em vigor; ela própria é um atalho comum e reconfigurável
+- **Envio hexadecimal por porta série**: os bytes são escritos no dispositivo tal como introduzidos, contornando o codificador de conjunto de caracteres, com pré-visualização de bytes e leitura ASCII
+- **Mapeamento de campos da fonte de dados**: permite associar nomes como `name` / `ip` / `ssh_port` aos campos canónicos, para inventários externos que não podem ser alterados
+- **Acesso a capacidades já existentes**: enviar um comando para uma janela tmux, testar a ligação por proxy, reconhecer o certificado ao importar uma chave e sugerir caminhos de módulos PKCS#11
+
+### Correções
+- **A importação do Vault de equipa deixa de comunicar um sucesso falso**: importar um pacote anunciava «N anfitriões importados» enquanto os descartava, e a lista não mudava; agora os anfitriões chegam realmente ao Vault, o número indicado corresponde ao que foi acrescentado, e apenas se adiciona sem sobrescrever alterações locais nem credenciais
+- **Os códigos de convite WAN permitem entrar**: os convites `magies-follow:2:` eram sempre lidos como LAN e falhavam com `version`, apesar de a interface se propor aceitá-los; o transporte passa a ser escolhido pela versão do convite
+- **A exportação de anfitriões respeita a seleção**: depois de assinalar apenas alguns, eram exportados todos
+- **As etiquetas longas deixam de sair dos menus**: as larguras fixas empurravam as entradas mais longas para fora do menu e reduziam os seus ícones a zero; no menu de ordenação três opções transbordavam em francês
+- **O envio de comandos para o tmux está acessível**: a ação exigia um número de painel que a interface não conseguia fornecer, pelo que a funcionalidade existia mas não podia ser acionada
+
+### Melhorias
+- **As transferências SFTP mostram o tempo restante**: ausente quando a taxa é desconhecida e omitido nas linhas de diretório, cujo total conta ficheiros
+- **Frescura da sincronização na barra superior**: ao passar o rato vê-se quando os dados chegaram efetivamente pela última vez, sem abrir o painel
+- **As conversas de IA exportadas mantêm o raciocínio**: recolhido em Markdown, indentado em texto simples e com a duração
+- **Comodidade das definições de IA**: as mensagens rápidas ganharam pesquisa e, quando um modelo local não apresenta chamada de ferramentas, explica-se o que isso implica
+- **Os relatórios de falhas mostram o que foi enviado**: contabilizado apenas após um envio bem-sucedido, para que falhas e duplicados não inflacionem o valor
+- **As ações sobre processos e tmux usam a caixa de diálogo da aplicação**: sem janelas do sistema, a confirmação segue o tema da aplicação
+- **O móvel passa pelos controlos de qualidade**: `mobile/` estava totalmente excluído do lint e dos testes, e o seu teste nunca tinha sido executado na CI
+
 ## [0.5.21] - 2026-07-21
 
 ### Segurança

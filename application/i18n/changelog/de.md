@@ -1,6 +1,37 @@
 # Änderungsprotokoll
 
 
+## [0.5.22] - 2026-07-21
+
+### Sicherheit
+- **Team-Audit-Signaturen werden tatsächlich geprüft**: bisher genügte ein vorhandenes `sig`-Feld für ein Häkchen, ohne jede Prüfung; jeder Eintrag wird nun per HMAC verifiziert und als geprüft, manipuliert, unsigniert oder nicht prüfbar ausgewiesen
+- **Prüfungen tragen keine Zugangsdaten zurück**: der Proxy-Verbindungstest liefert einen Fehlercode statt der ursprünglichen Meldung (HTTP CONNECT spiegelt `Proxy-Authorization`, ProxyCommand die Kommandozeile); die Feldzuordnung einer Datenquelle kann die Geheimnisprüfung des Inventars nicht umgehen
+
+### Funktionen
+- **SFTP-Massenumbenennung**: Vorlagen `{name}` / `{ext}` / `{n}` mit Nullauffüllung; der gesamte Stapel wird vor der Ausführung geplant und angezeigt, und jede Namensdopplung oder Kollision mit einer unbeteiligten Datei bricht den gesamten Vorgang ab
+- **Hostfelder im Stapel bearbeiten**: Benutzername, Gruppe, Port und Tags für eine ganze Auswahl auf einmal; Tags werden ergänzt statt ersetzt, ein leeres Feld bedeutet unverändert, und von einer Datenquelle verwaltete Hosts werden mit Anzahl ausgenommen
+- **Strukturierte Hostsuche**: Filter `tag:` `user:` `group:` `host:` gemischt mit Freitext; ein Ausdruck gilt nur dann als Filter, wenn vor dem Doppelpunkt ein bekannter Feldname steht, sodass IPv6-Adressen und Bezeichnungen mit vollbreitem Doppelpunkt unberührt bleiben
+- **Tastenkürzel-Übersicht per F1**: durchsuchbar, nach Kategorien gruppiert und aus den tatsächlich aktiven Belegungen gelesen; sie selbst ist ein gewöhnliches, neu belegbares Kürzel
+- **Hex-Senden über die serielle Schnittstelle**: Bytes werden unverändert an das Gerät geschrieben und umgehen die Zeichensatzkodierung, mit Byte-Vorschau und ASCII-Darstellung
+- **Feldzuordnung für Datenquellen**: Namen wie `name` / `ip` / `ssh_port` lassen sich auf die kanonischen Felder abbilden, für fremde Inventare, die nicht geändert werden können
+- **Zugang zu bereits vorhandenen Funktionen**: Befehl an ein tmux-Fenster senden, Proxy-Verbindung testen, beim Schlüsselimport das Zertifikat erkennen und PKCS#11-Modulpfade vorschlagen
+
+### Fehlerbehebungen
+- **Team-Vault-Import meldet keinen falschen Erfolg mehr**: der Import eines Freigabepakets meldete „N Hosts importiert", verwarf sie aber, und die Liste blieb unverändert; die Hosts landen jetzt wirklich im Vault, die gemeldete Zahl entspricht dem tatsächlichen Ergebnis, und es wird nur ergänzt, ohne lokale Änderungen oder Zugangsdaten zu überschreiben
+- **WAN-Einladungscodes lassen sich beitreten**: `magies-follow:2:`-Einladungen wurden stets als LAN gelesen und scheiterten mit `version`, obwohl die Oberfläche sie ausdrücklich annahm; der Transport wird nun anhand der Einladungsversion gewählt
+- **Hostexport berücksichtigt die Auswahl**: nach dem Markieren einzelner Hosts wurden dennoch alle exportiert
+- **Lange Menüeinträge laufen nicht mehr aus dem Menü**: feste Breiten schoben die längsten Einträge über den Rand und drückten deren Symbole auf null; im Sortiermenü liefen auf Französisch drei Einträge über
+- **tmux-Befehl senden ist erreichbar**: die Aktion verlangte eine Bereichsnummer, die die Oberfläche nicht liefern konnte, sodass die Funktion zwar vorhanden, aber nicht auslösbar war
+
+### Verbesserungen
+- **SFTP-Übertragungen zeigen die Restzeit**: entfällt, wenn die Rate unbekannt ist, und erscheint nicht bei Verzeichniszeilen, deren Summe Dateien zählt
+- **Synchronisationsstand in der oberen Leiste**: beim Überfahren ist zu sehen, wann Daten zuletzt tatsächlich angekommen sind, ohne das Panel zu öffnen
+- **Exportierte KI-Unterhaltungen behalten die Gedankengänge**: in Markdown eingeklappt, im reinen Text eingerückt, mit Dauer
+- **Bedienung der KI-Einstellungen**: Schnellnachrichten haben eine Suche erhalten, und bei einem lokalen Modell ohne erkannten Werkzeugaufruf wird erklärt, was das bedeutet
+- **Absturzberichte zeigen das Gesendete**: erst nach erfolgreichem Upload gezählt, damit Fehlschläge und Dubletten den Wert nicht erhöhen
+- **Prozess- und tmux-Aktionen nutzen den In-App-Dialog**: keine Systemfenster mehr, die Bestätigung folgt dem App-Design
+- **Mobil unter den Qualitätsprüfungen**: `mobile/` war von Lint und Tests vollständig ausgenommen, und sein Test wurde in der CI nie ausgeführt
+
 ## [0.5.21] - 2026-07-21
 
 ### Sicherheit

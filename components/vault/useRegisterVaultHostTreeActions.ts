@@ -14,6 +14,7 @@ type RegisterVaultHostTreeActionsParams = {
   startInlineRenameHost: (host: Host) => void;
   onDeleteHost: (hostId: string) => void;
   handleUnmanageGroup?: (groupPath: string) => void;
+  handleNewHostInGroup?: (groupPath: string) => void;
   moveHostToGroup: (hostId: string, groupPath: string | null) => void;
   moveGroup: (sourcePath: string, targetParent: string | null) => void;
   reorderHost: (sourceHostId: string, targetHostId: string, position: VaultOrderPosition) => void;
@@ -45,6 +46,7 @@ export function useRegisterVaultHostTreeActions({
   startInlineRenameHost,
   onDeleteHost,
   handleUnmanageGroup,
+  handleNewHostInGroup,
   moveHostToGroup,
   moveGroup,
   reorderHost,
@@ -65,6 +67,9 @@ export function useRegisterVaultHostTreeActions({
       onRenameHost: startInlineRenameHost,
       onDeleteHost: (host) => onDeleteHost(host.id),
       onNewGroup: startInlineNewGroup,
+      onAddHost: handleNewHostInGroup
+        ? withVaultFocus(handleNewHostInGroup)
+        : undefined,
       onRenameGroup: startInlineRenameGroup,
       onDeleteGroup: startInlineDeleteGroup,
       commitInlineGroupRename,
@@ -91,6 +96,7 @@ export function useRegisterVaultHostTreeActions({
     handleCopyCredentials,
     handleDuplicateHost,
     handleUnmanageGroup,
+    handleNewHostInGroup,
     managedGroupPaths,
     moveGroup,
     moveHostToGroup,

@@ -55,6 +55,7 @@ export const HostTreeHostContextMenuContent: React.FC<
 
 export interface HostTreeGroupContextMenuHandlers {
   onNewGroup: (parentPath?: string) => void;
+  onAddHost?: (groupPath: string) => void;
   onRenameGroup: (groupPath: string) => void;
   onDeleteGroup: (groupPath: string) => void;
   onUnmanageGroup?: (groupPath: string) => void;
@@ -66,6 +67,7 @@ export const HostTreeGroupContextMenuContent: React.FC<
   groupPath,
   isManaged,
   onNewGroup,
+  onAddHost,
   onRenameGroup,
   onDeleteGroup,
   onUnmanageGroup,
@@ -74,6 +76,11 @@ export const HostTreeGroupContextMenuContent: React.FC<
 
   return (
     <ContextMenuContent>
+      {onAddHost && (
+        <ContextMenuItem onClick={() => onAddHost(groupPath)}>
+          <Server className="mr-2 h-4 w-4" /> {t('vault.hosts.newHost')}
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onClick={() => onNewGroup(groupPath)}>
         <Folder className="mr-2 h-4 w-4" /> {t('vault.hosts.newGroup')}
       </ContextMenuItem>

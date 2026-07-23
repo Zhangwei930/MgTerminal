@@ -571,6 +571,7 @@ const HostTreeFlatRowItem = memo<HostTreeFlatRowProps>(({
         groupPath={node.path}
         isManaged={isManaged}
         onNewGroup={menuActions.onNewGroup}
+        onAddHost={menuActions.onAddHost}
         onRenameGroup={menuActions.onRenameGroup}
         onDeleteGroup={menuActions.onDeleteGroup}
         onUnmanageGroup={menuActions.onUnmanageGroup}

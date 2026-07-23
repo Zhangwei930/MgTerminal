@@ -9,6 +9,7 @@ export interface VaultHostTreeActions {
   onCopyCredentials: (host: Host) => void;
   onRenameHost: (host: Host) => void;
   onNewGroup: (parentPath?: string) => void;
+  onAddHost?: (groupPath: string) => void;
   onRenameGroup: (groupPath: string) => void;
   onDeleteGroup: (groupPath: string) => void;
   commitInlineGroupRename: (name: string) => void;

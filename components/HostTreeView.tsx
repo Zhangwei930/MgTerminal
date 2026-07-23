@@ -48,6 +48,7 @@ interface HostTreeViewProps {
   onDeleteHost: (host: Host) => void;
   onCopyCredentials: (host: Host) => void;
   onNewGroup: (parentPath?: string) => void;
+  onAddHost?: (groupPath: string) => void;
   onRenameGroup: (groupPath: string) => void;
   onEditGroup: (groupPath: string) => void;
   onDeleteGroup: (groupPath: string) => void;
@@ -78,6 +79,7 @@ interface TreeNodeProps {
   onDeleteHost: (host: Host) => void;
   onCopyCredentials: (host: Host) => void;
   onNewGroup: (parentPath?: string) => void;
+  onAddHost?: (groupPath: string) => void;
   onRenameGroup: (groupPath: string) => void;
   onEditGroup: (groupPath: string) => void;
   onDeleteGroup: (groupPath: string) => void;
@@ -110,6 +112,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   onDeleteHost,
   onCopyCredentials,
   onNewGroup,
+  onAddHost,
   onRenameGroup,
   onEditGroup,
   onDeleteGroup,
@@ -292,6 +295,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
             groupPath={node.path}
             isManaged={isManaged}
             onNewGroup={onNewGroup}
+            onAddHost={onAddHost}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
             onUnmanageGroup={onUnmanageGroup}
@@ -314,6 +318,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               onDeleteHost={onDeleteHost}
               onCopyCredentials={onCopyCredentials}
               onNewGroup={onNewGroup}
+              onAddHost={onAddHost}
               onRenameGroup={onRenameGroup}
               onEditGroup={onEditGroup}
               onDeleteGroup={onDeleteGroup}
@@ -525,6 +530,7 @@ export const HostTreeView: React.FC<HostTreeViewProps> = ({
   onDeleteHost,
   onCopyCredentials,
   onNewGroup,
+  onAddHost,
   onRenameGroup,
   onEditGroup,
   onDeleteGroup,
@@ -689,6 +695,7 @@ export const HostTreeView: React.FC<HostTreeViewProps> = ({
           onDeleteHost={onDeleteHost}
           onCopyCredentials={onCopyCredentials}
           onNewGroup={onNewGroup}
+          onAddHost={onAddHost}
           onRenameGroup={onRenameGroup}
           onEditGroup={onEditGroup}
           onDeleteGroup={onDeleteGroup}

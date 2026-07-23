@@ -20,7 +20,12 @@ interface DbConnectionsPanelProps {
   onAddDbConnection: (profile: Omit<DbConnectionProfile, 'id' | 'order' | 'createdAt'>) => void;
 }
 
-const ENGINE_LABELS: Record<DbEngine, string> = { mysql: 'MySQL', postgres: 'PostgreSQL' };
+const ENGINE_LABELS: Record<DbEngine, string> = {
+  mysql: 'MySQL',
+  postgres: 'PostgreSQL',
+  mssql: 'SQL Server',
+  oracle: 'Oracle',
+};
 
 function emptyDraft(): {
   label: string;
@@ -181,6 +186,8 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   <SelectContent>
                     <SelectItem value="mysql">MySQL</SelectItem>
                     <SelectItem value="postgres">PostgreSQL</SelectItem>
+                    <SelectItem value="mssql">SQL Server</SelectItem>
+                    <SelectItem value="oracle">Oracle</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

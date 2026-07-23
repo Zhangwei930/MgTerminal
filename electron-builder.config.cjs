@@ -166,7 +166,11 @@ module.exports = {
         '!node_modules/@cursor/sdk/dist/**/*.d.ts.map',
         // sqlite3 rebuilds a native module for Electron; its upstream source
         // tarball is build-time payload only.
-        '!node_modules/sqlite3/deps/**/*'
+        '!node_modules/sqlite3/deps/**/*',
+        // oracledb ships a thick-mode native addon per platform (~1MB each) that
+        // is only ever loaded if the app calls initOracleClient(); the DB client
+        // adapter never does, so these are dead weight in every build.
+        '!node_modules/oracledb/build/**/*'
     ],
     asarUnpack: [
         'node_modules/node-pty/**/*',

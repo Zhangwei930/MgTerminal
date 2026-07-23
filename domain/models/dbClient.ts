@@ -1,5 +1,5 @@
 // Lightweight DB client — connection profiles are SSH-tunneled to an existing vault Host.
-export type DbEngine = 'mysql' | 'postgres'; // mssql | oracle added in a later phase
+export type DbEngine = 'mysql' | 'postgres' | 'mssql' | 'oracle';
 
 export interface DbConnectionProfile {
   id: string;
@@ -33,6 +33,8 @@ export interface DbQueryResult {
 const DEFAULT_PORT_BY_ENGINE: Record<DbEngine, number> = {
   mysql: 3306,
   postgres: 5432,
+  mssql: 1433,
+  oracle: 1521,
 };
 
 export function defaultPortForEngine(engine: DbEngine): number {

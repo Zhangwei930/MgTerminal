@@ -10,3 +10,11 @@ test('defaultPortForEngine returns the standard port for mysql', () => {
 test('defaultPortForEngine returns the standard port for postgres', () => {
   assert.equal(defaultPortForEngine('postgres'), 5432);
 });
+
+test('defaultPortForEngine returns the standard port for mssql', () => {
+  assert.equal(defaultPortForEngine('mssql'), 1433);
+});
+
+test('defaultPortForEngine returns the standard port for oracle', () => {
+  assert.equal(defaultPortForEngine('oracle'), 1521);
+});

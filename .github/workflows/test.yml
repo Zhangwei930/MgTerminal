@@ -46,5 +46,12 @@ jobs:
           npm run generate:capability-tools
           git diff --exit-code infrastructure/ai/harness/generated/magiesTerminalToolSpecs.json
 
-      - name: Test
-        run: npm test
+      - name: Test (with coverage)
+        run: npm run test:coverage
+
+      - name: Coverage summary
+        run: |
+          echo '### Coverage' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npx c8 report --reporter=text-summary >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

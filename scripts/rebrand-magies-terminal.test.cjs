@@ -9,7 +9,10 @@ const legacyBrand = `net${legacyAgentBrand}`;
 const legacyUserBrand = ['da', 'mao'].join('');
 // 匹配独立的旧 Agent 品牌词；mosh 客户端已改名 MoshMagies，无需再放行 mosh 前缀
 const legacyAgentBrandPattern = new RegExp(legacyAgentBrand, 'i');
-const ignoredDirectories = new Set(['.git', 'dist', 'node_modules', 'release']);
+// `coverage` is c8's output directory (gitignored) — like dist/node_modules/release,
+// its contents are build/tooling output, not project source, and its raw V8 coverage
+// dumps land here mid-test-run (this test runs inside the same `c8 npm test` process).
+const ignoredDirectories = new Set(['.git', 'coverage', 'dist', 'node_modules', 'release']);
 // GPL-3.0 §4/§5 require this fork to preserve the upstream project's copyright
 // and authorship notices, so the attribution files must be free to name the
 // upstream project and its author. Product, UI and docs strings elsewhere are

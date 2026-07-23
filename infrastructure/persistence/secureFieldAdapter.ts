@@ -9,7 +9,7 @@
  * preventing sensitive values from silently falling back to plaintext.
  */
 
-import type { GroupConfig, Host, Identity, ManagedSource, ProxyProfile, SSHKey } from "../../domain/models";
+import type { DbConnectionProfile, GroupConfig, Host, Identity, ManagedSource, ProxyProfile, SSHKey } from "../../domain/models";
 import type { ProviderConnection, S3Config, WebDAVConfig } from "../../domain/sync";
 import { magiesTerminalBridge } from "../services/magiesTerminalBridge";
 
@@ -109,6 +109,22 @@ export async function encryptIdentitySecrets(identity: Identity): Promise<Identi
 export async function decryptIdentitySecrets(identity: Identity): Promise<Identity> {
   const out = { ...identity };
   out.password = await decryptField(out.password);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// DbConnectionProfile
+// ---------------------------------------------------------------------------
+
+export async function encryptDbConnectionSecrets(profile: DbConnectionProfile): Promise<DbConnectionProfile> {
+  const out = { ...profile };
+  out.dbPassword = await encryptField(out.dbPassword);
+  return out;
+}
+
+export async function decryptDbConnectionSecrets(profile: DbConnectionProfile): Promise<DbConnectionProfile> {
+  const out = { ...profile };
+  out.dbPassword = await decryptField(out.dbPassword);
   return out;
 }
 
@@ -280,4 +296,12 @@ export function encryptIdentities(identities: Identity[]): Promise<Identity[]> {
 
 export function decryptIdentities(identities: Identity[]): Promise<Identity[]> {
   return Promise.all(identities.map(decryptIdentitySecrets));
+}
+
+export function encryptDbConnections(profiles: DbConnectionProfile[]): Promise<DbConnectionProfile[]> {
+  return Promise.all(profiles.map(encryptDbConnectionSecrets));
+}
+
+export function decryptDbConnections(profiles: DbConnectionProfile[]): Promise<DbConnectionProfile[]> {
+  return Promise.all(profiles.map(decryptDbConnectionSecrets));
 }

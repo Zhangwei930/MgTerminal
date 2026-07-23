@@ -772,6 +772,37 @@ ipcRenderer.on("magiesTerminal:portforward:status", (_event, payload) => {
   }
 });
 
+// DB client query listeners (rows/complete/error), keyed by queryId — mirrors
+// portForwardStatusListeners above. Callers are expected to unsubscribe once
+// they see a complete/error event, since each queryId is one-shot.
+const dbQueryRowListeners = new Map();
+const dbQueryCompleteListeners = new Map();
+const dbQueryErrorListeners = new Map();
+
+function dispatchDbQueryListeners(listeners, payload) {
+  const { queryId } = payload;
+  const callbacks = listeners.get(queryId);
+  if (callbacks) {
+    callbacks.forEach((cb) => {
+      try {
+        cb(payload);
+      } catch (err) {
+        console.error("DB query callback failed", err);
+      }
+    });
+  }
+}
+
+ipcRenderer.on("magiesTerminal:db:query:rows", (_event, payload) => {
+  dispatchDbQueryListeners(dbQueryRowListeners, payload);
+});
+ipcRenderer.on("magiesTerminal:db:query:complete", (_event, payload) => {
+  dispatchDbQueryListeners(dbQueryCompleteListeners, payload);
+});
+ipcRenderer.on("magiesTerminal:db:query:error", (_event, payload) => {
+  dispatchDbQueryListeners(dbQueryErrorListeners, payload);
+});
+
 // File watcher listeners (for auto-sync feature)
 const fileWatchSyncedListeners = new Set();
 const fileWatchErrorListeners = new Set();
@@ -856,6 +887,9 @@ const api = createPreloadApi({
   compressCompleteListeners,
   compressErrorListeners,
   portForwardStatusListeners,
+  dbQueryRowListeners,
+  dbQueryCompleteListeners,
+  dbQueryErrorListeners,
   fileWatchSyncedListeners,
   fileWatchErrorListeners,
   cleanupTransferListeners,

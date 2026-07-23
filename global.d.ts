@@ -222,6 +222,57 @@ declare global {
 
   type PortForwardStatusCallback = (status: 'inactive' | 'connecting' | 'active' | 'error', error?: string) => void;
 
+  // Lightweight DB client (SSH-tunneled MySQL/PostgreSQL)
+  interface DbConnectOptions {
+    connectionId: string;
+    engine: import("./domain/models").DbEngine;
+    sshOptions: MagiesTerminalSSHOptions;
+    remoteHost: string;
+    remotePort: number;
+    database?: string;
+    dbUsername?: string;
+    dbPassword?: string;
+  }
+
+  interface DbConnectResult {
+    connectionId: string;
+    success: boolean;
+    serverVersion?: string;
+    error?: string;
+  }
+
+  interface DbCloseResult {
+    connectionId: string;
+    success: boolean;
+    error?: string;
+  }
+
+  interface DbRunQueryOptions {
+    connectionId: string;
+    queryId: string;
+    sql: string;
+    maxRows?: number;
+  }
+
+  interface DbQueryRowsPayload {
+    queryId: string;
+    columns?: import("./domain/models").DbResultColumn[];
+    rows: unknown[][];
+  }
+
+  interface DbQueryCompletePayload {
+    queryId: string;
+    rowCount: number;
+    truncated: boolean;
+    durationMs: number;
+    affectedRows?: number;
+  }
+
+  interface DbQueryErrorPayload {
+    queryId: string;
+    error: string;
+  }
+
   interface MagiesTerminalBridge {}
 
   interface Window {

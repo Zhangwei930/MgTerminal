@@ -201,6 +201,9 @@ function createBridgeRegistrar(context) {
     portForwardingBridge.registerHandlers(ipcMain, { sessions });
     terminalBridge.registerHandlers(ipcMain, { terminalWorkerManager });
 
+    const dbBridge = require("../bridges/dbBridge.cjs");
+    dbBridge.registerHandlers(ipcMain, { portForwardingBridge });
+
     const connectionDiagnosticsBridge = require("../bridges/connectionDiagnosticsBridge.cjs");
     connectionDiagnosticsBridge.registerHandlers(ipcMain);
 

@@ -1,6 +1,15 @@
 # Änderungsprotokoll
 
 
+## [0.5.26] - 2026-07-23
+
+### Funktionen
+- **Host aus dem Gruppen-Kontextmenü hinzufügen**: Das Kontextmenü einer Gruppe im Host-Baum hat jetzt „Neuer Host“, das die Gruppe des neuen Hosts vorab auf die angeklickte Gruppe setzt, statt über die obere Schaltfläche zu erstellen und die Gruppe manuell auszuwählen
+
+### Verbesserungen
+- **Das im Leerlauf befindliche Desktop-Haustier geht jetzt umher statt zu atmen**: Die Leerlaufanimation lässt das Haustier seitlich im Overlay-Fenster hin- und herlaufen, mit einem Schritt-Wippen und einer Drehung bei der Kehrtwende; die Standardfigur hat kein Sprite-Sheet für einen Laufzyklus, daher ist die Bewegung eine reine CSS-Transform-Illusion
+- **Echtzeit-Diagramm des Monitors als Neon-HUD-Panel neu gestaltet**: Das Live-Diagramm im Übersichtstab wechselt von einer glatten Linie zu einer Stufenlinie, auf einem festen dunklen Sternenfeld-Hintergrund mit einem stärkeren zweischichtigen Leuchten und einem sich ausbreitenden Radar-Ping-Ring am jeweils neuesten Messwert jeder Reihe
+
 ## [0.5.25] - 2026-07-22
 
 ### Funktionen

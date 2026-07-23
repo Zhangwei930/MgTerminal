@@ -1,0 +1,12 @@
+{
+  "reporter": ["text", "text-summary", "lcov"],
+  "exclude": [
+    "**/*.test.*",
+    "**/__tests__/**",
+    "coverage/**",
+    "dist/**",
+    "**/node_modules/**",
+    "**/*.d.ts"
+  ],
+  "all": false
+}

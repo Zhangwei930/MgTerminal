@@ -1,6 +1,11 @@
 # Registro de cambios
 
 
+## [0.5.27] - 2026-07-23
+
+### Funcionalidades
+- **Cliente de base de datos ligero**: el almacén ahora admite un tipo de conexión de base de datos: conéctate a MySQL, PostgreSQL, SQL Server u Oracle mediante un túnel de host SSH ya guardado, sin necesidad de exponer el puerto de la base de datos en el servidor; abrir una conexión de base de datos abre una nueva pestaña igual que una sesión de terminal, con un editor SQL integrado y una tabla de resultados de consultas; las contraseñas de la base de datos reutilizan el mismo cifrado del almacén que las contraseñas de host, en lugar de guardarse en texto plano en el almacenamiento local
+
 ## [0.5.26] - 2026-07-23
 
 ### Funcionalidades

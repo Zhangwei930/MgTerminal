@@ -1,6 +1,11 @@
 # Journal des modifications
 
 
+## [0.5.27] - 2026-07-23
+
+### Fonctionnalités
+- **Client de base de données léger**: le coffre prend désormais en charge un type de connexion à une base de données — connectez-vous à MySQL, PostgreSQL, SQL Server ou Oracle via un tunnel d'hôte SSH déjà enregistré, sans avoir à exposer le port de la base de données sur le serveur; l'ouverture d'une connexion à une base de données ouvre un nouvel onglet tout comme une session de terminal, avec un éditeur SQL intégré et un tableau de résultats de requête; les mots de passe de base de données réutilisent le même chiffrement du coffre que les mots de passe d'hôte, au lieu d'être stockés en texte brut dans le stockage local
+
 ## [0.5.26] - 2026-07-23
 
 ### Fonctionnalités

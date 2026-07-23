@@ -1,6 +1,11 @@
 # Changelog
 
 
+## [0.5.27] - 2026-07-23
+
+### Features
+- **Lightweight database client**: Vault now supports a database connection type — connect to MySQL, PostgreSQL, SQL Server, or Oracle through an already-saved SSH host tunnel, with no need to expose the database port on the server; opening a database connection opens a new tab just like a terminal session, with a built-in SQL editor and a query results table; database passwords reuse the same vault encryption as host passwords instead of landing on local storage in plain text
+
 ## [0.5.26] - 2026-07-23
 
 ### Features

@@ -1,6 +1,11 @@
 # Registro de alterações
 
 
+## [0.5.27] - 2026-07-23
+
+### Funcionalidades
+- **Cliente de banco de dados leve**: o cofre agora aceita um tipo de conexão de banco de dados — conecte-se a MySQL, PostgreSQL, SQL Server ou Oracle por meio de um túnel de host SSH já salvo, sem precisar expor a porta do banco de dados no servidor; abrir uma conexão de banco de dados abre uma nova aba assim como uma sessão de terminal, com um editor SQL embutido e uma tabela de resultados de consulta; as senhas do banco de dados reutilizam a mesma criptografia do cofre usada nas senhas de host, em vez de ficarem em texto simples no armazenamento local
+
 ## [0.5.26] - 2026-07-23
 
 ### Funcionalidades

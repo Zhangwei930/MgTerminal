@@ -1,6 +1,11 @@
 # Änderungsprotokoll
 
 
+## [0.5.27] - 2026-07-23
+
+### Funktionen
+- **Schlanker Datenbankclient**: Der Vault unterstützt jetzt einen Datenbankverbindungstyp – Verbindungen zu MySQL, PostgreSQL, SQL Server oder Oracle über einen bereits gespeicherten SSH-Host-Tunnel, ohne den Datenbankport auf dem Server zusätzlich öffnen zu müssen; das Öffnen einer Datenbankverbindung öffnet einen neuen Tab genau wie eine Terminal-Sitzung, mit integriertem SQL-Editor und einer Ergebnistabelle für Abfragen; Datenbankpasswörter nutzen dieselbe Vault-Verschlüsselung wie Host-Passwörter, statt im Klartext im lokalen Speicher zu landen
+
 ## [0.5.26] - 2026-07-23
 
 ### Funktionen

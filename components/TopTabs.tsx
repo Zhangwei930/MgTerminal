@@ -1,8 +1,9 @@
 import { Folder, FolderLock, Menu, Moon, MoreHorizontal, Plus, Settings, Sparkles, Sun } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { fromEditorTabId, isEditorTabId, useActiveTabId } from '../application/state/activeTabStore';
+import { fromEditorTabId, isEditorTabId, fromDbWorkspaceTabId, isDbWorkspaceTabId, useActiveTabId } from '../application/state/activeTabStore';
 import { isHostTreeWorkTabSurface } from '../application/app/workTabSurface';
 import type { EditorTab } from '../application/state/editorTabStore';
+import type { DbConnectionProfile } from '../domain/models';
 import { buildWorkspaceActivityMap } from '../application/state/sessionActivity';
 import { collectSessionIds } from '../domain/workspace';
 import { resolveSessionTabTitle } from '../domain/sessionTabTitle';
@@ -26,6 +27,7 @@ import { SyncStatusButton } from './SyncStatusButton';
 import { WindowOpacityButton } from './WindowOpacityButton';
 import {
   ActiveTabAutoScroller,
+  DbWorkspaceTopTab,
   EditorTopTab,
   LogViewTopTab,
   RootTopTab,
@@ -151,6 +153,8 @@ interface TopTabsProps {
   dynamicTabTitleMode?: DynamicTabTitleMode;
   editorTabs: readonly EditorTab[];
   onRequestCloseEditorTab: (editorTabId: string) => void;
+  dbConnections: readonly DbConnectionProfile[];
+  onRequestCloseDbTab: (connectionId: string) => void;
   hostById: Map<string, Host>;
 }
 
@@ -188,6 +192,8 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
   dynamicTabTitleMode,
   editorTabs,
   onRequestCloseEditorTab,
+  dbConnections,
+  onRequestCloseDbTab,
   hostById,
 }) => {
   const { t } = useI18n();
@@ -625,6 +631,12 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
     return map;
   }, [editorTabs]);
 
+  const dbConnectionById = useMemo(() => {
+    const map = new Map<string, DbConnectionProfile>();
+    for (const c of dbConnections) map.set(c.id, c);
+    return map;
+  }, [dbConnections]);
+
   // fileName → count, for the rename-disambiguation suffix in the render loop.
   // Memoed so we don't do a per-tab O(n) filter on every render (was O(n²)).
   const editorTabFileNameCounts = useMemo(() => {
@@ -642,6 +654,12 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
         if (!editorTab) return null;
         return { type: 'editor' as const, id: tabId, editorTab };
       }
+      if (isDbWorkspaceTabId(tabId)) {
+        const connectionId = fromDbWorkspaceTabId(tabId);
+        const dbConnection = dbConnectionById.get(connectionId);
+        if (!dbConnection) return null;
+        return { type: 'db' as const, id: tabId, dbConnection };
+      }
       const session = orphanSessionMap.get(tabId);
       const workspace = workspaceMap.get(tabId);
       const logView = logViewMap.get(tabId);
@@ -656,7 +674,7 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
       }
       return null;
     }).filter(Boolean);
-  }, [orderedTabs, editorTabMap, orphanSessionMap, workspaceMap, logViewMap, workspacePaneCounts]);
+  }, [orderedTabs, editorTabMap, dbConnectionById, orphanSessionMap, workspaceMap, logViewMap, workspacePaneCounts]);
 
   // Bulk-close menu items shared by session and workspace context menus.
   // Anchor is the tab the user right-clicked on (matches VSCode/JetBrains UX).
@@ -716,6 +734,35 @@ const TopTabsInner: React.FC<TopTabsProps> = ({
             host={host}
             suffix={suffix}
             onRequestCloseEditorTab={onRequestCloseEditorTab}
+            isBeingDragged={isBeingDragged}
+            isDraggingForReorder={isDraggingForReorder}
+            shiftStyle={shiftStyle}
+            showDropIndicatorBefore={showDropIndicatorBefore}
+            showDropIndicatorAfter={showDropIndicatorAfter}
+            onTabDragStart={handleTabDragStart}
+            onTabDragEnd={handleTabDragEnd}
+            onTabDragOver={handleTabDragOver}
+            onTabDragLeave={handleTabDragLeave}
+            onTabDrop={handleTabDrop}
+            tabAnimationClass={getTabAnimationClass(tabId)}
+          />
+        );
+      }
+
+      if (item.type === 'db') {
+        const { dbConnection } = item;
+        const tabId = item.id;
+        const isBeingDragged = draggingSessionId === tabId;
+        const shiftStyle = tabShiftStyles[tabId] || emptyTabStyle;
+        const showDropIndicatorBefore = dropIndicator?.tabId === tabId && dropIndicator.position === 'before';
+        const showDropIndicatorAfter = dropIndicator?.tabId === tabId && dropIndicator.position === 'after';
+
+        return (
+          <DbWorkspaceTopTab
+            key={tabId}
+            tabId={tabId}
+            label={dbConnection.label}
+            onClose={onRequestCloseDbTab}
             isBeingDragged={isBeingDragged}
             isDraggingForReorder={isDraggingForReorder}
             shiftStyle={shiftStyle}
@@ -1138,7 +1185,8 @@ const topTabsAreEqual = (prev: TopTabsProps, next: TopTabsProps): boolean => {
     prev.onToggleTheme === next.onToggleTheme &&
     prev.showSftpTab === next.showSftpTab &&
     prev.showHostTreeSidebar === next.showHostTreeSidebar &&
-    prev.dynamicTabTitleMode === next.dynamicTabTitleMode
+    prev.dynamicTabTitleMode === next.dynamicTabTitleMode &&
+    prev.dbConnections === next.dbConnections
   );
 };
 

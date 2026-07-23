@@ -98,6 +98,15 @@ declare global {
       }) => void,
     ): () => void;
 
+    // Lightweight DB client (SSH-tunneled MySQL/PostgreSQL)
+    startDbConnection?(options: DbConnectOptions): Promise<DbConnectResult>;
+    closeDbConnection?(connectionId: string): Promise<DbCloseResult>;
+    runDbQuery?(options: DbRunQueryOptions): Promise<{ queryId: string }>;
+    cancelDbQuery?(connectionId: string): Promise<DbCloseResult>;
+    onDbQueryRows?(queryId: string, cb: (payload: DbQueryRowsPayload) => void): () => void;
+    onDbQueryComplete?(queryId: string, cb: (payload: DbQueryCompletePayload) => void): () => void;
+    onDbQueryError?(queryId: string, cb: (payload: DbQueryErrorPayload) => void): () => void;
+
     // Known Hosts
     readKnownHosts?(): Promise<string | null>;
 

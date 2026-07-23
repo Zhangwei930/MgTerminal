@@ -140,6 +140,7 @@ const sftpBridge = require("./bridges/sftpBridge.cjs");
 const localFsBridge = require("./bridges/localFsBridge.cjs");
 const transferBridge = require("./bridges/transferBridge.cjs");
 const portForwardingBridge = require("./bridges/portForwardingBridge.cjs");
+const dbBridge = require("./bridges/dbBridge.cjs");
 const terminalBridge = require("./bridges/terminalBridge.cjs");
 const sessionLogStreamManager = require("./bridges/sessionLogStreamManager.cjs");
 // crashLogBridge is required at the top of the file (before error handlers)
@@ -1267,6 +1268,11 @@ if (!gotLock) {
       terminalBridge.cleanupAllSessions();
     } catch (err) {
       console.warn("Error during terminal cleanup:", err);
+    }
+    try {
+      dbBridge.stopAllDbConnections();
+    } catch (err) {
+      console.warn("Error during db client cleanup:", err);
     }
     try {
       portForwardingBridge.stopAllPortForwards();

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Download, Trash2 } from 'lucide-react';
-import { activeTabStore, toEditorTabId, useIsEditorTabActive } from '../state/activeTabStore';
+import { activeTabStore, toEditorTabId, toDbWorkspaceTabId, useIsEditorTabActive } from '../state/activeTabStore';
 import { editorTabStore } from '../state/editorTabStore';
+import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../state/dbWorkspaceTabStore';
 import { releaseEditorTabSaveCoordinator, saveEditorTab } from '../state/editorTabSave';
 import { useTerminalHostTreeLayoutWidth } from '../state/terminalHostTreeStore';
 import { TopTabs } from '../../components/TopTabs';
@@ -23,6 +24,7 @@ import { LazyLoadBoundary } from '../../components/ui/lazy-load-boundary';
 import { toast } from '../../components/ui/toast';
 import { isOnboardingComplete, pickFirstConnectionTips } from '../../domain/onboarding';
 import type { CommandPaletteActionId } from '../../domain/onboarding';
+import type { DbConnectionProfile } from '../../domain/models';
 import {
   STORAGE_KEY_FIRST_CONNECTION_TIPS_SHOWN,
   STORAGE_KEY_ONBOARDING_COMPLETE,
@@ -47,6 +49,9 @@ const LazyCreateWorkspaceDialog = lazy(() =>
 );
 const LazyTextEditorTabView = lazy(() =>
   import('../../components/editor/TextEditorTabView').then((m) => ({ default: m.TextEditorTabView })),
+);
+const LazyDbWorkspaceTabView = lazy(() =>
+  import('../../components/db/DbWorkspaceTabView').then((m) => ({ default: m.DbWorkspaceTabView })),
 );
 
 const TextEditorTabFallback = ({ tabId }: { tabId: string }) => {
@@ -99,10 +104,10 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
   useMainWindowInputFocusRecovery({ onPageHidden: dismissTransientOverlays });
 
   const {
-    accentMode, addShellHistoryEntry, addSessionToWorkspace, addToWorkspaceDialog, appendHostToWorkspace, appendLocalTerminalToWorkspace,
+    accentMode, addDbConnection, addShellHistoryEntry, addSessionToWorkspace, addToWorkspaceDialog, appendHostToWorkspace, appendLocalTerminalToWorkspace,
     clearAndRemoveSource, clearAndRemoveSources, clearUnsavedConnectionLogs, closeLogView, closeSession, closeTabsBatch, closeWorkspace, copySessionToNewWindowWithCurrentShell, copySessionWithCurrentShell,
     connectionLogs, convertKnownHostToHost, createWorkspaceFromSessions, createWorkspaceFromTargets, createWorkspaceWithHosts, buildWorkspaceTemplate, applyWorkspaceTemplate, customAccent,
-    customGroups, currentTerminalTheme, deepLinkHostDraft, deleteConnectionLog, draggingSessionId, effectiveKnownHosts, editorTabs, editorWordWrap, emptyVaultConflict,
+    customGroups, currentTerminalTheme, dbConnections, updateDbConnections, deepLinkHostDraft, deleteConnectionLog, draggingSessionId, effectiveKnownHosts, editorTabs, editorWordWrap, emptyVaultConflict,
     followAppTerminalTheme,
     groupConfigs, handleAddKnownHost, handleConnectSerial, handleConnectToHost, handleCreateLocalTerminal, handleDefaultTerminalThemeChange, handleDeleteHost,
     handleEndSessionDrag, handleFollowAppTerminalThemeChange, handleHostConnectWithProtocolCheck, handleHotkeyAction, handleKeyboardInteractiveCancel, handleKeyboardInteractiveSubmit,
@@ -122,6 +127,13 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
     updateNoteGroups, updateNotes, updateProxyProfiles, updateSnippetPackages, updateSnippets, updateSplitSizes, updateTerminalSetting, vaultFocusRequest, workspaceRenameTarget, workspaceRenameValue, workspaces,
     VaultViewContainer, SftpViewMount, TerminalLayerMount, LogViewWrapper,
   } = ctx;
+
+  const dbWorkspaceTabs = useDbWorkspaceTabs();
+  const dbConnectionById = useMemo(() => {
+    const map = new Map<string, DbConnectionProfile>();
+    for (const c of dbConnections as DbConnectionProfile[]) map.set(c.id, c);
+    return map;
+  }, [dbConnections]);
 
   const { templates, saveTemplate, deleteTemplate, renameTemplate } = useWorkspaceTemplates();
   const [workspaceTemplatesOpen, setWorkspaceTemplatesOpen] = useState(false);
@@ -272,6 +284,18 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
           activeTabStore.setActiveTabId(next === closingTabId ? 'vault' : next);
         };
 
+        // DB workspace tabs have no unsaved-content concept — closing just disconnects
+        // (DbWorkspaceTabView's own unmount effect tears down the DB connection/tunnel).
+        const closeDbWorkspaceAndActivateNeighbor = (connectionId: string) => {
+          const closingTabId = toDbWorkspaceTabId(connectionId);
+          const list = orderedTabsWithEditors;
+          const idx = list.indexOf(closingTabId);
+          dbWorkspaceTabStore.close(connectionId);
+          if (activeTabStore.getActiveTabId() !== closingTabId) return;
+          const next = list[idx - 1] ?? list[idx + 1] ?? 'vault';
+          activeTabStore.setActiveTabId(next === closingTabId ? 'vault' : next);
+        };
+
         // Real dirty-confirm close handler.
         const handleRequestCloseEditorTab = async (id: string): Promise<boolean> => {
           const tab = editorTabStore.getTab(id);
@@ -342,6 +366,8 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
         dynamicTabTitleMode={settings.terminalSettings.dynamicTabTitleMode}
         editorTabs={editorTabs}
         onRequestCloseEditorTab={handleRequestCloseEditorTab}
+        dbConnections={dbConnections}
+        onRequestCloseDbTab={closeDbWorkspaceAndActivateNeighbor}
         hostById={hostById}
       />
 
@@ -378,6 +404,9 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
             notes={notes}
             noteGroups={noteGroups}
             customGroups={customGroups}
+            dbConnections={dbConnections}
+            onUpdateDbConnections={updateDbConnections}
+            onAddDbConnection={addDbConnection}
             knownHosts={effectiveKnownHosts}
             shellHistory={shellHistory}
             connectionLogs={connectionLogs}
@@ -590,6 +619,25 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
             </Suspense>
           </LazyLoadBoundary>
         ))}
+
+        {/* DB workspace tabs — kept mounted for the same reason as editor tabs above. */}
+        {dbWorkspaceTabs.map((tab) => {
+          const connectionProfile = dbConnectionById.get(tab.connectionId);
+          if (!connectionProfile) return null;
+          return (
+            <LazyLoadBoundary key={tab.connectionId} name="Database" resetKey={tab.connectionId}>
+              <Suspense fallback={null}>
+                <LazyDbWorkspaceTabView
+                  connectionProfile={connectionProfile}
+                  host={hostById.get(connectionProfile.hostId)}
+                  keys={keys}
+                  identities={identities}
+                  knownHosts={effectiveKnownHosts}
+                />
+              </Suspense>
+            </LazyLoadBoundary>
+          );
+        })}
       </div>
 
       {/* Global "quick add / edit snippet" dialog, triggered by the

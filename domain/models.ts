@@ -1,4 +1,5 @@
 export * from './models/connection';
+export * from './models/dbClient';
 export * from './models/history';
 export * from './models/keyBindings';
 export * from './models/portForwarding';

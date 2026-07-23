@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { activeTabStore, toEditorTabId, fromEditorTabId, isEditorTabId } from './application/state/activeTabStore';
+import { activeTabStore, toEditorTabId, fromEditorTabId, isEditorTabId, toDbWorkspaceTabId } from './application/state/activeTabStore';
 import { useAutoSync } from './application/state/useAutoSync';
 import { useManagedSourceSync } from './application/state/useManagedSourceSync';
 import { usePortForwardingState } from './application/state/usePortForwardingState';
@@ -7,9 +7,11 @@ import { useSessionState } from './application/state/useSessionState';
 import { useSettingsState } from './application/state/useSettingsState';
 import { useUpdateCheck } from './application/state/useUpdateCheck';
 import { useVaultState } from './application/state/useVaultState';
+import { useDbConnectionsState } from './application/state/useDbConnectionsState';
 import { useVaultAgentBridge } from './application/state/useVaultAgentBridge';
 import { useWindowControls } from './application/state/useWindowControls';
 import { useEditorTabs } from './application/state/editorTabStore';
+import { useDbWorkspaceTabs } from './application/state/dbWorkspaceTabStore';
 import {
   clearReferenceKeyPassphrases,
   clearKeyPassphrasesByIds,
@@ -240,6 +242,8 @@ function App({ settings }: { settings: SettingsState }) {
     updateGroupConfigs,
   } = useVaultState();
 
+  const { dbConnections, updateDbConnections, addDbConnection, unlockDbConnectionSecrets } = useDbConnectionsState();
+
   const keysRef = useRef(keys);
   keysRef.current = keys;
   const knownHostsRef = useRef(knownHosts);
@@ -364,6 +368,7 @@ function App({ settings }: { settings: SettingsState }) {
   }, [followAppTerminalTheme, clearThemeIntent]);
   const currentTerminalTheme = themeRuntime.currentTerminalTheme;
   const editorTabs = useEditorTabs();
+  const dbWorkspaceTabs = useDbWorkspaceTabs();
 
   const hostById = useMemo(
     () => new Map(hosts.map((host) => [host.id, host])),
@@ -861,10 +866,15 @@ function App({ settings }: { settings: SettingsState }) {
     [editorTabs],
   );
 
-  // 顶层标签顺序需要包含编辑器标签，供顶部标签和编辑器邻居计算使用。
+  const dbWorkspaceTabTopIds = useMemo(
+    () => dbWorkspaceTabs.map((tab) => toDbWorkspaceTabId(tab.connectionId)),
+    [dbWorkspaceTabs],
+  );
+
+  // 顶层标签顺序需要包含编辑器标签和数据库工作区标签，供顶部标签和编辑器邻居计算使用。
   const orderedTabsWithEditors = useMemo(
-    () => getOrderedWorkTabs(editorTabTopIds),
-    [editorTabTopIds, getOrderedWorkTabs],
+    () => getOrderedWorkTabs([...editorTabTopIds, ...dbWorkspaceTabTopIds]),
+    [editorTabTopIds, dbWorkspaceTabTopIds, getOrderedWorkTabs],
   );
 
   const reorderWorkTabs = useCallback((
@@ -1316,7 +1326,7 @@ function App({ settings }: { settings: SettingsState }) {
         resolveSessionAppearance={themeRuntime.resolveFocusedAppearance}
         t={t}
       />
-      <AppView ctx={{ accentMode, addShellHistoryEntry, addSessionToWorkspace, addToWorkspaceDialog, appendHostToWorkspace, appendLocalTerminalToWorkspace, clearAndRemoveSource, clearAndRemoveSources, clearUnsavedConnectionLogs, clearSessionFontSizeOverride, closeLogView, closeSession, closeTabsBatch, copySessionWithCurrentShell, copySessionToNewWindowWithCurrentShell, closeWorkspace, connectionLogs, convertKnownHostToHost, createWorkspaceFromSessions, createWorkspaceFromTargets, createWorkspaceWithHosts, buildWorkspaceTemplate, applyWorkspaceTemplate, customAccent, customGroups, currentTerminalTheme, deepLinkHostDraft, deleteConnectionLog, draggingSessionId, effectiveKnownHosts, editorTabs, editorWordWrap, emptyVaultConflict, followAppTerminalTheme, clearThemeIntent: themeRuntime.clearIntent, settleManualThemeIntent: themeRuntime.settleManualIntent, pickTerminalTheme: themeRuntime.pickTheme, resolveSessionAppearance: themeRuntime.resolveFocusedAppearance, groupConfigs, handleAddKnownHost, handleConnectSerial, handleConnectToHost, handleCreateLocalTerminal, handleDefaultTerminalThemeChange, handleDeleteHost, handleEndSessionDrag, handleFollowAppTerminalThemeChange, handleHostConnectWithProtocolCheck, handleHotkeyAction, handleOpenHostFromVaultNote, handleOpenVaultHostFromChat, handleOpenVaultNoteFromChat, handleOpenVaultSectionFromChat, handleOpenVaultSnippetFromChat, handleKeyboardInteractiveCancel, handleKeyboardInteractiveSubmit, handleOpenQuickSwitcher, handleOpenSettings, handleRootContextMenu, handlePassphraseCancel, handlePassphraseSkip, handlePassphraseSubmit, handleProtocolSelect, handleRequestCloseEditorTabRef, handleSessionStatusChange, handleSyncNowManual, handleTerminalDataCapture, handleToggleTheme, handleUpdateHostFromTerminal, hostById, hosts, terminalHosts, updateTerminalHosts, hotkeyScheme, identities, importOrReuseKey, isBroadcastEnabled, getBroadcastConfig, updateBroadcastConfig, isCreateWorkspaceOpen, isMacClient, isQuickSwitcherOpen, isVaultInitialized, keyBindings, keyboardInteractiveQueue, keys, logViews, managedSources, navigateToSection, noteGroups, notes, openLogView, openNoteRequest, orderedTabsWithEditors, orphanSessions, passphraseQueue, protocolSelectHost, proxyProfiles, portForwardingRules, quickResults, quickSearch, removeSessionFromWorkspace, reorderWorkTabs, reorderWorkspaceSessions, resetSessionRename, resetWorkspaceRename, resolveEmptyVaultConflict, resolvedTheme, runSnippet: handleRunSnippet, sessionLogsDir, sessionLogsEnabled, sessionLogsFormat, sessionLogsTimestampsEnabled, sessionRenameTarget, sessionRenameValue, sessions, setActiveTabId, setAddToWorkspaceDialog, setDeepLinkHostDraft, setDraggingSessionId, setEditorWordWrap, setIsCreateWorkspaceOpen, setIsQuickSwitcherOpen, setNavigateToSection, setProtocolSelectHost, setQuickSearch, setSessionRenameValue, setTerminalFontFamilyId, setTerminalFontSize, setVaultFocusRequest, setWorkspaceFocusedSession, setWorkspaceRenameValue, settings, sftpAutoOpenSidebar, sftpFollowTerminalCwd, setSftpFollowTerminalCwd, sftpAutoSync, sftpDefaultViewMode, sftpDoubleClickBehavior, sftpShowHiddenFiles, sftpUseCompressedUpload, shellHistory, snippetPackages, snippets, splitSessionWithCurrentShell, sshDebugLogsEnabled: settings.sshDebugLogsEnabled, startSessionRename, renameSessionInline, startWorkspaceRename, submitSessionRename, submitWorkspaceRename, t, terminalFontFamilyId, terminalFontSize, terminalSettings, terminalThemeId, themeById, toggleBroadcast, toggleConnectionLogSaved, toggleScriptsSidePanelRef, toggleSidePanelRef, toggleWorkspaceViewMode, unmanageSource, updateConnectionLog, updateCustomGroups, updateGroupConfigs, updateHostDistro, updateHosts, updateIdentities, updateKeys, updateKnownHosts, updateManagedSources, updateNoteGroups, updateNotes, updateProxyProfiles, updateSnippetPackages, updateSnippets, updateSplitSizes, updateSessionFontSize, updateSessionRestoreCwd, updateSessionDynamicTitle, updateSessionCodingCliProvider, updateTerminalSetting, vaultFocusRequest, workspaceRenameTarget, workspaceRenameValue, workspaces, VaultViewContainer, SftpViewMount, TerminalLayerMount, LogViewWrapper }} />
+      <AppView ctx={{ accentMode, addDbConnection, addShellHistoryEntry, addSessionToWorkspace, addToWorkspaceDialog, appendHostToWorkspace, appendLocalTerminalToWorkspace, clearAndRemoveSource, clearAndRemoveSources, clearUnsavedConnectionLogs, clearSessionFontSizeOverride, closeLogView, closeSession, closeTabsBatch, copySessionWithCurrentShell, copySessionToNewWindowWithCurrentShell, closeWorkspace, connectionLogs, convertKnownHostToHost, createWorkspaceFromSessions, createWorkspaceFromTargets, createWorkspaceWithHosts, buildWorkspaceTemplate, applyWorkspaceTemplate, customAccent, customGroups, currentTerminalTheme, dbConnections, updateDbConnections, deepLinkHostDraft, deleteConnectionLog, draggingSessionId, effectiveKnownHosts, editorTabs, editorWordWrap, emptyVaultConflict, followAppTerminalTheme, clearThemeIntent: themeRuntime.clearIntent, settleManualThemeIntent: themeRuntime.settleManualIntent, pickTerminalTheme: themeRuntime.pickTheme, resolveSessionAppearance: themeRuntime.resolveFocusedAppearance, groupConfigs, handleAddKnownHost, handleConnectSerial, handleConnectToHost, handleCreateLocalTerminal, handleDefaultTerminalThemeChange, handleDeleteHost, handleEndSessionDrag, handleFollowAppTerminalThemeChange, handleHostConnectWithProtocolCheck, handleHotkeyAction, handleOpenHostFromVaultNote, handleOpenVaultHostFromChat, handleOpenVaultNoteFromChat, handleOpenVaultSectionFromChat, handleOpenVaultSnippetFromChat, handleKeyboardInteractiveCancel, handleKeyboardInteractiveSubmit, handleOpenQuickSwitcher, handleOpenSettings, handleRootContextMenu, handlePassphraseCancel, handlePassphraseSkip, handlePassphraseSubmit, handleProtocolSelect, handleRequestCloseEditorTabRef, handleSessionStatusChange, handleSyncNowManual, handleTerminalDataCapture, handleToggleTheme, handleUpdateHostFromTerminal, hostById, hosts, terminalHosts, updateTerminalHosts, hotkeyScheme, identities, importOrReuseKey, isBroadcastEnabled, getBroadcastConfig, updateBroadcastConfig, isCreateWorkspaceOpen, isMacClient, isQuickSwitcherOpen, isVaultInitialized, keyBindings, keyboardInteractiveQueue, keys, logViews, managedSources, navigateToSection, noteGroups, notes, openLogView, openNoteRequest, orderedTabsWithEditors, orphanSessions, passphraseQueue, protocolSelectHost, proxyProfiles, portForwardingRules, quickResults, quickSearch, removeSessionFromWorkspace, reorderWorkTabs, reorderWorkspaceSessions, resetSessionRename, resetWorkspaceRename, resolveEmptyVaultConflict, resolvedTheme, runSnippet: handleRunSnippet, sessionLogsDir, sessionLogsEnabled, sessionLogsFormat, sessionLogsTimestampsEnabled, sessionRenameTarget, sessionRenameValue, sessions, setActiveTabId, setAddToWorkspaceDialog, setDeepLinkHostDraft, setDraggingSessionId, setEditorWordWrap, setIsCreateWorkspaceOpen, setIsQuickSwitcherOpen, setNavigateToSection, setProtocolSelectHost, setQuickSearch, setSessionRenameValue, setTerminalFontFamilyId, setTerminalFontSize, setVaultFocusRequest, setWorkspaceFocusedSession, setWorkspaceRenameValue, settings, sftpAutoOpenSidebar, sftpFollowTerminalCwd, setSftpFollowTerminalCwd, sftpAutoSync, sftpDefaultViewMode, sftpDoubleClickBehavior, sftpShowHiddenFiles, sftpUseCompressedUpload, shellHistory, snippetPackages, snippets, splitSessionWithCurrentShell, sshDebugLogsEnabled: settings.sshDebugLogsEnabled, startSessionRename, renameSessionInline, startWorkspaceRename, submitSessionRename, submitWorkspaceRename, t, terminalFontFamilyId, terminalFontSize, terminalSettings, terminalThemeId, themeById, toggleBroadcast, toggleConnectionLogSaved, toggleScriptsSidePanelRef, toggleSidePanelRef, toggleWorkspaceViewMode, unmanageSource, updateConnectionLog, updateCustomGroups, updateGroupConfigs, updateHostDistro, updateHosts, updateIdentities, updateKeys, updateKnownHosts, updateManagedSources, updateNoteGroups, updateNotes, updateProxyProfiles, updateSnippetPackages, updateSnippets, updateSplitSizes, updateSessionFontSize, updateSessionRestoreCwd, updateSessionDynamicTitle, updateSessionCodingCliProvider, updateTerminalSetting, vaultFocusRequest, workspaceRenameTarget, workspaceRenameValue, workspaces, VaultViewContainer, SftpViewMount, TerminalLayerMount, LogViewWrapper }} />
       <ShortcutHelpDialog
         open={shortcutHelpOpen}
         onOpenChange={setShortcutHelpOpen}
@@ -1327,6 +1337,7 @@ function App({ settings }: { settings: SettingsState }) {
         open={Boolean(secretsLocked && isVaultInitialized && !isPeerSessionWindow)}
         onUnlocked={async () => {
           await unlockVaultSecrets();
+          await unlockDbConnectionSecrets();
         }}
       />
     </>

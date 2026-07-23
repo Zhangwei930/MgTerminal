@@ -16,6 +16,18 @@ export const toEditorTabId = (editorId: string): string => `${EDITOR_PREFIX}${ed
 /** Strip the "editor:" prefix to recover the internal editorTab id. */
 export const fromEditorTabId = (tabId: string): string => tabId.slice(EDITOR_PREFIX.length);
 
+// ----- DB workspace tab id helpers -----
+export const DB_WORKSPACE_PREFIX = 'db:';
+
+/** Returns true when `id` is a DB workspace tab id (starts with "db:"). */
+export const isDbWorkspaceTabId = (id: string): boolean => id.startsWith(DB_WORKSPACE_PREFIX);
+
+/** Convert a DbConnectionProfile id to a top-tab id understood by the tab bar. */
+export const toDbWorkspaceTabId = (connectionProfileId: string): string => `${DB_WORKSPACE_PREFIX}${connectionProfileId}`;
+
+/** Strip the "db:" prefix to recover the internal connection profile id. */
+export const fromDbWorkspaceTabId = (tabId: string): string => tabId.slice(DB_WORKSPACE_PREFIX.length);
+
 class ActiveTabStore {
   private activeTabId: string = 'vault';
   private listeners = new Set<Listener>();
@@ -99,5 +111,12 @@ export const useIsSftpActive = () => {
 export const useIsEditorTabActive = (tabId: string): boolean => {
   const editorTopId = toEditorTabId(tabId);
   const getSnapshot = useCallback(() => activeTabStore.getActiveTabId() === editorTopId, [editorTopId]);
+  return useSyncExternalStore(activeTabStore.subscribe, getSnapshot, getSnapshot);
+};
+
+// Check if a specific DB workspace tab is currently active
+export const useIsDbWorkspaceTabActive = (connectionProfileId: string): boolean => {
+  const dbTopId = toDbWorkspaceTabId(connectionProfileId);
+  const getSnapshot = useCallback(() => activeTabStore.getActiveTabId() === dbTopId, [dbTopId]);
   return useSyncExternalStore(activeTabStore.subscribe, getSnapshot, getSnapshot);
 };

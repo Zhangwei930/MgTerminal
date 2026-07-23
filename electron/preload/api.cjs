@@ -1,5 +1,19 @@
 const { clearTerminalDataSession } = require("./terminalDataBacklog.cjs");
 
+/** Shared subscribe/unsubscribe shape for the per-queryId DB client listener maps. */
+function registerDbQueryListener(listeners, queryId, cb) {
+  if (!listeners.has(queryId)) {
+    listeners.set(queryId, new Set());
+  }
+  listeners.get(queryId).add(cb);
+  return () => {
+    listeners.get(queryId)?.delete(cb);
+    if (listeners.get(queryId)?.size === 0) {
+      listeners.delete(queryId);
+    }
+  };
+}
+
 function createPreloadApi(ctx) {
   const terminalDataBacklog = ctx.terminalDataBacklog || null;
   const displayDataListeners = ctx.displayDataListeners || new Map();
@@ -903,6 +917,23 @@ function createPreloadApi(ctx) {
       }
     };
   },
+
+  // Lightweight DB client API (SSH-tunneled MySQL/PostgreSQL)
+  startDbConnection: async (options) => {
+    return ipcRenderer.invoke("magiesTerminal:db:connect", options);
+  },
+  closeDbConnection: async (connectionId) => {
+    return ipcRenderer.invoke("magiesTerminal:db:close", { connectionId });
+  },
+  runDbQuery: async (options) => {
+    return ipcRenderer.invoke("magiesTerminal:db:query", options);
+  },
+  cancelDbQuery: async (connectionId) => {
+    return ipcRenderer.invoke("magiesTerminal:db:cancel", { connectionId });
+  },
+  onDbQueryRows: (queryId, cb) => registerDbQueryListener(dbQueryRowListeners, queryId, cb),
+  onDbQueryComplete: (queryId, cb) => registerDbQueryListener(dbQueryCompleteListeners, queryId, cb),
+  onDbQueryError: (queryId, cb) => registerDbQueryListener(dbQueryErrorListeners, queryId, cb),
   // Chain progress listener for jump host connections
   onChainProgress: (cb) => {
     const id = randomUUID();

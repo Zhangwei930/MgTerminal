@@ -1,4 +1,4 @@
-import { Copy, FileCode, FileText, LayoutGrid, Minus, Server, Square, TerminalSquare, Usb, X } from 'lucide-react';
+import { Copy, Database, FileCode, FileText, LayoutGrid, Minus, Server, Square, TerminalSquare, Usb, X } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { activeTabStore, useActiveTabId, useIsTabActive } from '../../application/state/activeTabStore';
 import type { EditorTab } from '../../application/state/editorTabStore';
@@ -534,6 +534,128 @@ export const EditorTopTab: React.FC<EditorTopTabProps> = memo(({
   );
 });
 EditorTopTab.displayName = 'EditorTopTab';
+
+interface DbWorkspaceTopTabProps {
+  tabId: string;
+  label: string;
+  onClose: (connectionId: string) => void;
+  isBeingDragged: boolean;
+  isDraggingForReorder: boolean;
+  shiftStyle: React.CSSProperties;
+  showDropIndicatorBefore: boolean;
+  showDropIndicatorAfter: boolean;
+  onTabDragStart: (e: React.DragEvent, tabId: string) => void;
+  onTabDragEnd: () => void;
+  onTabDragOver: (e: React.DragEvent, tabId: string) => void;
+  onTabDragLeave: (e: React.DragEvent) => void;
+  onTabDrop: (e: React.DragEvent, targetTabId: string) => void;
+  tabAnimationClass?: string;
+}
+
+export const DbWorkspaceTopTab: React.FC<DbWorkspaceTopTabProps> = memo(({
+  tabId,
+  label,
+  onClose,
+  isBeingDragged,
+  isDraggingForReorder,
+  shiftStyle,
+  showDropIndicatorBefore,
+  showDropIndicatorAfter,
+  onTabDragStart,
+  onTabDragEnd,
+  onTabDragOver,
+  onTabDragLeave,
+  onTabDrop,
+  tabAnimationClass,
+}) => {
+  const isActive = useIsTabActive(tabId);
+  const connectionId = tabId.slice('db:'.length);
+  const handleClick = useCallback(() => {
+    activeTabStore.setActiveTabId(tabId);
+  }, [tabId]);
+  const handleClose = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose(connectionId);
+  }, [connectionId, onClose]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          data-tab-id={tabId}
+          data-tab-type="db"
+          data-state={isActive ? 'active' : 'inactive'}
+          onClick={handleClick}
+          onMouseDown={handleTabMiddleMouseDown}
+          onAuxClick={(e) => handleTabMiddleClickClose(e, () => onClose(connectionId))}
+          draggable
+          onDragStart={(e) => onTabDragStart(e, tabId)}
+          onDragEnd={onTabDragEnd}
+          onDragOver={(e) => onTabDragOver(e, tabId)}
+          onDragLeave={onTabDragLeave}
+          onDrop={(e) => onTabDrop(e, tabId)}
+          className={cn(
+            "magiesTerminal-tab relative h-7 pl-3 pr-2 min-w-[140px] max-w-[240px] rounded-t-md overflow-hidden text-xs font-semibold cursor-pointer flex items-center justify-between gap-2 app-no-drag flex-shrink-0",
+            "transition-transform duration-150",
+            isBeingDragged && isDraggingForReorder ? "opacity-40 scale-95" : "",
+            tabAnimationClass,
+          )}
+          style={{
+            ...shiftStyle,
+            backgroundColor: isActive
+              ? 'var(--top-tabs-active-bg, hsl(var(--background)))'
+              : 'transparent',
+            color: isActive
+              ? 'var(--top-tabs-fg, hsl(var(--foreground)))'
+              : 'var(--top-tabs-muted, hsl(var(--muted-foreground)))',
+          }}
+          onMouseEnter={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--top-tabs-active-bg, hsl(var(--background))) 40%, transparent)';
+              e.currentTarget.style.color = 'var(--top-tabs-fg, hsl(var(--foreground)))';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--top-tabs-muted, hsl(var(--muted-foreground)))';
+            }
+          }}
+        >
+          {showDropIndicatorBefore && isDraggingForReorder && (
+            <div
+              className="absolute -left-0.5 top-1 bottom-1 w-0.5 rounded-full animate-pulse"
+              style={{ backgroundColor: 'var(--top-tabs-accent, hsl(var(--accent)))', boxShadow: '0 0 8px 2px color-mix(in srgb, var(--top-tabs-accent, hsl(var(--accent))) 50%, transparent)' }}
+            />
+          )}
+          {showDropIndicatorAfter && isDraggingForReorder && (
+            <div
+              className="absolute -right-0.5 top-1 bottom-1 w-0.5 rounded-full animate-pulse"
+              style={{ backgroundColor: 'var(--top-tabs-accent, hsl(var(--accent)))', boxShadow: '0 0 8px 2px color-mix(in srgb, var(--top-tabs-accent, hsl(var(--accent))) 50%, transparent)' }}
+            />
+          )}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Database
+              size={14}
+              className="shrink-0"
+              style={{ color: isActive ? 'var(--top-tabs-accent, hsl(var(--accent)))' : 'var(--top-tabs-muted, hsl(var(--muted-foreground)))' }}
+            />
+            <span className="truncate">{label}</span>
+          </div>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors"
+            aria-label="Close database tab"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+});
+DbWorkspaceTopTab.displayName = 'DbWorkspaceTopTab';
 
 interface SessionTopTabProps {
   session: TerminalSession;

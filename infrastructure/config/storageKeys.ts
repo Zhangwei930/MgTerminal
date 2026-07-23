@@ -28,6 +28,7 @@ export const STORAGE_KEY_HOTKEY_RECORDING = 'magiesTerminal_hotkey_recording_v1'
 export const STORAGE_KEY_CUSTOM_CSS = 'magiesTerminal_custom_css_v1';
 export const STORAGE_KEY_UI_LANGUAGE = 'magiesTerminal_ui_language_v1';
 export const STORAGE_KEY_PORT_FORWARDING = 'magiesTerminal_port_forwarding_v1';
+export const STORAGE_KEY_DB_CONNECTIONS = 'magiesTerminal_db_connections_v1';
 export const STORAGE_KEY_PF_PREFER_FORM_MODE = 'magiesTerminal_pf_prefer_form_mode_v1';
 export const STORAGE_KEY_PF_VIEW_MODE = 'magiesTerminal_pf_view_mode_v1';
 export const STORAGE_KEY_KNOWN_HOSTS = 'magiesTerminal_known_hosts_v1';

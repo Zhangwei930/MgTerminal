@@ -38,6 +38,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck (baseline-gated)
+        run: npm run typecheck:baseline
+
       - name: Verify generated MagiesTerminal tool specs
         run: |
           npm run generate:capability-tools

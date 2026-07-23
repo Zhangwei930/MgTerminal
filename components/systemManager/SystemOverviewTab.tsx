@@ -201,6 +201,18 @@ function buildSeriesPoints(
   });
 }
 
+/** Step-after interpolation: flat plateau at the previous value until the next sample lands,
+ *  then a vertical jump — matches the HUD-style telemetry look instead of a smoothed line. */
+function toStepPoints(points: { x: number; y: number }[]): { x: number; y: number }[] {
+  if (points.length < 2) return points;
+  const stepped: { x: number; y: number }[] = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    stepped.push({ x: points[i].x, y: points[i - 1].y });
+    stepped.push(points[i]);
+  }
+  return stepped;
+}
+
 function MetricTrend({
   values,
   max,
@@ -280,8 +292,9 @@ function FullWidthTelemetryChart({
     const finite = item.values.filter((v) => Number.isFinite(v));
     const max = item.max ?? Math.max(1, ...finite, 1);
     const points = buildSeriesPoints(item.values, width, height, max, 6);
-    const linePoints = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    const area = `M0,${height} L${points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L')} L${width},${height} Z`;
+    const stepPoints = toStepPoints(points);
+    const linePoints = stepPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const area = `M0,${height} L${stepPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L')} L${width},${height} Z`;
     const last = points[points.length - 1];
     const lastValue = item.values[item.values.length - 1] ?? 0;
     return { ...item, max, linePoints, area, last, lastValue, styles: TONE_STYLES[item.tone] };
@@ -302,12 +315,12 @@ function FullWidthTelemetryChart({
         <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{samplesLabel}</span>
       </div>
 
-      <div className="relative">
+      <div className="system-monitor-telemetry-plot relative overflow-hidden rounded-md p-1.5">
         <svg className="h-[88px] w-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img">
           <defs>
             {rendered.map((item) => (
               <linearGradient key={item.key} id={`telemetry-fill-${item.key}-${reactId}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0.28" />
                 <stop offset="100%" stopColor="currentColor" stopOpacity="0.01" />
               </linearGradient>
             ))}
@@ -319,7 +332,7 @@ function FullWidthTelemetryChart({
               x2={width}
               y1={height * ratio}
               y2={height * ratio}
-              className="stroke-border/40"
+              stroke="rgba(148,163,184,0.15)"
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
             />
@@ -331,19 +344,27 @@ function FullWidthTelemetryChart({
                 points={item.linePoints}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.75"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="drop-shadow-[0_0_3px_currentColor]"
+                className="system-monitor-line-glow"
                 vectorEffect="non-scaling-stroke"
               />
               {item.last && sampleCount > 0 && (
-                <circle
-                  cx={item.last.x}
-                  cy={item.last.y}
-                  r="2.25"
-                  className={cn(item.styles.fill, 'system-monitor-pulse-dot')}
-                />
+                <>
+                  <circle
+                    cx={item.last.x}
+                    cy={item.last.y}
+                    r="2.25"
+                    className={cn(item.styles.fill, 'system-monitor-radar-ping')}
+                  />
+                  <circle
+                    cx={item.last.x}
+                    cy={item.last.y}
+                    r="2.25"
+                    className={cn(item.styles.fill, 'system-monitor-pulse-dot')}
+                  />
+                </>
               )}
             </g>
           ))}

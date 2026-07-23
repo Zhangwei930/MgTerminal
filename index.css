@@ -225,6 +225,44 @@ html.platform-win32 {
   animation: system-monitor-tick 700ms ease-out both;
 }
 
+/* Dark HUD backdrop + starfield speckle for the full-width telemetry chart, independent
+   of the light/dark app theme — the plot is meant to read as a radar/tech panel. */
+.system-monitor-telemetry-plot {
+  background-color: #05070f;
+  background-image:
+    radial-gradient(circle at 12% 22%, rgba(226, 232, 240, 0.55) 0.6px, transparent 1.4px),
+    radial-gradient(circle at 42% 68%, rgba(226, 232, 240, 0.4) 0.6px, transparent 1.4px),
+    radial-gradient(circle at 72% 28%, rgba(226, 232, 240, 0.5) 0.6px, transparent 1.4px),
+    radial-gradient(circle at 88% 78%, rgba(226, 232, 240, 0.35) 0.6px, transparent 1.4px),
+    radial-gradient(circle at 24% 88%, rgba(226, 232, 240, 0.45) 0.6px, transparent 1.4px),
+    radial-gradient(circle at 58% 12%, rgba(226, 232, 240, 0.35) 0.6px, transparent 1.4px);
+  background-size: 140px 140px, 160px 160px, 120px 120px, 150px 150px, 130px 130px, 170px 170px;
+  background-repeat: repeat;
+}
+
+.system-monitor-line-glow {
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 6px currentColor);
+}
+
+@keyframes system-monitor-radar-ping {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+.system-monitor-radar-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: system-monitor-radar-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
 @keyframes system-monitor-bar-sheen {
   0% {
     opacity: 0;
@@ -248,7 +286,8 @@ html.platform-win32 {
 @media (prefers-reduced-motion: reduce) {
   .system-monitor-pulse-dot,
   .system-monitor-tick,
-  .system-monitor-bar-sheen {
+  .system-monitor-bar-sheen,
+  .system-monitor-radar-ping {
     animation: none;
   }
 }

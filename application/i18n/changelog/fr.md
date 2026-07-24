@@ -1,6 +1,12 @@
 # Journal des modifications
 
 
+## [0.5.28] - 2026-07-24
+
+### Fonctionnalités
+- **Centre de diagnostic** : Paramètres → Système propose désormais une carte « Diagnostic » qui regroupe les journaux de plantage, l'historique des connexions (anonymisé) et l'audit d'approbation IA en un rapport JSON à copier ou exporter en un clic ; les limites d'erreur du rendu ainsi que les exceptions non gérées/rejets de promesses globaux sont désormais aussi consignés dans le journal de plantage — ce lien manquait auparavant
+- **Journal des appels MCP / CLI** : Enregistre chaque appel du CLI local (magies-terminal-tool-cli) ou d'un client MCP — uniquement le nom de la méthode, le résultat et la durée, jamais les arguments ; conservé 30 jours avec rotation automatique et inclus dans l'export du centre de diagnostic
+
 ## [0.5.27] - 2026-07-23
 
 ### Fonctionnalités

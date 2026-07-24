@@ -1,6 +1,12 @@
 # Änderungsprotokoll
 
 
+## [0.5.28] - 2026-07-24
+
+### Funktionen
+- **Diagnosezentrum**: In Einstellungen → System gibt es jetzt eine Karte „Diagnose", die Absturzprotokolle, Verbindungsverlauf (anonymisiert) und das KI-Freigabeprotokoll zu einem JSON-Bericht bündelt, der per Klick kopiert oder exportiert werden kann; Renderer-Error-Boundaries sowie globale unbehandelte Exceptions/Promise-Rejections werden jetzt ebenfalls im Absturzprotokoll erfasst — diese Verbindung fehlte bisher
+- **MCP-/CLI-Aufrufprotokoll**: Protokolliert jeden Aufruf der lokalen CLI (magies-terminal-tool-cli) oder eines MCP-Clients — nur Methodenname, Ergebnis und Dauer, nie die Aufrufargumente; wird 30 Tage aufbewahrt und automatisch rotiert und ist im Export des Diagnosezentrums enthalten
+
 ## [0.5.27] - 2026-07-23
 
 ### Funktionen

@@ -1,6 +1,12 @@
 # Changelog
 
 
+## [0.5.28] - 2026-07-24
+
+### Features
+- **Diagnostics Center**: Settings → System now has a "Diagnostics" card that bundles crash logs, connection history (sanitized), and AI approval audit into a one-click copy/export JSON report; renderer error boundaries and global uncaught exceptions/unhandled rejections are now written to the crash log too — that link was previously broken
+- **MCP / CLI Invocation Log**: Records every call from the local CLI (magies-terminal-tool-cli) or an MCP client — method name, outcome, and duration only, never call arguments; retained for 30 days and automatically rotated, and folded into the Diagnostics Center export
+
 ## [0.5.27] - 2026-07-23
 
 ### Features

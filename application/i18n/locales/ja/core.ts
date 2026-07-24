@@ -165,6 +165,24 @@ export const jaCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': '折りたたむ',
   'settings.system.crashLogs.expand': '詳細を表示',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': '診断',
+  'settings.system.diagnostics.description': '直近のクラッシュログ、接続履歴、AI 承認監査を1つのレポートにまとめてトラブルシューティングに使用します。',
+  'settings.system.diagnostics.copyReport': 'レポートをコピー',
+  'settings.system.diagnostics.copySuccess': '診断レポートをクリップボードにコピーしました。',
+  'settings.system.diagnostics.exportBundle': '診断バンドルをエクスポート',
+  'settings.system.diagnostics.exportSuccess': '診断バンドルを保存しました。',
+  'settings.system.diagnostics.exportError': '診断バンドルの保存に失敗しました。',
+  'settings.system.diagnostics.hint': '認証情報、シークレット、ターミナルの内容は含まれませんが、ホスト名などの内部識別子が含まれる場合があります。共有前にご確認ください。',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP / CLI 呼び出しログ',
+  'settings.system.rpcLogs.description': 'ローカル CLI(magies-terminal-tool-cli)または MCP クライアントからの RPC 呼び出しをすべて記録します — メソッド名と結果のみを記録し、引数は記録しません。',
+  'settings.system.rpcLogs.count': '{count} 件の呼び出しを記録済み',
+  'settings.system.rpcLogs.noLogs': 'まだ呼び出しは記録されていません。',
+  'settings.system.rpcLogs.clear': 'すべてのログを消去',
+  'settings.system.rpcLogs.hint': '30 日間保持され、自動的にローテーションされます。上記の診断バンドルに含まれます。',
+
   // Settings > System > Software Update
   'settings.update.title': 'ソフトウェア更新',
   'settings.update.currentVersion': '現在のバージョン',

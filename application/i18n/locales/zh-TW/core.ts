@@ -164,6 +164,24 @@ export const zhTWCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': '收起',
   'settings.system.crashLogs.expand': '檢視詳情',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': '診斷中心',
+  'settings.system.diagnostics.description': '將最近的崩潰日誌、連線歷史和 AI 審批稽核彙整為一份報告，便於排查問題。',
+  'settings.system.diagnostics.copyReport': '複製報告',
+  'settings.system.diagnostics.copySuccess': '診斷報告已複製到剪貼簿。',
+  'settings.system.diagnostics.exportBundle': '匯出診斷包',
+  'settings.system.diagnostics.exportSuccess': '診斷包已儲存。',
+  'settings.system.diagnostics.exportError': '儲存診斷包失敗。',
+  'settings.system.diagnostics.hint': '不包含憑證、密鑰與終端機內容，但可能包含主機名稱等內部識別資訊，分享前請自行核查。',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP / CLI 呼叫日誌',
+  'settings.system.rpcLogs.description': '記錄本機 CLI(magies-terminal-tool-cli)或 MCP 用戶端發出的每一次 RPC 呼叫——僅記錄方法名稱與結果，不記錄呼叫參數。',
+  'settings.system.rpcLogs.count': '已記錄 {count} 次呼叫',
+  'settings.system.rpcLogs.noLogs': '尚無呼叫記錄。',
+  'settings.system.rpcLogs.clear': '清除全部日誌',
+  'settings.system.rpcLogs.hint': '保留 30 天並自動清理，已包含在上方的診斷包中。',
+
   // Settings > System > Software Update
   'settings.update.title': '軟體更新',
   'settings.update.currentVersion': '目前版本',

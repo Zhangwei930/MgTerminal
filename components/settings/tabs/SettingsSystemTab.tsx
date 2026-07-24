@@ -1,7 +1,7 @@
 /**
  * Settings System Tab - System information, temp file management, session logs, and global hotkey
  */
-import { ChevronDown, ChevronRight, Download, ExternalLink, FolderOpen, PlayCircle, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Download, ExternalLink, FolderOpen, PlayCircle, RefreshCw, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useI18n } from "../../../application/i18n/I18nProvider";
 import { getCredentialProtectionAvailability } from "../../../infrastructure/services/credentialProtection";
@@ -15,6 +15,7 @@ import {
   readVaultPlatformUnlockConfig,
 } from "../../../application/state/vaultPlatformUnlockStore";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
+import { buildDiagnosticsBundle, serializeDiagnosticsBundle } from "../../../infrastructure/diagnostics/diagnosticsBundle";
 import type { UpdateState } from '../../../application/state/useUpdateCheck';
 import { SessionLogFormat, keyEventToString } from "../../../domain/models";
 import type { HttpNetworkProxyMode, HttpNetworkProxySettings } from "../../../domain/httpNetworkProxy";
@@ -196,6 +197,11 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
   const [crashLogClearResult, setCrashLogClearResult] = useState<{ deletedCount: number } | null>(null);
   const [sshDebugLogInfo, setSshDebugLogInfo] = useState<SshDebugLogInfo | null>(null);
   const [isLoadingSshDebugLogInfo, setIsLoadingSshDebugLogInfo] = useState(false);
+  const [isCopyingDiagnostics, setIsCopyingDiagnostics] = useState(false);
+  const [isExportingDiagnostics, setIsExportingDiagnostics] = useState(false);
+  const [rpcLogFiles, setRpcLogFiles] = useState<CrashLogFile[]>([]);
+  const [isLoadingRpcLogs, setIsLoadingRpcLogs] = useState(false);
+  const [isClearingRpcLogs, setIsClearingRpcLogs] = useState(false);
 
   const [appVersion, setAppVersion] = useState('');
 
@@ -343,6 +349,45 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
     void loadCrashLogs();
   }, [loadCrashLogs]);
 
+  const loadRpcLogs = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.getRpcInvocationLogs) return;
+    setIsLoadingRpcLogs(true);
+    try {
+      setRpcLogFiles(await bridge.getRpcInvocationLogs());
+    } catch (err) {
+      console.error("[SettingsSystemTab] Failed to load RPC invocation logs:", err);
+    } finally {
+      setIsLoadingRpcLogs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRpcLogs();
+  }, [loadRpcLogs]);
+
+  const handleClearRpcLogs = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.clearRpcInvocationLogs) return;
+    setIsClearingRpcLogs(true);
+    try {
+      await bridge.clearRpcInvocationLogs();
+      await loadRpcLogs();
+    } catch (err) {
+      console.error("[SettingsSystemTab] Failed to clear RPC invocation logs:", err);
+    } finally {
+      setIsClearingRpcLogs(false);
+    }
+  }, [loadRpcLogs]);
+
+  const handleOpenRpcLogsDir = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.openRpcInvocationLogsDir) return;
+    await bridge.openRpcInvocationLogsDir();
+  }, []);
+
+  const rpcLogTotalEntries = rpcLogFiles.reduce((sum, file) => sum + file.entryCount, 0);
+
   const [crashTelemetry, setCrashTelemetry] = useState<CrashTelemetryState>({
     enabled: false,
     sentCount: 0,
@@ -433,6 +478,43 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
     if (!bridge?.openCrashLogsDir) return;
     await bridge.openCrashLogsDir();
   }, []);
+
+  const handleCopyDiagnostics = useCallback(async () => {
+    setIsCopyingDiagnostics(true);
+    try {
+      const text = serializeDiagnosticsBundle(await buildDiagnosticsBundle());
+      const bridge = magiesTerminalBridge.get();
+      if (bridge?.writeClipboardText) {
+        await bridge.writeClipboardText(text);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      toast.success(t("settings.system.diagnostics.copySuccess"));
+    } catch (err) {
+      console.error("[SettingsSystemTab] Failed to copy diagnostics report:", err);
+    } finally {
+      setIsCopyingDiagnostics(false);
+    }
+  }, [t]);
+
+  const handleExportDiagnostics = useCallback(async () => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.showSaveDialog || !bridge?.writeLocalFile) return;
+    setIsExportingDiagnostics(true);
+    try {
+      const text = serializeDiagnosticsBundle(await buildDiagnosticsBundle());
+      const defaultPath = `magies-terminal-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+      const filePath = await bridge.showSaveDialog(defaultPath, [{ name: "JSON", extensions: ["json"] }]);
+      if (!filePath) return;
+      await bridge.writeLocalFile(filePath, new TextEncoder().encode(text).buffer);
+      toast.success(t("settings.system.diagnostics.exportSuccess"));
+    } catch (err) {
+      console.error("[SettingsSystemTab] Failed to export diagnostics bundle:", err);
+      toast.error(t("settings.system.diagnostics.exportError"));
+    } finally {
+      setIsExportingDiagnostics(false);
+    }
+  }, [t]);
 
   const handleClearTempFiles = useCallback(async () => {
     const bridge = magiesTerminalBridge.get();
@@ -1081,6 +1163,83 @@ const SettingsSystemTab: React.FC<SettingsSystemTabProps> = ({
               </p>
               <TeamVaultPanelWithVault />
             </SettingCard>
+
+          <SectionHeader title={t("settings.system.diagnostics.title")} />
+            <SettingCard className="space-y-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                {t("settings.system.diagnostics.description")}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleCopyDiagnostics()}
+                  disabled={isCopyingDiagnostics}
+                  className="gap-1.5"
+                >
+                  <Copy size={14} />
+                  {t("settings.system.diagnostics.copyReport")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleExportDiagnostics()}
+                  disabled={isExportingDiagnostics}
+                  className="gap-1.5"
+                >
+                  <Download size={14} />
+                  {t("settings.system.diagnostics.exportBundle")}
+                </Button>
+              </div>
+            </SettingCard>
+            <p className="text-xs text-muted-foreground">
+              {t("settings.system.diagnostics.hint")}
+            </p>
+
+          <SectionHeader title={t("settings.system.rpcLogs.title")} />
+            <SettingCard className="space-y-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                {t("settings.system.rpcLogs.description")}
+              </p>
+              <p className="text-sm">
+                {rpcLogTotalEntries > 0
+                  ? t("settings.system.rpcLogs.count", { count: rpcLogTotalEntries })
+                  : <span className="text-muted-foreground italic">{t("settings.system.rpcLogs.noLogs")}</span>}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void loadRpcLogs()}
+                  disabled={isLoadingRpcLogs}
+                  className="gap-1.5"
+                >
+                  <RefreshCw size={14} className={isLoadingRpcLogs ? "animate-spin" : ""} />
+                  {t("settings.system.refresh")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleClearRpcLogs()}
+                  disabled={isClearingRpcLogs || rpcLogFiles.length === 0}
+                  className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 size={14} />
+                  {t("settings.system.rpcLogs.clear")}
+                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={handleOpenRpcLogsDir}>
+                      <FolderOpen size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("settings.system.openFolder")}</TooltipContent>
+                </Tooltip>
+              </div>
+            </SettingCard>
+            <p className="text-xs text-muted-foreground">
+              {t("settings.system.rpcLogs.hint")}
+            </p>
 
           <SectionHeader title={t("settings.system.crashLogs.title")} />
             <SettingCard className="space-y-3 py-4">

@@ -1130,6 +1130,16 @@ function createPreloadApi(ctx) {
   setCrashTelemetry: (enabled) =>
     ipcRenderer.invoke("magiesTerminal:crashTelemetry:set", { enabled }),
 
+  // RPC Invocation Logs (CLI / MCP)
+  getRpcInvocationLogs: () =>
+    ipcRenderer.invoke("magiesTerminal:rpcInvocationLogs:list"),
+  readRpcInvocationLog: (fileName) =>
+    ipcRenderer.invoke("magiesTerminal:rpcInvocationLogs:read", { fileName }),
+  clearRpcInvocationLogs: () =>
+    ipcRenderer.invoke("magiesTerminal:rpcInvocationLogs:clear"),
+  openRpcInvocationLogsDir: () =>
+    ipcRenderer.invoke("magiesTerminal:rpcInvocationLogs:openDir"),
+
   // Global Toggle Hotkey (Quake Mode)
   registerGlobalHotkey: (hotkey) =>
     ipcRenderer.invoke("magiesTerminal:globalHotkey:register", { hotkey }),

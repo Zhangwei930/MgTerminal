@@ -198,6 +198,24 @@ export const ruCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': 'Свернуть',
   'settings.system.crashLogs.expand': 'Показать детали',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': 'Диагностика',
+  'settings.system.diagnostics.description': 'Объединяет последние журналы сбоев, историю подключений и журнал согласований ИИ в один отчёт для устранения неполадок.',
+  'settings.system.diagnostics.copyReport': 'Копировать отчёт',
+  'settings.system.diagnostics.copySuccess': 'Диагностический отчёт скопирован в буфер обмена.',
+  'settings.system.diagnostics.exportBundle': 'Экспортировать пакет',
+  'settings.system.diagnostics.exportSuccess': 'Диагностический пакет сохранён.',
+  'settings.system.diagnostics.exportError': 'Не удалось сохранить диагностический пакет.',
+  'settings.system.diagnostics.hint': 'Не включает учётные данные, секреты и содержимое терминала, но может включать имена хостов и внутренние идентификаторы — проверьте перед отправкой.',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'Журнал вызовов MCP / CLI',
+  'settings.system.rpcLogs.description': 'Записывает каждый RPC-вызов от локального CLI (magies-terminal-tool-cli) или клиента MCP — только имя метода и результат, без аргументов вызова.',
+  'settings.system.rpcLogs.count': 'Записано вызовов: {count}',
+  'settings.system.rpcLogs.noLogs': 'Вызовы пока не записаны.',
+  'settings.system.rpcLogs.clear': 'Очистить все журналы',
+  'settings.system.rpcLogs.hint': 'Хранится 30 дней и автоматически ротируется. Включается в диагностический пакет выше.',
+
   // Settings > System > Software Update
   'settings.update.title': 'Обновление программы',
   'settings.update.currentVersion': 'Текущая версия',

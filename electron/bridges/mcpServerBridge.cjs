@@ -20,6 +20,7 @@ const { getCliDiscoveryFilePath } = require("../cli/discoveryPath.cjs");
 const { EXTERNAL_MCP_CHAT_SESSION_ID } = require("../cli/externalMcpDiscoveryPath.cjs");
 const sftpBridge = require("./sftpBridge.cjs");
 const portForwardingBridge = require("./portForwardingBridge.cjs");
+const rpcInvocationLogBridge = require("./rpcInvocationLogBridge.cjs");
 
 const DEBUG_MCP = process.env.MAGIES_TERMINAL_MCP_DEBUG === "1";
 
@@ -46,6 +47,9 @@ let cliDiscoveryFilePath = getCliDiscoveryFilePath();
 
 // Track which sockets have completed authentication
 const authenticatedSockets = new WeakSet();
+// Declared identity from each socket's auth/verify payload ("cli" | "mcp" | …),
+// used only to label invocation log entries — not for authorization.
+const socketClientTypes = new WeakMap();
 // Sockets authenticated with the External MCP token (or that used the reserved scope).
 const externalMcpSockets = new Set();
 
@@ -1042,6 +1046,9 @@ async function handleMessage(socket, line) {
       }
       debugLog("auth/verify success", { external: isExternalToken });
       authenticatedSockets.add(socket);
+      if (typeof params?.clientType === "string" && params.clientType) {
+        socketClientTypes.set(socket, params.clientType);
+      }
       if (isExternalToken) {
         markExternalMcpSocket(socket);
       }
@@ -1063,6 +1070,7 @@ async function handleMessage(socket, line) {
     return;
   }
 
+  const invocationStartedAt = Date.now();
   try {
     const callParams = { ...(params || {}) };
     // External-token sockets always operate under the reserved app-wide scope so
@@ -1086,9 +1094,24 @@ async function handleMessage(socket, line) {
     }
     notifyExternalMcpActivity(method, callParams);
     const result = await dispatch(method, callParams);
+    const invocationOk = !(result && typeof result === "object" && result.ok === false);
+    rpcInvocationLogBridge.captureInvocation({
+      source: resolveInvocationSource(socket),
+      method,
+      ok: invocationOk,
+      durationMs: Date.now() - invocationStartedAt,
+      errorCode: invocationOk ? undefined : (result?.code || undefined),
+    });
     const response = JSON.stringify({ jsonrpc: "2.0", id, result }) + "\n";
     if (!socket.destroyed) socket.write(response);
   } catch (err) {
+    rpcInvocationLogBridge.captureInvocation({
+      source: resolveInvocationSource(socket),
+      method,
+      ok: false,
+      durationMs: Date.now() - invocationStartedAt,
+      errorCode: err?.code || undefined,
+    });
     const response = JSON.stringify({
       jsonrpc: "2.0",
       id,
@@ -1096,6 +1119,11 @@ async function handleMessage(socket, line) {
     }) + "\n";
     if (!socket.destroyed) socket.write(response);
   }
+}
+
+function resolveInvocationSource(socket) {
+  if (externalMcpSockets.has(socket)) return "external-mcp";
+  return socketClientTypes.get(socket) || "unknown";
 }
 
 // ── RPC Dispatch ──

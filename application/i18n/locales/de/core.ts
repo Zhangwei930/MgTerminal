@@ -165,6 +165,24 @@ export const deCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': 'Einklappen',
   'settings.system.crashLogs.expand': 'Details anzeigen',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': 'Diagnose',
+  'settings.system.diagnostics.description': 'Fasst aktuelle Absturzprotokolle, Verbindungsverlauf und KI-Freigabeprotokoll zu einem Bericht für die Fehlersuche zusammen.',
+  'settings.system.diagnostics.copyReport': 'Bericht kopieren',
+  'settings.system.diagnostics.copySuccess': 'Diagnosebericht in die Zwischenablage kopiert.',
+  'settings.system.diagnostics.exportBundle': 'Paket exportieren',
+  'settings.system.diagnostics.exportSuccess': 'Diagnosepaket gespeichert.',
+  'settings.system.diagnostics.exportError': 'Diagnosepaket konnte nicht gespeichert werden.',
+  'settings.system.diagnostics.hint': 'Enthält keine Zugangsdaten, Geheimnisse oder Terminalinhalte, kann aber Hostnamen und interne Kennungen enthalten — vor dem Teilen prüfen.',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP-/CLI-Aufrufprotokoll',
+  'settings.system.rpcLogs.description': 'Protokolliert jeden RPC-Aufruf der lokalen CLI (magies-terminal-tool-cli) oder eines MCP-Clients — nur Methodenname und Ergebnis, nie die Aufrufparameter.',
+  'settings.system.rpcLogs.count': '{count} Aufruf(e) protokolliert',
+  'settings.system.rpcLogs.noLogs': 'Noch keine Aufrufe protokolliert.',
+  'settings.system.rpcLogs.clear': 'Alle Protokolle löschen',
+  'settings.system.rpcLogs.hint': 'Wird 30 Tage aufbewahrt und automatisch rotiert. Im obigen Diagnosepaket enthalten.',
+
   // Settings > System > Software Update
   'settings.update.title': 'Softwareaktualisierung',
   'settings.update.currentVersion': 'Aktuelle Version',

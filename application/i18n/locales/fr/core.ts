@@ -174,6 +174,24 @@ export const frCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': 'Réduire',
   'settings.system.crashLogs.expand': 'Afficher les détails',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': 'Diagnostic',
+  'settings.system.diagnostics.description': "Regroupe les journaux de plantage récents, l'historique de connexion et l'audit d'approbation IA en un seul rapport pour le dépannage.",
+  'settings.system.diagnostics.copyReport': 'Copier le rapport',
+  'settings.system.diagnostics.copySuccess': 'Rapport de diagnostic copié dans le presse-papiers.',
+  'settings.system.diagnostics.exportBundle': 'Exporter le paquet',
+  'settings.system.diagnostics.exportSuccess': 'Paquet de diagnostic enregistré.',
+  'settings.system.diagnostics.exportError': "Échec de l'enregistrement du paquet de diagnostic.",
+  'settings.system.diagnostics.hint': "N'inclut ni identifiants, ni secrets, ni contenu du terminal, mais peut inclure des noms d'hôtes et des identifiants internes — à vérifier avant tout partage.",
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'Journal des appels MCP / CLI',
+  'settings.system.rpcLogs.description': "Enregistre chaque appel RPC provenant du CLI local (magies-terminal-tool-cli) ou d'un client MCP — uniquement le nom de la méthode et le résultat, jamais les arguments.",
+  'settings.system.rpcLogs.count': '{count} appel(s) enregistré(s)',
+  'settings.system.rpcLogs.noLogs': "Aucun appel enregistré pour l'instant.",
+  'settings.system.rpcLogs.clear': 'Effacer tous les journaux',
+  'settings.system.rpcLogs.hint': 'Conservé 30 jours et roté automatiquement. Inclus dans le paquet de diagnostic ci-dessus.',
+
   // Settings > System > Software Update
   'settings.update.title': 'Mise à jour logicielle',
   'settings.update.currentVersion': 'Version actuelle',

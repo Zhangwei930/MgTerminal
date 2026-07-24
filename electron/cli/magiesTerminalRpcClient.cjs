@@ -72,7 +72,7 @@ async function connectClient() {
     },
   });
 
-  const authResult = await client.call("auth/verify", { token: discovery.token });
+  const authResult = await client.call("auth/verify", { token: discovery.token, clientType: "cli" });
   if (!authResult?.ok) {
     throw createError("AUTH_FAILED", "Failed to authenticate to MagiesTerminal TCP bridge.");
   }

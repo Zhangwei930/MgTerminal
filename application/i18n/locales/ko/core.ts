@@ -165,6 +165,24 @@ export const koCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': '접기',
   'settings.system.crashLogs.expand': '세부정보 표시',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': '진단',
+  'settings.system.diagnostics.description': '최근 충돌 로그, 연결 기록, AI 승인 감사 내역을 하나의 보고서로 모아 문제 해결에 활용합니다.',
+  'settings.system.diagnostics.copyReport': '보고서 복사',
+  'settings.system.diagnostics.copySuccess': '진단 보고서가 클립보드에 복사되었습니다.',
+  'settings.system.diagnostics.exportBundle': '진단 패키지 내보내기',
+  'settings.system.diagnostics.exportSuccess': '진단 패키지가 저장되었습니다.',
+  'settings.system.diagnostics.exportError': '진단 패키지를 저장하지 못했습니다.',
+  'settings.system.diagnostics.hint': '자격 증명, 비밀 정보, 터미널 내용은 포함되지 않지만 호스트 이름 등 내부 식별자가 포함될 수 있으니 공유 전에 확인하세요.',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP / CLI 호출 로그',
+  'settings.system.rpcLogs.description': '로컬 CLI(magies-terminal-tool-cli) 또는 MCP 클라이언트가 수행한 모든 RPC 호출을 기록합니다 — 메서드 이름과 결과만 기록하며 호출 인자는 기록하지 않습니다.',
+  'settings.system.rpcLogs.count': '{count}건의 호출이 기록되었습니다',
+  'settings.system.rpcLogs.noLogs': '아직 기록된 호출이 없습니다.',
+  'settings.system.rpcLogs.clear': '모든 로그 지우기',
+  'settings.system.rpcLogs.hint': '30일간 보관되며 자동으로 순환됩니다. 위 진단 패키지에 포함됩니다.',
+
   // Settings > System > Software Update
   'settings.update.title': '소프트웨어 업데이트',
   'settings.update.currentVersion': '현재 버전',

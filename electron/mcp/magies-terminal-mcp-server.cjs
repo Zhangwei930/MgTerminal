@@ -247,7 +247,7 @@ async function main() {
   await connectTcp();
 
   // Authenticate with the TCP bridge before accepting any tool calls
-  const authResult = await rpcCall("auth/verify", { token: MAGIES_TERMINAL_MCP_TOKEN });
+  const authResult = await rpcCall("auth/verify", { token: MAGIES_TERMINAL_MCP_TOKEN, clientType: "mcp" });
   debugLog("auth/verify result", authResult);
   if (!authResult?.ok) {
     throw new Error("TCP bridge authentication failed");

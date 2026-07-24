@@ -14,6 +14,9 @@ import '@fontsource/jetbrains-mono/600.css';
 import App from './App';
 import { ToastProvider } from './components/ui/toast';
 import { TooltipProvider } from './components/ui/tooltip';
+import { installGlobalErrorReporting } from './infrastructure/diagnostics/diagnosticsReporting';
+
+installGlobalErrorReporting();
 
 const LazySettingsPage = lazy(() => import('./components/SettingsPage'));
 const LazyTrayPanel = lazy(() => import('./components/TrayPanel'));

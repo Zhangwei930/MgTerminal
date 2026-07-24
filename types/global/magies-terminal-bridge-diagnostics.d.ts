@@ -38,6 +38,19 @@ declare global {
     onConnectionDiagnosticsProgress?(
       cb: (event: MagiesTerminalDiagnosticsProgressEvent) => void,
     ): () => void;
+
+    // RPC Invocation Logs (CLI / MCP) — method + outcome only, never params.
+    getRpcInvocationLogs?(): Promise<Array<{ fileName: string; date: string; size: number; entryCount: number }>>;
+    readRpcInvocationLog?(fileName: string): Promise<Array<{
+      timestamp: string;
+      source: string;
+      method: string;
+      ok: boolean;
+      durationMs?: number;
+      errorCode?: string;
+    }>>;
+    clearRpcInvocationLogs?(): Promise<{ deletedCount: number }>;
+    openRpcInvocationLogsDir?(): Promise<{ success: boolean }>;
   }
 }
 

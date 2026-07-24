@@ -313,6 +313,24 @@ export const zhCNCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': '收起',
   'settings.system.crashLogs.expand': '查看详情',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': '诊断中心',
+  'settings.system.diagnostics.description': '将最近的崩溃日志、连接历史和 AI 审批审计聚合为一份报告，便于排查问题。',
+  'settings.system.diagnostics.copyReport': '复制报告',
+  'settings.system.diagnostics.copySuccess': '诊断报告已复制到剪贴板。',
+  'settings.system.diagnostics.exportBundle': '导出诊断包',
+  'settings.system.diagnostics.exportSuccess': '诊断包已保存。',
+  'settings.system.diagnostics.exportError': '保存诊断包失败。',
+  'settings.system.diagnostics.hint': '不包含凭据、密钥和终端内容，但可能包含主机名等内部标识信息，分享前请自行核查。',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP / CLI 调用日志',
+  'settings.system.rpcLogs.description': '记录本地 CLI(magies-terminal-tool-cli)或 MCP 客户端发起的每一次 RPC 调用——只记录方法名和结果，不记录调用参数。',
+  'settings.system.rpcLogs.count': '已记录 {count} 次调用',
+  'settings.system.rpcLogs.noLogs': '暂无调用记录。',
+  'settings.system.rpcLogs.clear': '清除全部日志',
+  'settings.system.rpcLogs.hint': '保留 30 天并自动清理，已包含在上方的诊断包中。',
+
   // Settings > System > Software Update
   'settings.update.title': '软件更新',
   'settings.update.currentVersion': '当前版本',

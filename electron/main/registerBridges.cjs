@@ -213,6 +213,10 @@ function createBridgeRegistrar(context) {
     const hostHealthBridge = require("../bridges/hostHealthBridge.cjs");
     hostHealthBridge.registerHandlers(ipcMain);
 
+    const rpcInvocationLogBridge = require("../bridges/rpcInvocationLogBridge.cjs");
+    rpcInvocationLogBridge.init({ electronModule });
+    rpcInvocationLogBridge.registerHandlers(ipcMain);
+
     const scriptBridge = require("../bridges/scriptBridge.cjs");
     scriptBridge.init({
       sessions,

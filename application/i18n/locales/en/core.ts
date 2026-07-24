@@ -311,6 +311,24 @@ export const enCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': 'Collapse',
   'settings.system.crashLogs.expand': 'Show details',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': 'Diagnostics',
+  'settings.system.diagnostics.description': 'Bundle recent crash logs, connection history, and AI approval audit into one report for troubleshooting.',
+  'settings.system.diagnostics.copyReport': 'Copy Report',
+  'settings.system.diagnostics.copySuccess': 'Diagnostics report copied to clipboard.',
+  'settings.system.diagnostics.exportBundle': 'Export Bundle',
+  'settings.system.diagnostics.exportSuccess': 'Diagnostics bundle saved.',
+  'settings.system.diagnostics.exportError': 'Failed to save diagnostics bundle.',
+  'settings.system.diagnostics.hint': 'Excludes credentials, secrets, and terminal content. May still include hostnames and internal identifiers — review before sharing.',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'MCP / CLI Invocation Log',
+  'settings.system.rpcLogs.description': 'Records every RPC call from the local CLI (magies-terminal-tool-cli) or an MCP client — method name and outcome only, never call arguments.',
+  'settings.system.rpcLogs.count': '{count} invocation(s) recorded',
+  'settings.system.rpcLogs.noLogs': 'No invocations recorded yet.',
+  'settings.system.rpcLogs.clear': 'Clear all logs',
+  'settings.system.rpcLogs.hint': 'Kept for 30 days and automatically rotated. Included in the diagnostics bundle above.',
+
   // Settings > System > Software Update
   'settings.update.title': 'Software Update',
   'settings.update.currentVersion': 'Current version',

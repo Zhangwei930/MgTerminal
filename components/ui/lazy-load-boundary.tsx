@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { cn } from "../../lib/utils";
+import { reportRendererError } from "../../infrastructure/diagnostics/diagnosticsReporting";
 
 type LazyLoadBoundaryProps = {
   children: React.ReactNode;
@@ -39,6 +40,9 @@ export class LazyLoadBoundary extends Component<LazyLoadBoundaryProps, LazyLoadB
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error(`[LazyLoadBoundary] ${this.props.name || "content"} failed:`, error, errorInfo.componentStack);
+    reportRendererError(`ui-boundary:${this.props.name || "content"}`, error, {
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   render() {

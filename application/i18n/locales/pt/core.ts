@@ -165,6 +165,24 @@ export const ptCoreMessages: Messages = {
   'settings.system.crashLogs.collapse': 'Recolher',
   'settings.system.crashLogs.expand': 'Mostrar detalhes',
 
+  // Settings > System > Diagnostics
+  'settings.system.diagnostics.title': 'Diagnóstico',
+  'settings.system.diagnostics.description': 'Reúne os registros de falha recentes, o histórico de conexões e a auditoria de aprovações de IA em um único relatório para solução de problemas.',
+  'settings.system.diagnostics.copyReport': 'Copiar relatório',
+  'settings.system.diagnostics.copySuccess': 'Relatório de diagnóstico copiado para a área de transferência.',
+  'settings.system.diagnostics.exportBundle': 'Exportar pacote',
+  'settings.system.diagnostics.exportSuccess': 'Pacote de diagnóstico salvo.',
+  'settings.system.diagnostics.exportError': 'Falha ao salvar o pacote de diagnóstico.',
+  'settings.system.diagnostics.hint': 'Não inclui credenciais, segredos nem conteúdo do terminal, mas pode incluir nomes de host e identificadores internos — revise antes de compartilhar.',
+
+  // Settings > System > MCP/CLI Invocation Log
+  'settings.system.rpcLogs.title': 'Registro de invocações MCP / CLI',
+  'settings.system.rpcLogs.description': 'Registra cada chamada RPC feita pelo CLI local (magies-terminal-tool-cli) ou por um cliente MCP — apenas o nome do método e o resultado, nunca os argumentos.',
+  'settings.system.rpcLogs.count': '{count} invocação(ões) registrada(s)',
+  'settings.system.rpcLogs.noLogs': 'Nenhuma invocação registrada ainda.',
+  'settings.system.rpcLogs.clear': 'Limpar todos os registros',
+  'settings.system.rpcLogs.hint': 'Mantido por 30 dias e rotacionado automaticamente. Incluído no pacote de diagnóstico acima.',
+
   // Settings > System > Software Update
   'settings.update.title': 'Atualização de software',
   'settings.update.currentVersion': 'Versão atual',

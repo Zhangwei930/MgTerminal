@@ -1,6 +1,12 @@
 # Registro de cambios
 
 
+## [0.5.28] - 2026-07-24
+
+### Funcionalidades
+- **Centro de diagnóstico**: Configuración → Sistema ahora tiene una tarjeta "Diagnóstico" que agrupa los registros de fallos, el historial de conexiones (anonimizado) y la auditoría de aprobaciones de IA en un informe JSON que se puede copiar o exportar con un clic; los límites de error del renderizador y las excepciones no controladas/rechazos de promesas globales ahora también se registran en el registro de fallos, un enlace que antes faltaba
+- **Registro de invocaciones MCP / CLI**: Registra cada llamada del CLI local (magies-terminal-tool-cli) o de un cliente MCP — solo el nombre del método, el resultado y la duración, nunca los argumentos; se conserva 30 días con rotación automática y se incluye en la exportación del centro de diagnóstico
+
 ## [0.5.27] - 2026-07-23
 
 ### Funcionalidades

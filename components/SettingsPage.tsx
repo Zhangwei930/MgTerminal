@@ -18,6 +18,7 @@ import { SettingsTabContent } from "./settings/settings-ui";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { LazyLoadBoundary } from "./ui/lazy-load-boundary";
+import { reportRendererError } from "../infrastructure/diagnostics/diagnosticsReporting";
 import { ExternalMcpApprovalsHost } from "./ai/ExternalMcpApprovalsHost";
 import { useExternalMcpGrantPersister } from "./ai/useExternalMcpGrantPersister";
 import { setupMcpApprovalBridge } from "../infrastructure/ai/shared/approvalGate";
@@ -44,6 +45,9 @@ class AITabErrorBoundary extends React.Component<
   state: { error: Error | null } = { error: null };
   static getDerivedStateFromError(error: Error) {
     return { error };
+  }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    reportRendererError("settings-ai-tab", error, { componentStack: errorInfo.componentStack });
   }
   render() {
     if (this.state.error) {

@@ -7,8 +7,10 @@ const path = require("node:path");
 const {
   parseTscOutput,
   loadBaseline,
+  loadBaselineTotalCap,
   writeBaseline,
   diffAgainstBaseline,
+  exceedsTotalCap,
 } = require("./typecheckBaseline.cjs");
 
 const SAMPLE_OUTPUT = `foo.ts(1,2): error TS2339: Property 'x' does not exist on type 'Y'.
@@ -50,11 +52,26 @@ test("diffAgainstBaseline is clean when current exactly matches baseline", () =>
 test("writeBaseline then loadBaseline round-trips a sorted, deduped set", () => {
   const tmpFile = path.join(os.tmpdir(), `typecheck-baseline-test-${Date.now()}.json`);
   try {
-    writeBaseline(tmpFile, ["z.ts::TS1::z", "a.ts::TS1::a"]);
+    writeBaseline(tmpFile, ["z.ts::TS1::z", "a.ts::TS1::a"], 7);
     const loaded = loadBaseline(tmpFile);
     assert.deepEqual(loaded, new Set(["a.ts::TS1::a", "z.ts::TS1::z"]));
     const raw = JSON.parse(fs.readFileSync(tmpFile, "utf8"));
-    assert.deepEqual(raw, ["a.ts::TS1::a", "z.ts::TS1::z"]);
+    assert.deepEqual(raw.identities, ["a.ts::TS1::a", "z.ts::TS1::z"]);
+    assert.equal(raw.maxTotalErrors, 7, "total cap is persisted alongside the identities");
+  } finally {
+    fs.rmSync(tmpFile, { force: true });
+  }
+});
+
+test("writeBaseline dedupes repeated identities before persisting them", () => {
+  const tmpFile = path.join(os.tmpdir(), `typecheck-baseline-dupes-${Date.now()}.json`);
+  try {
+    // Raw tsc output repeats an identity once per occurrence; the file should
+    // record it once, while the cap still reflects the raw occurrence count.
+    writeBaseline(tmpFile, ["a.ts::TS1::a", "a.ts::TS1::a", "b.ts::TS2::b"], 3);
+    const raw = JSON.parse(fs.readFileSync(tmpFile, "utf8"));
+    assert.deepEqual(raw.identities, ["a.ts::TS1::a", "b.ts::TS2::b"]);
+    assert.equal(raw.maxTotalErrors, 3);
   } finally {
     fs.rmSync(tmpFile, { force: true });
   }
@@ -63,4 +80,43 @@ test("writeBaseline then loadBaseline round-trips a sorted, deduped set", () => 
 test("loadBaseline returns an empty set when the file is missing", () => {
   const missing = path.join(os.tmpdir(), "typecheck-baseline-does-not-exist.json");
   assert.deepEqual(loadBaseline(missing), new Set());
+});
+
+test("loadBaseline still reads the legacy bare-array format", () => {
+  const tmpFile = path.join(os.tmpdir(), `typecheck-baseline-legacy-${Date.now()}.json`);
+  try {
+    fs.writeFileSync(tmpFile, JSON.stringify(["a.ts::TS1::a"]));
+    assert.deepEqual(loadBaseline(tmpFile), new Set(["a.ts::TS1::a"]));
+    assert.equal(loadBaselineTotalCap(tmpFile), null, "legacy files carry no cap");
+  } finally {
+    fs.rmSync(tmpFile, { force: true });
+  }
+});
+
+test("loadBaselineTotalCap reads the cap, and is null when absent or unreadable", () => {
+  const tmpFile = path.join(os.tmpdir(), `typecheck-baseline-cap-${Date.now()}.json`);
+  try {
+    writeBaseline(tmpFile, ["a.ts::TS1::a"], 42);
+    assert.equal(loadBaselineTotalCap(tmpFile), 42);
+  } finally {
+    fs.rmSync(tmpFile, { force: true });
+  }
+  assert.equal(
+    loadBaselineTotalCap(path.join(os.tmpdir(), "typecheck-cap-does-not-exist.json")),
+    null,
+  );
+});
+
+// The identity set is deduped by design (line/col are stripped), so a file that
+// already has one `TS2503` error absorbs a second identical one for free. The
+// total cap is what stops that backlog from silently growing.
+test("exceedsTotalCap catches duplicate errors the identity set cannot", () => {
+  assert.equal(exceedsTotalCap(336, 335), true, "one more error than the cap fails");
+  assert.equal(exceedsTotalCap(335, 335), false, "exactly at the cap passes");
+  assert.equal(exceedsTotalCap(300, 335), false, "below the cap passes");
+});
+
+test("exceedsTotalCap treats a missing cap as unlimited", () => {
+  assert.equal(exceedsTotalCap(9999, null), false);
+  assert.equal(exceedsTotalCap(9999, undefined), false);
 });

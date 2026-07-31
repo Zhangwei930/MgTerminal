@@ -9,8 +9,10 @@ const { spawnSync } = require("node:child_process");
 const {
   parseTscOutput,
   loadBaseline,
+  loadBaselineTotalCap,
   writeBaseline,
   diffAgainstBaseline,
+  exceedsTotalCap,
   DEFAULT_BASELINE_PATH,
 } = require("./typecheckBaseline.cjs");
 
@@ -28,12 +30,14 @@ function main() {
   const current = parseTscOutput(output);
 
   if (shouldUpdate) {
-    writeBaseline(DEFAULT_BASELINE_PATH, current);
-    console.log(`[typecheck-baseline] Wrote ${current.length} entries to ${DEFAULT_BASELINE_PATH}`);
+    const unique = new Set(current).size;
+    writeBaseline(DEFAULT_BASELINE_PATH, current, current.length);
+    console.log(`[typecheck-baseline] Wrote ${unique} identities (cap ${current.length} total errors) to ${DEFAULT_BASELINE_PATH}`);
     return;
   }
 
   const baseline = loadBaseline(DEFAULT_BASELINE_PATH);
+  const maxTotalErrors = loadBaselineTotalCap(DEFAULT_BASELINE_PATH);
   const { newViolations, fixed } = diffAgainstBaseline(current, baseline);
 
   if (fixed.length > 0) {
@@ -49,7 +53,19 @@ function main() {
     return;
   }
 
-  console.log(`[typecheck-baseline] OK — ${current.length} error(s), none new (baseline has ${baseline.size}).`);
+  // Identities are deduped, so re-introducing an error that already exists in
+  // the same file produces no new violation. The total cap is what catches it.
+  if (exceedsTotalCap(current.length, maxTotalErrors)) {
+    console.error(`[typecheck-baseline] Total type errors grew from ${maxTotalErrors} to ${current.length}.`);
+    console.error("No NEW error identity appeared, so these are duplicates of errors already in the baseline");
+    console.error("(identities drop line/col, so repeats in an already-failing file collapse into one entry).");
+    console.error(`\nFix them, or run "npm run typecheck:baseline:update" if the growth is genuinely unavoidable.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const capNote = maxTotalErrors === null ? "no total cap recorded" : `cap ${maxTotalErrors}`;
+  console.log(`[typecheck-baseline] OK — ${current.length} error(s), none new (baseline has ${baseline.size} identities, ${capNote}).`);
 }
 
 main();

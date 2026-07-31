@@ -31,19 +31,40 @@ function parseTscOutput(output) {
   return entries.map((e) => `${e.file}::${e.code}::${e.messageParts.join(" ")}`);
 }
 
-function loadBaseline(baselinePath) {
+/**
+ * Reads the baseline file. Accepts both the current
+ * `{ maxTotalErrors, identities }` shape and the legacy bare array.
+ */
+function readBaselineFile(baselinePath) {
   try {
     const raw = require(baselinePath);
-    return new Set(Array.isArray(raw) ? raw : []);
+    if (Array.isArray(raw)) return { identities: raw, maxTotalErrors: null };
+    return {
+      identities: Array.isArray(raw?.identities) ? raw.identities : [],
+      maxTotalErrors: typeof raw?.maxTotalErrors === "number" ? raw.maxTotalErrors : null,
+    };
   } catch {
-    return new Set();
+    return { identities: [], maxTotalErrors: null };
   }
 }
 
-function writeBaseline(baselinePath, identities) {
+function loadBaseline(baselinePath) {
+  return new Set(readBaselineFile(baselinePath).identities);
+}
+
+/** The recorded total error count, or null for legacy/missing baselines. */
+function loadBaselineTotalCap(baselinePath) {
+  return readBaselineFile(baselinePath).maxTotalErrors;
+}
+
+function writeBaseline(baselinePath, identities, maxTotalErrors) {
   const fs = require("node:fs");
-  const sorted = [...identities].sort();
-  fs.writeFileSync(baselinePath, `${JSON.stringify(sorted, null, 2)}\n`);
+  // Callers pass raw tsc identities, which repeat whenever one file has several
+  // errors that collapse to the same identity. Dedupe on write so the file
+  // matches what loadBaseline yields instead of carrying silent duplicates.
+  const sorted = [...new Set(identities)].sort();
+  const payload = { maxTotalErrors, identities: sorted };
+  fs.writeFileSync(baselinePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 /** Splits current identities against a baseline set into new/fixed/unchanged. */
@@ -54,10 +75,24 @@ function diffAgainstBaseline(currentIdentities, baselineSet) {
   return { newViolations, fixed };
 }
 
+/**
+ * True when the raw error count outgrew the recorded cap. Identities are
+ * deduped (line/col are stripped, see parseTscOutput), so a file that already
+ * carries one error of a given code+message absorbs further identical ones
+ * without ever showing up as a new violation. The cap is what makes that
+ * backlog a ratchet instead of a free allowance. A null cap means unlimited,
+ * which keeps legacy baselines working.
+ */
+function exceedsTotalCap(currentCount, maxTotalErrors) {
+  return typeof maxTotalErrors === "number" && currentCount > maxTotalErrors;
+}
+
 module.exports = {
   parseTscOutput,
   loadBaseline,
+  loadBaselineTotalCap,
   writeBaseline,
   diffAgainstBaseline,
+  exceedsTotalCap,
   DEFAULT_BASELINE_PATH: path.join(__dirname, "typecheck-baseline.json"),
 };

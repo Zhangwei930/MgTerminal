@@ -121,9 +121,65 @@ ORDER BY COLUMN_ID`;
   }
 }
 
+
+/**
+ * Names the columns of a table's primary key, in key order.
+ *
+ * Editing a grid cell means writing an UPDATE whose WHERE hits exactly one
+ * row, and without a primary key there is no such WHERE — so the grid asks
+ * this before it offers to edit anything. Composite keys come back in their
+ * declared order, which is part of the key rather than a display detail.
+ */
+function buildPrimaryKeyQuery(engine, database, table) {
+  assertEngine(engine);
+  const db = quoteSqlLiteral(database ?? "");
+  const tbl = quoteSqlLiteral(table ?? "");
+
+  switch (engine) {
+    case "mysql":
+      // MySQL names every primary key constraint 'PRIMARY'.
+      return `SELECT COLUMN_NAME AS name, ORDINAL_POSITION AS position
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = ${db} AND TABLE_NAME = ${tbl} AND CONSTRAINT_NAME = 'PRIMARY'
+ORDER BY ORDINAL_POSITION`;
+
+    case "postgres":
+      return `SELECT kcu.column_name AS name, kcu.ordinal_position AS position
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+  ON kcu.constraint_name = tc.constraint_name
+ AND kcu.table_schema = tc.table_schema
+WHERE tc.constraint_type = 'PRIMARY KEY'
+  AND tc.table_name = ${tbl}
+  AND tc.table_schema NOT IN ('pg_catalog', 'information_schema')
+ORDER BY kcu.ordinal_position`;
+
+    case "mssql":
+      return `SELECT c.name AS name, ic.key_ordinal AS position
+FROM sys.indexes i
+JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+WHERE i.is_primary_key = 1 AND OBJECT_NAME(i.object_id) = ${tbl}
+ORDER BY ic.key_ordinal`;
+
+    case "oracle":
+      // 'P' is Oracle's constraint type for a primary key.
+      return `SELECT acc.COLUMN_NAME AS name, acc.POSITION AS position
+FROM ALL_CONSTRAINTS ac
+JOIN ALL_CONS_COLUMNS acc
+  ON acc.CONSTRAINT_NAME = ac.CONSTRAINT_NAME AND acc.OWNER = ac.OWNER
+WHERE ac.CONSTRAINT_TYPE = 'P' AND ac.TABLE_NAME = ${tbl}
+ORDER BY acc.POSITION`;
+
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
 module.exports = {
   ENGINES_WITH_SCHEMA_SUPPORT,
   quoteSqlLiteral,
   buildTableListQuery,
   buildColumnListQuery,
+  buildPrimaryKeyQuery,
 };

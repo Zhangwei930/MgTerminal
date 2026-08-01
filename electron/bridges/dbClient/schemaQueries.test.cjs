@@ -128,3 +128,43 @@ test("columns come back in their declared order", () => {
     assert.match(sql, /order by/, `${engine} returns columns in arbitrary order`);
   }
 });
+
+// ── buildPrimaryKeyQuery ────────────────────────────────────────────────────
+//
+// Editing a grid cell means writing an UPDATE with a WHERE that hits exactly
+// one row. Without a primary key there is no safe WHERE, so the grid must know
+// before it offers to edit anything.
+
+test("every engine can name a table's primary key columns", () => {
+  const { buildPrimaryKeyQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildPrimaryKeyQuery(engine, "appdb", "patients");
+    assert.match(sql, /select/i, `${engine} is not a SELECT`);
+    assert.ok(sql.includes("'patients'"), `${engine} does not filter by table`);
+  }
+});
+
+test("the primary key query asks for key columns only, not every index", () => {
+  const { buildPrimaryKeyQuery } = require("./schemaQueries.cjs");
+  assert.match(buildPrimaryKeyQuery("mysql", "db", "t"), /PRIMARY/);
+  assert.match(buildPrimaryKeyQuery("postgres", "db", "t"), /PRIMARY KEY|indisprimary/i);
+  assert.match(buildPrimaryKeyQuery("mssql", "db", "t"), /is_primary_key|PRIMARY KEY/i);
+  assert.match(buildPrimaryKeyQuery("oracle", "db", "t"), /'P'/);
+});
+
+test("primary key columns come back in key order", () => {
+  const { buildPrimaryKeyQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    // A composite key's column order is part of the key; an arbitrary order
+    // would build a WHERE that reads wrong even when it matches.
+    assert.match(buildPrimaryKeyQuery(engine, "db", "t").toLowerCase(), /order by/, engine);
+  }
+});
+
+test("a table name with a quote cannot break the primary key query", () => {
+  const { buildPrimaryKeyQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildPrimaryKeyQuery(engine, "db", "t'; DROP TABLE x; --");
+    assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+  }
+});

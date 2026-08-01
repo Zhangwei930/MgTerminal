@@ -547,3 +547,53 @@ test("the IPC handlers drop the event and pass only the payload", async () => {
   assert.equal(result.success, true);
   assert.deepEqual(result.tables, [{ name: "patients", kind: "table" }]);
 });
+
+// ── export ──────────────────────────────────────────────────────────────────
+
+test("exporting writes the serialised content to the chosen path", async () => {
+  const writes = [];
+  const dialog = { showSaveDialog: async () => ({ canceled: false, filePath: "/tmp/out.csv" }) };
+  const fs = { writeFile: async (p, data) => writes.push({ path: p, data }) };
+  dbBridge.registerHandlers({ handle: () => {} }, { dialog, fs });
+
+  const result = await dbBridge.exportResult({}, {
+    content: "id,name\r\n1,Ada",
+    defaultFileName: "patients.csv",
+    format: "csv",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.filePath, "/tmp/out.csv");
+  assert.deepEqual(writes, [{ path: "/tmp/out.csv", data: "id,name\r\n1,Ada" }]);
+});
+
+test("cancelling the save dialog writes nothing and is not an error", async () => {
+  let wrote = false;
+  const dialog = { showSaveDialog: async () => ({ canceled: true }) };
+  const fs = { writeFile: async () => { wrote = true; } };
+  dbBridge.registerHandlers({ handle: () => {} }, { dialog, fs });
+
+  const result = await dbBridge.exportResult({}, { content: "x", defaultFileName: "a.csv", format: "csv" });
+
+  assert.equal(result.success, false);
+  assert.equal(result.canceled, true);
+  assert.ok(!result.error, "a cancel is a choice, not a failure to report");
+  assert.equal(wrote, false);
+});
+
+test("a failed write is reported rather than swallowed", async () => {
+  const dialog = { showSaveDialog: async () => ({ canceled: false, filePath: "/nope/out.csv" }) };
+  const fs = { writeFile: async () => { throw new Error("EACCES: permission denied"); } };
+  dbBridge.registerHandlers({ handle: () => {} }, { dialog, fs });
+
+  const result = await dbBridge.exportResult({}, { content: "x", defaultFileName: "a.csv", format: "csv" });
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /permission denied/);
+});
+
+test("the export handler is reachable over IPC", async () => {
+  const handlers = new Map();
+  dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
+  assert.ok(handlers.has("magiesTerminal:db:exportResult"));
+});

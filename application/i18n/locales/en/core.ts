@@ -978,6 +978,8 @@ export const enCoreMessages: Messages = {
   'db.edit.notSingleTable': 'Read-only: this result does not come from a single table.',
   'db.edit.noPrimaryKey': 'Read-only: this table has no primary key, so a row cannot be identified.',
   'db.edit.keyNotSelected': 'Read-only: select the primary key columns to edit rows.',
+  'db.export.csv': 'Export CSV',
+  'db.export.json': 'JSON',
   'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',

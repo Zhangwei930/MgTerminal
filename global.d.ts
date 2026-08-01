@@ -271,6 +271,19 @@ declare global {
     error?: string;
   }
 
+  interface DbExportPayload {
+    content: string;
+    defaultFileName: string;
+    format: 'csv' | 'json';
+  }
+
+  interface DbExportResult {
+    success: boolean;
+    filePath?: string;
+    canceled?: boolean;
+    error?: string;
+  }
+
   interface DbConnectResult {
     connectionId: string;
     success: boolean;

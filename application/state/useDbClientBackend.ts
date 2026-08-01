@@ -42,6 +42,12 @@ export const useDbClientBackend = () => {
     [],
   );
 
+  const exportResult = useCallback(async (payload: DbExportPayload): Promise<DbExportResult> => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.exportDbResult) return { success: false, error: "DB client bridge unavailable" };
+    return bridge.exportDbResult(payload);
+  }, []);
+
   const cancelQuery = useCallback(async (connectionId: string): Promise<void> => {
     await magiesTerminalBridge.get()?.cancelDbQuery?.(connectionId);
   }, []);
@@ -85,5 +91,8 @@ export const useDbClientBackend = () => {
     [],
   );
 
-  return { connect, close, cancelQuery, runQuery, listTables, listColumns, listPrimaryKey };
+  return {
+    connect, close, cancelQuery, runQuery,
+    listTables, listColumns, listPrimaryKey, exportResult,
+  };
 };

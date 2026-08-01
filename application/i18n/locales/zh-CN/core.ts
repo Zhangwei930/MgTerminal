@@ -678,6 +678,8 @@ export const zhCNCoreMessages: Messages = {
   'db.edit.notSingleTable': '只读：该结果不是来自单张表。',
   'db.edit.noPrimaryKey': '只读：该表没有主键，无法定位某一行。',
   'db.edit.keyNotSelected': '只读：需要查出主键列才能编辑行。',
+  'db.export.csv': '导出 CSV',
+  'db.export.json': 'JSON',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

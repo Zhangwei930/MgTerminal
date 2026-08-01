@@ -49,6 +49,14 @@ function createMssqlAdapter() {
         user: username,
         password,
         connectionTimeout: 15000,
+        // Every other engine's adapter is a single session, and this one has to
+        // behave the same way. With a larger pool a transaction breaks
+        // silently: BEGIN TRANSACTION and the statements after it land on
+        // different connections, so the work never joins the transaction and
+        // COMMIT has nothing to commit. min pins the session open — a pool that
+        // shrinks to zero may drop a connection holding an open transaction
+        // while the user is still typing the next statement.
+        pool: { max: 1, min: 1 },
         options: {
           // Traffic already runs inside the SSH tunnel — skip TLS entirely
           // rather than fight a self-signed/absent cert on a plain IP target.

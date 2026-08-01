@@ -1,9 +1,10 @@
-import { AlertTriangle, Loader2, Play, Square } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
 import { useDbClientBackend } from '../../application/state/useDbClientBackend';
 import { useDbSchema } from '../../application/state/useDbSchema';
+import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
@@ -49,6 +50,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   const activeQueryIdRef = useRef<string | null>(null);
   // One schema for the tab: the tree renders it, the editor completes against it.
   const schema = useDbSchema(connectionId, status === 'connected');
+  const transaction = useDbTransaction(connectionId, connectionProfile.engine);
 
   useEffect(() => {
     const request = buildDbConnectRequest({
@@ -131,6 +133,41 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             <Square size={13} className="mr-1.5" /> {t('db.workspace.cancel')}
           </Button>
         )}
+        <div className="mx-3 flex items-center gap-2 border-l border-border/60 pl-3">
+          <label
+            className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
+            title={t('db.tx.autoCommitHint')}
+          >
+            <input
+              type="checkbox"
+              checked={transaction.autoCommit}
+              disabled={status !== 'connected' || transaction.busy}
+              onChange={(event) => void transaction.setAutoCommit(event.target.checked)}
+            />
+            {t('db.tx.autoCommit')}
+          </label>
+          {!transaction.autoCommit && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={transaction.busy}
+                onClick={() => void transaction.commit()}
+              >
+                <Check size={13} className="mr-1.5" /> {t('db.tx.commit')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={transaction.busy}
+                onClick={() => void transaction.rollback()}
+              >
+                <Undo2 size={13} className="mr-1.5" /> {t('db.tx.rollback')}
+              </Button>
+            </>
+          )}
+        </div>
+
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {status === 'connecting' && (
             <span className="flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> {t('db.workspace.connecting')}</span>
@@ -149,6 +186,11 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
       {status === 'error' && connectError && (
         <div className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <AlertTriangle size={13} /> {connectError}
+        </div>
+      )}
+      {transaction.error && (
+        <div className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <AlertTriangle size={13} /> {transaction.error}
         </div>
       )}
       {queryError && (

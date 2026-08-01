@@ -134,17 +134,25 @@ export const checksumsMatch = (
 /**
  * Whether a transfer failure message describes a cancellation rather than a
  * real error. Callers use it to choose between recording "cancelled" silently
- * and recording "failed" with a toast, so both misreadings are visible to the
- * user: a real error read as cancellation disappears, and a cancellation read
- * as an error raises a toast for something they asked for.
+ * and recording "failed" with a toast.
  *
- * Plain substring matching, with two known soft spots kept as-is because
- * changing either alters which failures go silent:
- *   - case-sensitive, so "Cancelled by user" reads as a failure
- *   - matches anywhere, so an error naming a path like /var/cancelled-jobs
- *     reads as a cancellation
+ * The two misreadings do not cost the same, and the pattern is tuned around
+ * that. Reading a real error as cancellation discards its message and the
+ * failure vanishes; reading a cancellation as a failure only costs a spurious
+ * toast. So this errs towards "failure".
+ *
+ * The word must stand alone — preceded by the start or whitespace, followed by
+ * the end or ordinary sentence punctuation. That is what stops an error naming
+ * a path like /var/cancelled-jobs from being filed as something the user asked
+ * for. It also means unusual delimiters ("user-cancelled", "(cancelled)") read
+ * as failures, which is the intended direction to fail in.
+ *
+ * A message is still only a heuristic; the robust fix is a structured signal
+ * from the transfer backends rather than prose matching.
  */
+const CANCELLATION_RE = /(^|\s)cancell?ed(\s|[.,;:!?]|$)/i;
+
 export const isTransferCancellationMessage = (message: unknown): boolean => {
   if (typeof message !== "string") return false;
-  return message.includes("cancelled") || message.includes("canceled");
+  return CANCELLATION_RE.test(message);
 };

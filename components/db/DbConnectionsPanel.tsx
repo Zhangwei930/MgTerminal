@@ -3,7 +3,13 @@ import React, { useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { activeTabStore, toDbWorkspaceTabId } from '../../application/state/activeTabStore';
 import { dbWorkspaceTabStore } from '../../application/state/dbWorkspaceTabStore';
-import { defaultPortForEngine, type DbConnectionProfile, type DbEngine } from '../../domain/models';
+import { type DbConnectionProfile, type DbEngine } from '../../domain/models';
+import {
+  applyEngineToDraft,
+  buildDbConnectionPayload,
+  canSaveDbConnectionDraft,
+  emptyDbConnectionDraft,
+} from './dbConnectionDraft';
 import type { Host } from '../../types';
 import SelectHostPanel from '../SelectHostPanel';
 import { AsidePanel, AsidePanelContent, AsidePanelFooter } from '../ui/aside-panel';
@@ -27,28 +33,6 @@ const ENGINE_LABELS: Record<DbEngine, string> = {
   oracle: 'Oracle',
 };
 
-function emptyDraft(): {
-  label: string;
-  engine: DbEngine;
-  hostId: string;
-  remoteHost: string;
-  remotePort: number;
-  database: string;
-  dbUsername: string;
-  dbPassword: string;
-} {
-  return {
-    label: '',
-    engine: 'mysql',
-    hostId: '',
-    remoteHost: '127.0.0.1',
-    remotePort: defaultPortForEngine('mysql'),
-    database: '',
-    dbUsername: '',
-    dbPassword: '',
-  };
-}
-
 const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
   hosts,
   dbConnections,
@@ -59,7 +43,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
   const [search, setSearch] = useState('');
   const [showNewForm, setShowNewForm] = useState(false);
   const [showHostSelector, setShowHostSelector] = useState(false);
-  const [draft, setDraft] = useState(emptyDraft());
+  const [draft, setDraft] = useState(emptyDbConnectionDraft());
 
   const hostById = new Map<string, Host>(hosts.map((h) => [h.id, h]));
   const filtered = dbConnections.filter((c) =>
@@ -72,18 +56,9 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
   };
 
   const handleSave = () => {
-    if (!draft.label.trim() || !draft.hostId) return;
-    onAddDbConnection({
-      label: draft.label.trim(),
-      engine: draft.engine,
-      hostId: draft.hostId,
-      remoteHost: draft.remoteHost.trim() || '127.0.0.1',
-      remotePort: draft.remotePort,
-      database: draft.database.trim() || undefined,
-      dbUsername: draft.dbUsername.trim() || undefined,
-      dbPassword: draft.dbPassword || undefined,
-    });
-    setDraft(emptyDraft());
+    if (!canSaveDbConnectionDraft(draft)) return;
+    onAddDbConnection(buildDbConnectionPayload(draft));
+    setDraft(emptyDbConnectionDraft());
     setShowNewForm(false);
   };
 
@@ -97,7 +72,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
         <Button
           variant="secondary"
           className={vaultHeaderSecondaryButtonClass}
-          onClick={() => { setDraft(emptyDraft()); setShowNewForm(true); }}
+          onClick={() => { setDraft(emptyDbConnectionDraft()); setShowNewForm(true); }}
         >
           <Plus size={14} /> {t('db.connections.new')}
         </Button>
@@ -170,14 +145,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                 <Select
                   value={draft.engine}
                   onValueChange={(value) => {
-                    const engine = value as DbEngine;
-                    setDraft((prev) => ({
-                      ...prev,
-                      engine,
-                      remotePort: prev.remotePort === defaultPortForEngine(prev.engine)
-                        ? defaultPortForEngine(engine)
-                        : prev.remotePort,
-                    }));
+                    setDraft((prev) => applyEngineToDraft(prev, value as DbEngine));
                   }}
                 >
                   <SelectTrigger className="h-9">
@@ -242,7 +210,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
           <AsidePanelFooter>
             <Button
               className="w-full h-10"
-              disabled={!draft.label.trim() || !draft.hostId}
+              disabled={!canSaveDbConnectionDraft(draft)}
               onClick={handleSave}
             >
               {t('common.save')}

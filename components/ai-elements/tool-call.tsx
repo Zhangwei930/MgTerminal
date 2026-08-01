@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   CheckCircle2,
+  Database,
   FileCode,
   FolderSearch,
   Globe,
@@ -34,6 +35,11 @@ type ToolVisual = {
 
 function resolveToolVisual(name: string, hasShellCommand: boolean): ToolVisual {
   const n = name.toLowerCase();
+  // Checked before the shell branch: a SQL tool now yields a display command,
+  // which would otherwise make it look like a terminal call.
+  if (n.startsWith('db_') || n.includes('sql') || n.includes('database')) {
+    return { Icon: Database, plate: 'bg-teal-500/12 border-teal-500/25', icon: 'text-teal-400' };
+  }
   if (hasShellCommand || n.includes('terminal') || n.includes('shell') || n.includes('bash') || n.includes('exec')) {
     return { Icon: SquareTerminal, plate: 'bg-emerald-500/12 border-emerald-500/25', icon: 'text-emerald-400' };
   }
@@ -84,9 +90,33 @@ function resolveToolVisual(name: string, hasShellCommand: boolean): ToolVisual {
  * cares about (the remote command), not Codex's wrapper title which is
  * just the local path to the CLI binary.
  */
+/**
+ * The prompt rendered before a display command. A SQL statement is not a shell
+ * command, and in an approval card — where the point is understanding what you
+ * are agreeing to — labelling one as the other is the wrong kind of wrong.
+ */
+export function displayCommandPrefix(args: Record<string, unknown> | undefined): string {
+  if (!args) return '$ ';
+  const command = (args as { command?: unknown }).command;
+  const hasCommand = command !== undefined && command !== null && command !== '';
+  if (!hasCommand && typeof (args as { sql?: unknown }).sql === 'string') return 'SQL ';
+  return '$ ';
+}
+
 export function extractDisplayCommand(args: Record<string, unknown> | undefined): string | null {
   if (!args) return null;
   const raw = (args as { command?: unknown }).command;
+
+  // A SQL tool carries its statement in `sql`, not `command`. Surface it the
+  // same way: a statement that changes data should be readable in the card
+  // title, not only in the Arguments JSON. Whitespace is collapsed because the
+  // title is a single truncating line — the verbatim text stays in Arguments.
+  if (raw === undefined || raw === null || raw === '') {
+    const rawSql = (args as { sql?: unknown }).sql;
+    if (typeof rawSql === 'string' && rawSql.trim()) {
+      return rawSql.trim().replace(/\s+/g, ' ');
+    }
+  }
 
   let cmdString: string;
   if (typeof raw === 'string') {
@@ -322,7 +352,7 @@ export const ToolCall = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="block font-mono text-[12px] text-foreground/80 truncate cursor-default">
-                  <span className="text-primary/60">$ </span>{displayCmd}
+                  <span className="text-primary/60">{displayCommandPrefix(args)}</span>{displayCmd}
                 </span>
               </TooltipTrigger>
               <TooltipContent>{displayCmd}</TooltipContent>

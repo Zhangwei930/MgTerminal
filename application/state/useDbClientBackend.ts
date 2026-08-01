@@ -13,6 +13,25 @@ export const useDbClientBackend = () => {
     await magiesTerminalBridge.get()?.closeDbConnection?.(connectionId);
   }, []);
 
+  /**
+   * Schema introspection for the tree. Both resolve a {success} shape rather
+   * than throwing, so the tree can render the reason inline.
+   */
+  const listTables = useCallback(async (connectionId: string): Promise<DbListTablesResult> => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.listDbTables) return { success: false, error: "DB client bridge unavailable" };
+    return bridge.listDbTables(connectionId);
+  }, []);
+
+  const listColumns = useCallback(
+    async (connectionId: string, table: string): Promise<DbListColumnsResult> => {
+      const bridge = magiesTerminalBridge.get();
+      if (!bridge?.listDbColumns) return { success: false, error: "DB client bridge unavailable" };
+      return bridge.listDbColumns(connectionId, table);
+    },
+    [],
+  );
+
   const cancelQuery = useCallback(async (connectionId: string): Promise<void> => {
     await magiesTerminalBridge.get()?.cancelDbQuery?.(connectionId);
   }, []);
@@ -56,5 +75,5 @@ export const useDbClientBackend = () => {
     [],
   );
 
-  return { connect, close, cancelQuery, runQuery };
+  return { connect, close, cancelQuery, runQuery, listTables, listColumns };
 };

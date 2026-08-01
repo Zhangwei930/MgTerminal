@@ -509,3 +509,41 @@ test("schema calls on an unknown connection report an error", async () => {
   assert.equal(tables.success, false);
   assert.match(tables.error, /not found/i);
 });
+
+test("the schema calls are reachable over IPC", async () => {
+  // The tree runs in the renderer, so unlike queryOnce these do need a channel.
+  const handlers = new Map();
+  dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
+
+  assert.ok(handlers.has("magiesTerminal:db:listTables"));
+  assert.ok(handlers.has("magiesTerminal:db:listColumns"));
+});
+
+test("the IPC handlers drop the event and pass only the payload", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.tables": {
+      columns: [{ name: "name" }, { name: "kind" }],
+      rows: [["patients", "table"]],
+    },
+  });
+  const handlers = new Map();
+  const { portForwardingBridge } = setup({ adapter });
+  dbBridge.registerHandlers(
+    { handle: (channel, fn) => handlers.set(channel, fn) },
+    { portForwardingBridge, createAdapter: () => adapter },
+  );
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "ipc-1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  // listTables takes ({connectionId}); handing it the event as the first
+  // argument would look up `undefined` and report "Connection not found".
+  const result = await handlers.get("magiesTerminal:db:listTables")(
+    { sender: createSender() },
+    { connectionId: "ipc-1" },
+  );
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.tables, [{ name: "patients", kind: "table" }]);
+});

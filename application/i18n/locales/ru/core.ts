@@ -836,6 +836,12 @@ export const ruCoreMessages: Messages = {
   'db.workspace.rowsAffected': 'Затронуто строк: {count}',
   'db.workspace.rowCount': 'Строк: {count}',
   'db.workspace.truncated': 'Результат обрезан — показаны первые {count} строк.',
+  'db.schema.title': 'Схема',
+  'db.schema.refresh': 'Перечитать схему',
+  'db.schema.filter': 'Фильтр таблиц…',
+  'db.schema.empty': 'Нет таблиц и представлений.',
+  'db.schema.loading': 'Загрузка столбцов…',
+  'db.schema.openHint': 'Клик — столбцы, двойной клик — просмотр строк',
 
   'proxyProfiles.action.add': 'Добавить прокси',
   'proxyProfiles.search.placeholder': 'Поиск прокси…',

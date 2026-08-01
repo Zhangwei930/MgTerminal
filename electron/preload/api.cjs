@@ -918,7 +918,7 @@ function createPreloadApi(ctx) {
     };
   },
 
-  // Lightweight DB client API (SSH-tunneled MySQL/PostgreSQL)
+  // Lightweight DB client API (MySQL/PostgreSQL/SQL Server/Oracle, optionally SSH-tunneled)
   startDbConnection: async (options) => {
     return ipcRenderer.invoke("magiesTerminal:db:connect", options);
   },
@@ -930,6 +930,12 @@ function createPreloadApi(ctx) {
   },
   cancelDbQuery: async (connectionId) => {
     return ipcRenderer.invoke("magiesTerminal:db:cancel", { connectionId });
+  },
+  listDbTables: async (connectionId) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listTables", { connectionId });
+  },
+  listDbColumns: async (connectionId, table) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listColumns", { connectionId, table });
   },
   onDbQueryRows: (queryId, cb) => registerDbQueryListener(dbQueryRowListeners, queryId, cb),
   onDbQueryComplete: (queryId, cb) => registerDbQueryListener(dbQueryCompleteListeners, queryId, cb),

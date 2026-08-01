@@ -100,6 +100,8 @@ declare global {
 
     // Lightweight DB client (SSH-tunneled MySQL/PostgreSQL)
     startDbConnection?(options: DbConnectOptions): Promise<DbConnectResult>;
+    listDbTables?(connectionId: string): Promise<DbListTablesResult>;
+    listDbColumns?(connectionId: string, table: string): Promise<DbListColumnsResult>;
     closeDbConnection?(connectionId: string): Promise<DbCloseResult>;
     runDbQuery?(options: DbRunQueryOptions): Promise<{ queryId: string }>;
     cancelDbQuery?(connectionId: string): Promise<DbCloseResult>;

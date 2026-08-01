@@ -11,6 +11,7 @@ import { Button } from '../ui/button';
 import { attemptDbConnection } from './dbConnectAttempt';
 import { buildDbConnectRequest } from './dbConnectRequest';
 import { DbResultsGrid } from './DbResultsGrid';
+import { DbSchemaTree } from './DbSchemaTree';
 import { SqlCodeEditor } from './SqlCodeEditor';
 
 interface DbWorkspaceTabViewProps {
@@ -158,15 +159,27 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
         </div>
       )}
 
-      <div className="h-[45%] min-h-[120px] border-b border-border/60">
-        <SqlCodeEditor
-          value={sqlDraft}
-          onChange={(value) => dbWorkspaceTabStore.setSqlDraft(connectionId, value)}
-          onRun={handleRun}
-        />
-      </div>
-      <div className="min-h-0 flex-1">
-        {result && <DbResultsGrid columns={result.columns} rows={result.rows} />}
+      <div className="flex min-h-0 flex-1">
+        <div className="w-56 shrink-0">
+          <DbSchemaTree
+            connectionId={connectionId}
+            engine={connectionProfile.engine}
+            ready={status === 'connected'}
+            onOpenTable={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="h-[45%] min-h-[120px] border-b border-border/60">
+            <SqlCodeEditor
+              value={sqlDraft}
+              onChange={(value) => dbWorkspaceTabStore.setSqlDraft(connectionId, value)}
+              onRun={handleRun}
+            />
+          </div>
+          <div className="min-h-0 flex-1">
+            {result && <DbResultsGrid columns={result.columns} rows={result.rows} />}
+          </div>
+        </div>
       </div>
     </div>
   );

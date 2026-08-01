@@ -133,3 +133,73 @@ test("a fresh draft starts on mysql at its default port and loopback", () => {
 test("a fresh draft cannot be saved", () => {
   assert.equal(canSaveDbConnectionDraft(emptyDbConnectionDraft()), false);
 });
+
+// ── editing an existing connection ──────────────────────────────────────────
+
+import { buildDbConnectionUpdate, draftFromDbConnection } from "./dbConnectionDraft.ts";
+import type { DbConnectionProfile } from "../../domain/models.ts";
+
+const saved = (overrides: Partial<DbConnectionProfile> = {}): DbConnectionProfile =>
+  ({
+    id: "c1", label: "mgtest", engine: "postgres", hostId: "h1",
+    remoteHost: "127.0.0.1", remotePort: 55432, database: "mgtest",
+    dbUsername: "postgres", dbPassword: "s3cret", order: 1000, createdAt: 1,
+    ...overrides,
+  }) as DbConnectionProfile;
+
+test("editing loads every field except the password", () => {
+  const d = draftFromDbConnection(saved());
+
+  assert.equal(d.label, "mgtest");
+  assert.equal(d.engine, "postgres");
+  assert.equal(d.hostId, "h1");
+  assert.equal(d.remoteHost, "127.0.0.1");
+  assert.equal(d.remotePort, 55432);
+  assert.equal(d.database, "mgtest");
+  assert.equal(d.dbUsername, "postgres");
+});
+
+// The stored password may be plaintext or an enc:v1/enc:v2 placeholder that
+// failed to decrypt. Pre-filling either is wrong: the placeholder would be
+// re-encrypted into nested ciphertext, and showing a real password in a form
+// field is not something an edit dialog should do. Blank means "unchanged".
+test("editing never pre-fills the password field", () => {
+  assert.equal(draftFromDbConnection(saved({ dbPassword: "s3cret" })).dbPassword, "");
+  assert.equal(draftFromDbConnection(saved({ dbPassword: "enc:v1:AAAA" })).dbPassword, "");
+  assert.equal(draftFromDbConnection(saved({ dbPassword: undefined })).dbPassword, "");
+});
+
+test("a blank password on save keeps the stored one", () => {
+  const next = buildDbConnectionUpdate(
+    { ...draftFromDbConnection(saved()), remoteHost: "10.0.0.9" },
+    saved(),
+  );
+
+  assert.equal(next.remoteHost, "10.0.0.9", "the edited field is applied");
+  assert.equal(next.dbPassword, "s3cret", "the untouched password survives");
+});
+
+test("a typed password on save replaces the stored one", () => {
+  const next = buildDbConnectionUpdate(
+    { ...draftFromDbConnection(saved()), dbPassword: "newpass" },
+    saved(),
+  );
+  assert.equal(next.dbPassword, "newpass");
+});
+
+test("editing preserves identity and ordering fields", () => {
+  const next = buildDbConnectionUpdate(draftFromDbConnection(saved()), saved());
+
+  assert.equal(next.id, "c1", "the id must not change");
+  assert.equal(next.order, 1000);
+  assert.equal(next.createdAt, 1);
+});
+
+test("editing can change engine and port together", () => {
+  const next = buildDbConnectionUpdate(
+    { ...draftFromDbConnection(saved()), engine: "mysql", remotePort: 3306 },
+    saved(),
+  );
+  assert.equal(next.engine, "mysql");
+  assert.equal(next.remotePort, 3306);
+});

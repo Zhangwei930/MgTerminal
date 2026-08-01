@@ -72,3 +72,42 @@ export function buildDbConnectionPayload(
     dbPassword: draft.dbPassword || undefined,
   };
 }
+
+/**
+ * Loads a saved connection into the form for editing.
+ *
+ * The password is deliberately left blank. What is stored may be plaintext or
+ * an enc:v1/enc:v2 placeholder that failed to decrypt — pre-filling either is
+ * wrong: a placeholder would be re-encrypted into nested ciphertext, and an
+ * edit form has no business displaying a real password. Blank means
+ * "leave the stored password alone".
+ */
+export function draftFromDbConnection(profile: DbConnectionProfile): DbConnectionDraft {
+  return {
+    label: profile.label,
+    engine: profile.engine,
+    hostId: profile.hostId,
+    remoteHost: profile.remoteHost || '127.0.0.1',
+    remotePort: profile.remotePort,
+    database: profile.database ?? '',
+    dbUsername: profile.dbUsername ?? '',
+    dbPassword: '',
+  };
+}
+
+/**
+ * Merges an edited draft back onto the stored connection. Identity and
+ * ordering (`id`, `order`, `createdAt`) are preserved, and a blank password
+ * keeps whatever was stored.
+ */
+export function buildDbConnectionUpdate(
+  draft: DbConnectionDraft,
+  existing: DbConnectionProfile,
+): DbConnectionProfile {
+  const payload = buildDbConnectionPayload(draft);
+  return {
+    ...existing,
+    ...payload,
+    dbPassword: draft.dbPassword ? payload.dbPassword : existing.dbPassword,
+  };
+}

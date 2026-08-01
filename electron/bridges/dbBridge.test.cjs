@@ -597,3 +597,68 @@ test("the export handler is reachable over IPC", async () => {
   dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
   assert.ok(handlers.has("magiesTerminal:db:exportResult"));
 });
+
+test("listRoutines normalises procedures and functions", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.routines": {
+      columns: [{ name: "name" }, { name: "kind" }],
+      rows: [["sp_admit", "procedure"], ["fn_age", "function"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "r1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listRoutines({ connectionId: "r1" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.routines, [
+    { name: "sp_admit", kind: "procedure" },
+    { name: "fn_age", kind: "function" },
+  ]);
+});
+
+test("an unrecognised routine kind is reported as a function", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.routines": {
+      columns: [{ name: "name" }, { name: "kind" }],
+      rows: [["odd", "aggregate"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "r2", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listRoutines({ connectionId: "r2" });
+  assert.equal(result.routines[0].kind, "function", "anything callable that is not a procedure");
+});
+
+test("listTriggers keeps the owning table", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.triggers": {
+      columns: [{ name: "name" }, { name: "table_name" }],
+      rows: [["trg_audit", "patients"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "t1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listTriggers({ connectionId: "t1" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.triggers, [{ name: "trg_audit", table: "patients" }]);
+});
+
+test("routine and trigger calls are reachable over IPC", async () => {
+  const handlers = new Map();
+  dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
+  assert.ok(handlers.has("magiesTerminal:db:listRoutines"));
+  assert.ok(handlers.has("magiesTerminal:db:listTriggers"));
+});

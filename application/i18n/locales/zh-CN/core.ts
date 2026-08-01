@@ -671,6 +671,8 @@ export const zhCNCoreMessages: Messages = {
   'db.schema.empty': '没有表或视图。',
   'db.schema.loading': '正在读取字段…',
   'db.schema.columnsFailed': '无法读取字段。',
+  'db.schema.procedures': '存储过程与函数',
+  'db.schema.triggers': '触发器',
   'db.tx.autoCommit': '自动提交',
   'db.tx.autoCommitHint': '关闭后会开启事务；重新开启会回滚尚未提交的更改。',
   'db.tx.commit': '提交',

@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronRight, Eye, Loader2, RefreshCw, Table2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Eye, FunctionSquare, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import type { DbEngine } from '../../domain/models';
@@ -7,6 +7,8 @@ import { buildPreviewSelect } from '../../domain/db/previewQuery';
 interface DbSchemaTreeProps {
   engine: DbEngine;
   tables: DbSchemaTable[] | null;
+  routines: DbSchemaRoutine[];
+  triggers: DbSchemaTrigger[];
   loading: boolean;
   error: string | null;
   /** Only true once the connection is live — the catalog queries need it. */
@@ -23,9 +25,21 @@ type ColumnState =
   | { status: 'error' }
   | { status: 'loaded'; columns: DbSchemaColumn[] };
 
+/** A labelled divider for the non-table node types. */
+const Section: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="mt-1 border-t border-border/40 pt-1">
+    <div className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+      {label}
+    </div>
+    {children}
+  </div>
+);
+
 export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
   engine,
   tables,
+  routines,
+  triggers,
   loading,
   error,
   ready,
@@ -61,7 +75,10 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
   }, [onReload]);
 
   const needle = filter.trim().toLowerCase();
-  const visible = (tables ?? []).filter((table) => !needle || table.name.toLowerCase().includes(needle));
+  const matches = (name: string) => !needle || name.toLowerCase().includes(needle);
+  const visible = (tables ?? []).filter((table) => matches(table.name));
+  const visibleRoutines = routines.filter((routine) => matches(routine.name));
+  const visibleTriggers = triggers.filter((trigger) => matches(trigger.name));
 
   return (
     <div className="flex h-full flex-col border-r border-border/60 bg-muted/20">
@@ -94,7 +111,8 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
             <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {error}
           </div>
         )}
-        {!error && tables !== null && visible.length === 0 && (
+        {!error && tables !== null && visible.length === 0
+          && visibleRoutines.length === 0 && visibleTriggers.length === 0 && (
           <div className="px-2 py-2 text-xs text-muted-foreground">{t('db.schema.empty')}</div>
         )}
 
@@ -142,6 +160,39 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
             </div>
           );
         })}
+
+        {visibleRoutines.length > 0 && (
+          <Section label={t('db.schema.procedures')}>
+            {visibleRoutines.map((routine) => (
+              <div
+                key={`${routine.kind}:${routine.name}`}
+                className="flex items-center gap-1 px-2 py-0.5 pl-4 text-xs"
+              >
+                {routine.kind === 'procedure'
+                  ? <Terminal size={11} className="shrink-0 text-muted-foreground" />
+                  : <FunctionSquare size={11} className="shrink-0 text-muted-foreground" />}
+                <span className="truncate">{routine.name}</span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {visibleTriggers.length > 0 && (
+          <Section label={t('db.schema.triggers')}>
+            {visibleTriggers.map((trigger) => (
+              <div
+                key={`${trigger.table}:${trigger.name}`}
+                className="flex items-center gap-1.5 px-2 py-0.5 pl-4 text-xs"
+              >
+                <Zap size={11} className="shrink-0 text-muted-foreground" />
+                <span className="truncate">{trigger.name}</span>
+                <span className="ml-auto shrink-0 text-[10px] text-muted-foreground opacity-70">
+                  {trigger.table}
+                </span>
+              </div>
+            ))}
+          </Section>
+        )}
       </div>
     </div>
   );

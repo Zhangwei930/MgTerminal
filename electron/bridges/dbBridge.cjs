@@ -5,6 +5,8 @@ const {
   buildTableListQuery,
   buildColumnListQuery,
   buildPrimaryKeyQuery,
+  buildRoutineListQuery,
+  buildTriggerListQuery,
 } = require("./dbClient/schemaQueries.cjs");
 
 const DEFAULT_MAX_ROWS = 10_000;
@@ -310,6 +312,44 @@ async function listPrimaryKey({ connectionId, table } = {}) {
   };
 }
 
+/** Stored procedures and functions, each tagged 'procedure' | 'function'. */
+async function listRoutines({ connectionId } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+
+  const sql = buildRoutineListQuery(entry.engine, entry.database ?? "");
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    routines: out.rows.map((r) => ({
+      name: String(r.name ?? ""),
+      // Anything callable that is not a procedure is shown as a function —
+      // catalogs carry kinds like 'aggregate' that the tree has no node for.
+      kind: String(r.kind ?? "").toLowerCase() === "procedure" ? "procedure" : "function",
+    })),
+  };
+}
+
+/** Triggers, with the table each one is attached to. */
+async function listTriggers({ connectionId } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+
+  const sql = buildTriggerListQuery(entry.engine, entry.database ?? "");
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    triggers: out.rows.map((r) => ({
+      name: String(r.name ?? ""),
+      table: String(r.table_name ?? ""),
+    })),
+  };
+}
+
 const EXPORT_FILTERS = {
   csv: [{ name: "CSV", extensions: ["csv"] }],
   json: [{ name: "JSON", extensions: ["json"] }],
@@ -393,6 +433,8 @@ function registerHandlers(ipcMain, deps = {}) {
   ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
   ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
   ipcMain.handle("magiesTerminal:db:listPrimaryKey", (_event, payload) => listPrimaryKey(payload));
+  ipcMain.handle("magiesTerminal:db:listRoutines", (_event, payload) => listRoutines(payload));
+  ipcMain.handle("magiesTerminal:db:listTriggers", (_event, payload) => listTriggers(payload));
   ipcMain.handle("magiesTerminal:db:exportResult", exportResult);
   ipcMain.handle("magiesTerminal:db:stopAll", () => stopAllDbConnections());
 }
@@ -411,6 +453,8 @@ module.exports = {
   listTables,
   listColumns,
   listPrimaryKey,
+  listRoutines,
+  listTriggers,
   exportResult,
   cancelQuery,
   stopAllDbConnections,

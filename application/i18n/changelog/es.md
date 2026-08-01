@@ -1,6 +1,21 @@
 # Registro de cambios
 
 
+## [0.6.0] - 2026-07-31
+
+### Seguridad
+- **Corregida una fuga de credenciales en la ruta de actualización automática**: la versión de `electron-updater` utilizada anteriormente filtraba las cabeceras `Authorization` y `PRIVATE-TOKEN` a otro origen durante una redirección (GHSA-p2f4-r6v6-j797); ya está actualizada
+- **Depuradas las vulnerabilidades de dependencias restantes**: eliminados ambos problemas CRITICAL (inyección de comandos) y las alertas de dependencias de producción bajan de 15 a 12
+
+### Funcionalidades
+- **Acceso a bases de datos para la IA integrada**: el asistente ya puede ver las conexiones de base de datos que tienes abiertas y ejecutar consultas de solo lectura. `INSERT`/`UPDATE`/`DELETE` y DDL también funcionan, pero cada uno abre antes una solicitud de aprobación que muestra la sentencia SQL completa, y el modo observador los rechaza. El asistente puede usar una conexión pero nunca abrirla — las credenciales de SSH y de base de datos no se le entregan
+
+### Correcciones
+- **El escaneo previo a transferir una carpeta ya no satura la conexión**: los dos recorridos previos que cuentan bytes y archivos lanzaban listados de directorios en paralelo sin límite alguno. En árboles profundos o anchos esto se manifestaba como un bloqueo o una caída de la conexión justo después de iniciar la transferencia. Ahora comparten el mismo límite de concurrencia que la propia transferencia
+- **Un sondeo de nombre fallido ya no puede sobrescribir un archivo existente**: al buscar un nombre `(copy N)` libre, cualquier fallo se interpretaba como «ese nombre está disponible», de modo que un corte breve de red podía devolver un nombre realmente ocupado. Ahora solo cuenta una ruta cuya ausencia esté confirmada; en cualquier otro caso se recurre a un nombre con marca de tiempo
+- **«Aplicar a todo» en los conflictos de subida ya no se degrada en silencio a una elección puntual**: según la sincronización, la elección se aplicaba solo a ese archivo y después se volvía a preguntar
+- **Una transferencia cancelada ya no se informa como error**: un mensaje de cancelación con mayúscula inicial, como `Cancelled by user`, se trataba como fallo y generaba un aviso de error; a la inversa, un error real que mencionara una ruta como `/var/cancelled-jobs` se tomaba por una cancelación y se descartaban sus detalles
+
 ## [0.5.28] - 2026-07-24
 
 ### Funcionalidades

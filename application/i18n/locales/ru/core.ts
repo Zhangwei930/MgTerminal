@@ -854,6 +854,9 @@ export const ruCoreMessages: Messages = {
   'db.edit.keyNotSelected': 'Только чтение: выберите столбцы первичного ключа, чтобы править строки.',
   'db.export.csv': 'Экспорт CSV',
   'db.export.json': 'JSON',
+  'db.explain.run': 'План',
+  'db.explain.hint': 'Показать план выполнения, не выполняя запрос',
+  'db.explain.selectOnly': 'План можно построить только для SELECT.',
   'db.schema.openHint': 'Клик — столбцы, двойной клик — просмотр строк',
 
   'proxyProfiles.action.add': 'Добавить прокси',

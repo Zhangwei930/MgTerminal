@@ -1,6 +1,24 @@
 # Änderungsprotokoll
 
 
+## [0.6.2] - 2026-08-01
+
+### Neu
+- **Struktur-Baum der Datenbank**: Tabellen, Sichten, Prozeduren, Funktionen und Trigger. Beim Aufklappen einer Tabelle erscheinen Spalten, Indizes und Fremdschlüssel; ihr CREATE TABLE ist einen Klick entfernt. MySQL und Oracle liefern das eigene DDL des Servers, PostgreSQL und SQL Server nicht — dort wird es aus dem Katalog rekonstruiert und nennt eingangs, was fehlt
+- **SQL-Vervollständigung**: Der Editor vervollständigt Tabellen- und Spaltennamen der Verbindung. Nach `p.` erscheinen nur die Spalten dieser Tabelle; Aliase aus FROM und JOIN werden aufgelöst
+- **Ergebnisse direkt bearbeiten**: Ein Doppelklick auf eine Zelle wird zu einem UPDATE auf die Quelltabelle. Bearbeiten ist nur möglich, wenn die Abfrage genau eine Tabelle liest, diese einen Primärschlüssel hat und dieser im Ergebnis enthalten ist — sonst bleibt das Raster schreibgeschützt und nennt den fehlenden Punkt
+- **Transaktionssteuerung**: Auto-Commit ausschalten und von Hand committen oder zurückrollen — ein DELETE lässt sich prüfen, bevor es endgültig wird. Das Wiedereinschalten rollt Nichtfestgeschriebenes zuerst zurück; das Bedienelement sagt es
+- **Ausführungspläne**: Eine Schaltfläche neben „Ausführen“ zeigt den Plan einer Abfrage. Nur für SELECT — SQL Server erzeugt den Plan durch Ausführen des Stapels und PostgreSQLs EXPLAIN ANALYZE führt die Anweisung wirklich aus; ein Planabruf wird so nie zum Schreibvorgang
+- **Abfrageverlauf und gespeicherte Abfragen**: Ausgeführte Anweisungen werden je Verbindung festgehalten, sind durchsuchbar und per Klick zurück im Editor — auch fehlgeschlagene. Eine gespeicherte Abfrage fällt weder dem Limit zum Opfer noch dem Leeren des Verlaufs
+- **Beziehungsdiagramm und Strukturvergleich**: Das ER-Diagramm ordnet Tabellen nach Abhängigkeitstiefe an und kommt mit Selbstbezügen und zyklischen Fremdschlüsseln zurecht. Der Strukturvergleich liest eine andere gespeicherte Verbindung und schreibt ein Angleichungsskript, in dem nur hinzufügende Anweisungen ausführbar sind — Löschungen, Typänderungen und verschärfte Nullbarkeit erscheinen auskommentiert
+- **Ergebnisse exportieren**: als CSV, JSON oder INSERT-Anweisungen. Das CSV folgt RFC 4180 und trägt ein UTF-8-BOM, damit Excel Nicht-ASCII korrekt liest; Werte, die mit `=`, `+`, `-` oder `@` beginnen, werden entschärft, damit Excel sie nicht als Formeln ausführt
+
+### Fehlerbehebungen
+- **Direkte Verbindungen verbinden sich jetzt, getunnelte tunneln wirklich**: Eine Verbindung ohne SSH-Tunnel scheiterte sofort mit „Host nicht gefunden“, bevor ein einziges Paket hinausging; dieselbe Stelle übergab die Host-ID nie ans Backend, sodass eine Verbindung mit Bastion direkt zur Datenbank wählte — ein verwirrender Fehler, wenn die Datenbank nur über die Bastion erreichbar ist, und schlimmer, wenn beide Wege offen sind: Die Verbindung gelingt stillschweigend außerhalb des Tunnels
+- **Gespeicherte Passwörter werden nicht mehr unlesbar**: Erfolgreiches Verschlüsseln galt als Beleg, ohne je zu prüfen, ob sich der Chiffretext wieder entschlüsseln lässt. Der macOS-Schlüsselbund verweigert nach einer geänderten Signaturidentität das Entschlüsseln, verschlüsselt aber weiter — Passwörter landeten in einer Form, die nie wieder lesbar war, und tauchten später als falsches Passwort bei einer Verbindung auf, die man sicher richtig eingegeben hatte. Verschlüsseltes wird nun sofort zurückgelesen und verglichen, sonst übernimmt der lokale Tresor
+- **Transaktionen auf SQL Server funktionierten nicht**: Die Verbindung ist ein Pool ohne festgelegte Größe, also standardmäßig zehn. BEGIN TRANSACTION und die folgenden Anweisungen landeten auf verschiedenen Verbindungen, die Arbeit gehörte nie zur Transaktion, und COMMIT hatte nichts festzuschreiben. Jetzt auf eine einzige Verbindung festgelegt
+- **Der Wert einer JSON-Spalte wird nicht mehr als `[object Object]` geschrieben**: json/jsonb-Spalten kommen geparst an; sie als Zeichenkette zurückzuschreiben ergab einen Wert, den die Spalte bereitwillig annimmt, während die Daten zerstört werden. Er wird nun als JSON serialisiert
+
 ## [0.6.1] - 2026-08-01
 
 ### Fehlerbehebungen

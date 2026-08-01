@@ -1,6 +1,24 @@
 # Registro de alterações
 
 
+## [0.6.2] - 2026-08-01
+
+### Novidades
+- **Árvore de estrutura do banco**: tabelas, visões, procedimentos, funções e gatilhos. Expandir uma tabela mostra colunas, índices e chaves estrangeiras, e o CREATE TABLE dela fica a um clique. MySQL e Oracle devolvem o DDL do próprio servidor; PostgreSQL e SQL Server não, então o deles é reconstruído do catálogo e diz no início o que omite
+- **Autocompletar SQL**: o editor completa nomes de tabelas e colunas da conexão. Depois de `p.` oferece apenas as colunas daquela tabela, resolvendo os apelidos de FROM e JOIN
+- **Editar resultados no lugar**: dê um duplo clique numa célula e a alteração vira um UPDATE na tabela de origem. Só é permitido quando a consulta lê exatamente uma tabela, ela tem chave primária e o resultado a contém; caso contrário a grade fica somente leitura e diz qual dos três falta
+- **Controle de transações**: desligue o commit automático e confirme ou reverta à mão, para conferir um DELETE antes que ele seja definitivo. Religar o commit automático reverte primeiro o que não foi confirmado, e o controle avisa isso
+- **Planos de execução**: um botão ao lado de Executar mostra o plano da consulta. Só é oferecido para SELECT — o SQL Server produz o plano executando o lote e o EXPLAIN ANALYZE do PostgreSQL executa a instrução de verdade, então pedir um plano nunca vira uma escrita
+- **Histórico de consultas e favoritas**: as instruções são registradas por conexão, podem ser pesquisadas e voltam ao editor com um clique — inclusive as que falharam. Uma consulta salva nunca é descartada pelo limite nem apagada por Limpar histórico
+- **Diagrama de relações e comparação de estrutura**: o diagrama ER dispõe as tabelas por profundidade de dependência e lida com autorreferências e chaves estrangeiras circulares. A comparação lê outra conexão salva e escreve um script de alinhamento em que só as instruções que adicionam são executáveis; remoções, mudanças de tipo e restrição de nulidade saem comentadas
+- **Exportar resultados**: como CSV, JSON ou instruções INSERT. O CSV segue a RFC 4180 e leva BOM UTF-8 para o Excel ler bem os caracteres não ASCII, e valores que começam com `=`, `+`, `-` ou `@` são neutralizados para o Excel não os executar como fórmulas
+
+### Correções
+- **Conexões diretas agora conectam, e as tuneladas realmente tunelam**: uma conexão sem túnel SSH falhava na hora com "host não encontrado" sem enviar um único pacote, e esse mesmo código nunca passava o id do host ao backend, então uma conexão indicando um bastião discava direto para o banco — uma falha confusa quando o banco só é alcançável pelo bastião, e pior quando é alcançável dos dois jeitos, porque a conexão é estabelecida em silêncio fora do túnel
+- **Senhas salvas não ficam mais ilegíveis**: o sucesso da criptografia era tomado como prova de que funcionou, sem nunca verificar se o texto cifrado podia ser decifrado. O chaveiro do macOS recusa decifrar e continua cifrando quando a identidade de assinatura do app muda, então as senhas eram gravadas de um jeito que jamais seria lido de volta — aparecendo depois como senha errada numa conexão que você tinha certeza de ter digitado certo. Agora o cifrado é lido de volta e comparado na hora, com recuo para o cofre local
+- **As transações no SQL Server não funcionavam**: sua conexão é um pool sem tamanho definido, ou seja, dez por padrão. BEGIN TRANSACTION e as instruções seguintes caíam em conexões diferentes, o trabalho nunca entrava na transação e o COMMIT não tinha o que confirmar. Agora está fixado em uma única conexão
+- **O valor de uma coluna JSON não é mais gravado como `[object Object]`**: colunas json/jsonb chegam já analisadas, e devolvê-las como texto produzia um valor que a coluna aceita de bom grado enquanto destrói os dados. Agora é serializado como JSON
+
 ## [0.6.1] - 2026-08-01
 
 ### Correções

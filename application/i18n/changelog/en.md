@@ -1,6 +1,24 @@
 # Changelog
 
 
+## [0.6.2] - 2026-08-01
+
+### Features
+- **Database structure tree**: tables, views, stored procedures, functions and triggers in the sidebar. Expanding a table shows its columns, indexes and foreign keys, and its CREATE TABLE statement is one click away. MySQL and Oracle return the server's own DDL; PostgreSQL and SQL Server cannot, so theirs is reconstructed from the catalog and says at the top what it leaves out
+- **SQL completion**: the editor completes the connection's table and column names. After `p.` it offers only that table's columns, resolving aliases bound by FROM and JOIN
+- **Editing results in place**: double-click a cell to change it and the edit becomes an UPDATE against the source table. Editing is offered only when the query reads from exactly one table, that table has a primary key, and the result contains the key columns — otherwise the grid stays read-only and says which of the three is missing
+- **Transaction control**: turn auto-commit off and commit or roll back by hand, so a DELETE can be checked before it becomes permanent. Turning auto-commit back on rolls back uncommitted changes first, and the control says so
+- **Execution plans**: a button beside Run shows the plan for a query. It is offered only for SELECT — SQL Server produces a plan by running the batch and PostgreSQL's EXPLAIN ANALYZE executes the statement for real, so asking for a plan can never become a write
+- **Query history and saved queries**: statements are recorded per connection, searchable, and click to load back into the editor — failed ones too. A saved query is never evicted by the size cap and is kept by Clear history
+- **Relationship diagram and structure comparison**: the ER diagram lays tables out by dependency depth and handles self-references and circular foreign keys. A structure comparison reads another saved connection and writes a script to bring it in line, in which only additive statements are runnable — drops, type changes and tightened nullability all come out commented
+- **Exporting results**: as CSV, JSON or INSERT statements. The CSV follows RFC 4180 and carries a UTF-8 BOM so Excel reads non-ASCII correctly, and values starting with `=`, `+`, `-` or `@` are neutralised so Excel does not run them as formulas
+
+### Fixes
+- **Direct connections now connect, and tunnelled ones actually tunnel**: a connection not using an SSH tunnel failed instantly with "host not found" before a single packet went out, and the same code never passed the host id to the backend, so a connection naming a bastion dialled the database directly — a confusing failure when the database is only reachable from the bastion, and worse when it is reachable both ways, because the connection silently succeeds outside the tunnel
+- **Saved passwords no longer become unreadable**: encryption succeeding was taken as proof it worked, without ever checking that the ciphertext could be decrypted again. The macOS keychain refuses to decrypt while still encrypting once the app's signing identity changes, so passwords were written in a form that could never be read back — surfacing later as a wrong password on a connection you were sure you typed correctly. Encryption is now read straight back and compared, falling back to the local vault when it does not match
+- **Transactions on SQL Server were not working**: its connection is a pool that never set a size, so it defaulted to ten. BEGIN TRANSACTION and the statements after it landed on different connections, the work never joined the transaction, and COMMIT had nothing to commit. It is now pinned to a single connection
+- **A JSON column's value is no longer written as `[object Object]`**: json/jsonb columns arrive parsed, and writing one back stringified produced a value the column happily accepts while destroying the data. It is now serialised as JSON
+
 ## [0.6.1] - 2026-08-01
 
 ### Fixes

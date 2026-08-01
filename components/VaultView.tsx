@@ -1402,6 +1402,7 @@ export const vaultViewAreEqual = (
     prev.notes === next.notes &&
     prev.noteGroups === next.noteGroups &&
     prev.customGroups === next.customGroups &&
+    prev.dbConnections === next.dbConnections &&
     prev.knownHosts === next.knownHosts &&
     prev.shellHistory === next.shellHistory &&
     prev.connectionLogs === next.connectionLogs &&

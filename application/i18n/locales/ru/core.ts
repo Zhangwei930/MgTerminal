@@ -845,6 +845,7 @@ export const ruCoreMessages: Messages = {
   'db.schema.procedures': 'Процедуры и функции',
   'db.schema.triggers': 'Триггеры',
   'db.schema.unique': 'уник.',
+  'db.schema.showDdl': 'Показать CREATE TABLE',
   'db.tx.autoCommit': 'Автофиксация',
   'db.tx.autoCommitHint': 'Выключение открывает транзакцию. Включение обратно откатывает незафиксированные изменения.',
   'db.tx.commit': 'Зафиксировать',

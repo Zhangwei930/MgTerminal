@@ -674,6 +674,7 @@ export const zhCNCoreMessages: Messages = {
   'db.schema.procedures': '存储过程与函数',
   'db.schema.triggers': '触发器',
   'db.schema.unique': '唯一',
+  'db.schema.showDdl': '查看建表语句',
   'db.tx.autoCommit': '自动提交',
   'db.tx.autoCommitHint': '关闭后会开启事务；重新开启会回滚尚未提交的更改。',
   'db.tx.commit': '提交',

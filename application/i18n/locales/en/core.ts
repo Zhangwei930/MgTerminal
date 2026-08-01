@@ -974,6 +974,7 @@ export const enCoreMessages: Messages = {
   'db.schema.procedures': 'Procedures & functions',
   'db.schema.triggers': 'Triggers',
   'db.schema.unique': 'unique',
+  'db.schema.showDdl': 'Show CREATE TABLE',
   'db.tx.autoCommit': 'Auto-commit',
   'db.tx.autoCommitHint': 'Off opens a transaction. Turning it back on rolls back any uncommitted changes.',
   'db.tx.commit': 'Commit',

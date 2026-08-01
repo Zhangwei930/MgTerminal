@@ -369,6 +369,43 @@ ORDER BY ac.CONSTRAINT_NAME, acc.POSITION`;
   }
 }
 
+
+/**
+ * Quotes a value as an identifier for engines that need one interpolated.
+ * Doubles the engine's own closing delimiter, and only that one.
+ */
+function quoteSqlIdentifier(engine, name) {
+  if (typeof name !== "string" || !name) {
+    throw new Error("SQL identifier must be a non-empty string");
+  }
+  const pairs = { mysql: ["`", "`"], postgres: ['"', '"'], oracle: ['"', '"'], mssql: ["[", "]"] };
+  const [open, close] = pairs[engine] ?? ['"', '"'];
+  return `${open}${name.split(close).join(close + close)}${close}`;
+}
+
+/**
+ * The server's own CREATE TABLE, where it can produce one.
+ *
+ * Always preferable to a reconstruction: it is what the server actually has,
+ * including defaults, auto-increment, check constraints and collations.
+ * Postgres and SQL Server have no equivalent call, so they return null and the
+ * caller rebuilds the statement from the catalog instead.
+ */
+function buildNativeDdlQuery(engine, database, table) {
+  assertEngine(engine);
+  switch (engine) {
+    case "mysql":
+      return `SHOW CREATE TABLE ${quoteSqlIdentifier("mysql", table)}`;
+    case "oracle":
+      return `SELECT DBMS_METADATA.GET_DDL('TABLE', ${quoteSqlLiteral(table)}) AS ddl FROM DUAL`;
+    case "postgres":
+    case "mssql":
+      return null;
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
 module.exports = {
   ENGINES_WITH_SCHEMA_SUPPORT,
   quoteSqlLiteral,
@@ -379,4 +416,6 @@ module.exports = {
   buildTriggerListQuery,
   buildIndexListQuery,
   buildForeignKeyListQuery,
+  buildNativeDdlQuery,
+  quoteSqlIdentifier,
 };

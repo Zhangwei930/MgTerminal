@@ -42,6 +42,15 @@ export const useDbClientBackend = () => {
     [],
   );
 
+  const getTableDdl = useCallback(
+    async (connectionId: string, table: string): Promise<DbTableDdlResult> => {
+      const bridge = magiesTerminalBridge.get();
+      if (!bridge?.getDbTableDdl) return { success: false, error: "DB client bridge unavailable" };
+      return bridge.getDbTableDdl(connectionId, table);
+    },
+    [],
+  );
+
   const listIndexes = useCallback(
     async (connectionId: string, table: string): Promise<DbListIndexesResult> => {
       const bridge = magiesTerminalBridge.get();
@@ -123,7 +132,7 @@ export const useDbClientBackend = () => {
 
   return {
     connect, close, cancelQuery, runQuery,
-    listTables, listColumns, listPrimaryKey, listIndexes, listForeignKeys,
+    listTables, listColumns, listPrimaryKey, listIndexes, listForeignKeys, getTableDdl,
     listRoutines, listTriggers, exportResult,
   };
 };

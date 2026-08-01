@@ -4,7 +4,7 @@ import { STORAGE_KEY_SFTP_TRANSFER_CONCURRENCY } from "../../../infrastructure/c
 import { localStorageAdapter } from "../../../infrastructure/persistence/localStorageAdapter";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import { logger } from "../../../lib/logger";
-import { runSftpTransferWorkers } from "./transferConcurrency";
+import { resolveSftpTransferConcurrency, runSftpTransferWorkers } from "./transferConcurrency";
 import { joinPath } from "./utils";
 
 interface UseSftpDirectoryTransferOpsParams {
@@ -26,6 +26,45 @@ export interface DirectoryWalkDeps {
   listLocalFiles: (path: string) => Promise<SftpFileEntry[]>;
   listRemoteFiles: (sftpId: string, path: string, encoding?: SftpFilenameEncoding) => Promise<SftpFileEntry[]>;
   isCancelled: (taskId: string) => boolean;
+  /** Same setting the file-transfer worker pool reads; null falls back to the default. */
+  readStoredConcurrency?: () => number | null | undefined;
+}
+
+/**
+ * Caps how many listings are in flight at once across an entire recursive
+ * walk. A per-level pool is not enough: nesting one inside another allows
+ * concurrency^depth requests in flight, which is the very fan-out
+ * transferDirectory walks subdirectories sequentially to avoid.
+ */
+function createListingGate(limit: number) {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+
+  return async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
+    // A single `if` would also be correct today: every wake is paired with a
+    // release, and a resolved waiter resumes ahead of any caller that arrives
+    // afterwards, so `active` stays balanced. That argument rests on microtask
+    // ordering, though — the loop makes the bound hold without depending on it.
+    while (active >= limit) {
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    }
+    active += 1;
+    try {
+      // Only the listing itself holds a slot. Recursion happens after this
+      // resolves, so a walk never occupies a slot while waiting on children —
+      // which is what would deadlock a depth-first gate.
+      return await fn();
+    } finally {
+      active -= 1;
+      waiting.shift()?.();
+    }
+  };
+}
+
+type ListingGate = ReturnType<typeof createListingGate>;
+
+function gateFor(deps: DirectoryWalkDeps): ListingGate {
+  return createListingGate(resolveSftpTransferConcurrency(() => deps.readStoredConcurrency?.() ?? null));
 }
 
 export function getEntrySize(entry: SftpFileEntry): number {
@@ -36,16 +75,21 @@ export function getEntrySize(entry: SftpFileEntry): number {
   return typeof entry.size === "number" && entry.size > 0 ? entry.size : 0;
 }
 
+/** Whether a walk has a usable source at all — checked without issuing a listing. */
+function hasSource(sourceIsLocal: boolean, sourceSftpId: string | null): boolean {
+  return sourceIsLocal || Boolean(sourceSftpId);
+}
+
 function listSource(
   deps: DirectoryWalkDeps,
   sourcePath: string,
   sourceSftpId: string | null,
   sourceIsLocal: boolean,
   sourceEncoding: SftpFilenameEncoding,
-): Promise<SftpFileEntry[]> | null {
-  if (sourceIsLocal) return deps.listLocalFiles(sourcePath);
-  if (sourceSftpId) return deps.listRemoteFiles(sourceSftpId, sourcePath, sourceEncoding);
-  return null;
+): Promise<SftpFileEntry[]> {
+  return sourceIsLocal
+    ? deps.listLocalFiles(sourcePath)
+    : deps.listRemoteFiles(sourceSftpId as string, sourcePath, sourceEncoding);
 }
 
 /** Recursively sum the bytes under a directory (for progress totals). */
@@ -59,16 +103,31 @@ export async function estimateDirectoryBytes(
   symlinkDepth = 0,
   followSymlinks = false,
 ): Promise<number> {
+  return estimateWithGate(
+    gateFor(deps), deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks,
+  );
+}
+
+async function estimateWithGate(
+  gate: ListingGate,
+  deps: DirectoryWalkDeps,
+  sourcePath: string,
+  sourceSftpId: string | null,
+  sourceIsLocal: boolean,
+  sourceEncoding: SftpFilenameEncoding,
+  rootTaskId: string,
+  symlinkDepth: number,
+  followSymlinks: boolean,
+): Promise<number> {
   const estT0 = performance.now();
   if (deps.isCancelled(rootTaskId)) {
     throw new Error("Transfer cancelled");
   }
 
-  const listing = listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding);
-  if (!listing) {
+  if (!hasSource(sourceIsLocal, sourceSftpId)) {
     throw new Error("No source connection");
   }
-  const files = await listing;
+  const files = await gate(() => listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding));
 
   let totalBytes = 0;
   const subdirs: { entry: SftpFileEntry; nextDepth: number }[] = [];
@@ -93,9 +152,12 @@ export async function estimateDirectoryBytes(
       throw new Error("Transfer cancelled");
     }
 
+    // Promise.all is safe here only because `gate` is shared across the whole
+    // recursion — it is what bounds the actual request fan-out.
     const subResults = await Promise.all(
       subdirs.map(({ entry: subdir, nextDepth }) =>
-        estimateDirectoryBytes(
+        estimateWithGate(
+          gate,
           deps,
           joinPath(sourcePath, subdir.name),
           sourceSftpId,
@@ -125,11 +187,26 @@ export async function countDirectoryFiles(
   symlinkDepth = 0,
   followSymlinks = false,
 ): Promise<number> {
-  if (deps.isCancelled(rootTaskId)) return 0;
+  return countWithGate(
+    gateFor(deps), deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks,
+  );
+}
 
-  const listing = listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding);
-  if (!listing) return 0;
-  const files = await listing;
+async function countWithGate(
+  gate: ListingGate,
+  deps: DirectoryWalkDeps,
+  sourcePath: string,
+  sourceSftpId: string | null,
+  sourceIsLocal: boolean,
+  sourceEncoding: SftpFilenameEncoding,
+  rootTaskId: string,
+  symlinkDepth: number,
+  followSymlinks: boolean,
+): Promise<number> {
+  if (deps.isCancelled(rootTaskId)) return 0;
+  if (!hasSource(sourceIsLocal, sourceSftpId)) return 0;
+
+  const files = await gate(() => listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding));
 
   let count = 0;
   const subdirPromises: Promise<number>[] = [];
@@ -137,14 +214,14 @@ export async function countDirectoryFiles(
     if (file.name === ".." || file.name === ".") continue;
     if (file.type === "directory") {
       subdirPromises.push(
-        countDirectoryFiles(deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks),
+        countWithGate(gate, deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks),
       );
     } else if (followSymlinks && file.type === "symlink" && file.linkTarget === "directory") {
       // Only recurse if within depth limit; skip entirely at max depth
       // (consistent with transferDirectory which also skips these)
       if (symlinkDepth < MAX_SYMLINK_DEPTH) {
         subdirPromises.push(
-          countDirectoryFiles(deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth + 1, followSymlinks),
+          countWithGate(gate, deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth + 1, followSymlinks),
         );
       }
     } else {
@@ -170,6 +247,9 @@ export function useSftpDirectoryTransferOps({
       listLocalFiles,
       listRemoteFiles,
       isCancelled: (taskId: string) => cancelledTasksRef.current.has(taskId),
+      // Same setting the file-transfer pool below uses, so the pre-scan and the
+      // transfer itself put the same ceiling on the SSH connection.
+      readStoredConcurrency: () => localStorageAdapter.readNumber(STORAGE_KEY_SFTP_TRANSFER_CONCURRENCY),
     }),
     [cancelledTasksRef, listLocalFiles, listRemoteFiles],
   );

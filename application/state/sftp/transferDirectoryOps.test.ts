@@ -9,6 +9,7 @@ import {
 } from "./transferDirectoryOps.ts";
 import type { DirectoryWalkDeps } from "./transferDirectoryOps.ts";
 import type { SftpFileEntry } from "../../../domain/models.ts";
+import { DEFAULT_SFTP_FILE_TRANSFER_CONCURRENCY } from "./transferConcurrency.ts";
 
 const entry = (overrides: Partial<SftpFileEntry> & { name: string }): SftpFileEntry => ({
   type: "file",
@@ -30,21 +31,44 @@ const dirSymlink = (name: string) => entry({ name, type: "symlink", linkTarget: 
  */
 function makeDeps(
   tree: Record<string, SftpFileEntry[]>,
-  options: { cancelled?: Set<string> } = {},
-): DirectoryWalkDeps & { visited: string[] } {
-  const visited: string[] = [];
+  options: { cancelled?: Set<string>; concurrency?: number; listDelayMs?: number } = {},
+): DirectoryWalkDeps & { visited: string[]; maxConcurrentListings: number } {
+  const state = { visited: [] as string[], maxConcurrentListings: 0 };
+  let active = 0;
   const list = async (path: string) => {
-    visited.push(path);
-    const entries = tree[path];
-    if (!entries) throw new Error(`unexpected listing of ${path}`);
-    return entries;
+    state.visited.push(path);
+    active += 1;
+    state.maxConcurrentListings = Math.max(state.maxConcurrentListings, active);
+    try {
+      // A delay is what lets overlapping listings actually overlap; without it
+      // each call resolves before the next starts and no fan-out is observable.
+      if (options.listDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.listDelayMs));
+      }
+      const entries = tree[path];
+      if (!entries) throw new Error(`unexpected listing of ${path}`);
+      return entries;
+    } finally {
+      active -= 1;
+    }
   };
   return {
-    visited,
+    get visited() { return state.visited; },
+    get maxConcurrentListings() { return state.maxConcurrentListings; },
     listLocalFiles: list,
     listRemoteFiles: (_sftpId: string, path: string) => list(path),
     isCancelled: (taskId: string) => Boolean(options.cancelled?.has(taskId)),
+    readStoredConcurrency: () => options.concurrency ?? null,
   };
+}
+
+/** A root with `count` sibling subdirectories, each holding one file. */
+function wideTree(count: number): Record<string, SftpFileEntry[]> {
+  const tree: Record<string, SftpFileEntry[]> = {
+    "/src": Array.from({ length: count }, (_, i) => dir(`d${i}`)),
+  };
+  for (let i = 0; i < count; i += 1) tree[`/src/d${i}`] = [file("f.txt", 10)];
+  return tree;
 }
 
 // ── getEntrySize ────────────────────────────────────────────────────────────
@@ -191,4 +215,109 @@ test("countDirectoryFiles returns 0 when a remote walk has no sftp connection", 
   const deps = makeDeps({ "/src": [] });
 
   assert.equal(await countDirectoryFiles(deps, "/src", null, false, "utf-8", "task-1"), 0);
+});
+
+// ── pre-scan concurrency ────────────────────────────────────────────────────
+//
+// transferDirectory walks subdirectories sequentially on purpose:
+//
+//   Process subdirectories sequentially to avoid unbounded concurrent SFTP
+//   requests from nested Promise.all + worker pools across the tree.
+//
+// These two walks run *before* the transfer, over the same tree, and used to
+// fan out with an unbounded Promise.all — reintroducing exactly the flood the
+// transfer phase was written to avoid, on the same SSH connection.
+
+test("estimateDirectoryBytes bounds how many listings it runs at once", async () => {
+  const deps = makeDeps(wideTree(12), { concurrency: 3, listDelayMs: 2 });
+
+  const total = await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1");
+
+  assert.equal(total, 120, "every file is still counted");
+  assert.ok(
+    deps.maxConcurrentListings <= 3,
+    `expected at most 3 concurrent listings, saw ${deps.maxConcurrentListings}`,
+  );
+});
+
+test("countDirectoryFiles bounds how many listings it runs at once", async () => {
+  const deps = makeDeps(wideTree(12), { concurrency: 3, listDelayMs: 2 });
+
+  const count = await countDirectoryFiles(deps, "/src", null, true, "utf-8", "task-1");
+
+  assert.equal(count, 12, "every file is still counted");
+  assert.ok(
+    deps.maxConcurrentListings <= 3,
+    `expected at most 3 concurrent listings, saw ${deps.maxConcurrentListings}`,
+  );
+});
+
+// The bound has to span the whole recursion, not reset per directory level.
+// A per-level pool would allow concurrency^depth listings in flight.
+test("the pre-scan bound spans nested levels, not just siblings", async () => {
+  const tree: Record<string, SftpFileEntry[]> = {
+    "/src": [dir("a"), dir("b"), dir("c"), dir("d")],
+  };
+  for (const top of ["a", "b", "c", "d"]) {
+    tree[`/src/${top}`] = [dir("x"), dir("y"), dir("z")];
+    for (const leaf of ["x", "y", "z"]) tree[`/src/${top}/${leaf}`] = [file("f.txt", 1)];
+  }
+  const deps = makeDeps(tree, { concurrency: 2, listDelayMs: 2 });
+
+  await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1");
+
+  assert.ok(
+    deps.maxConcurrentListings <= 2,
+    `expected at most 2 concurrent listings across the whole tree, saw ${deps.maxConcurrentListings}`,
+  );
+});
+
+test("pre-scan falls back to the default bound when no setting is stored", async () => {
+  const deps = makeDeps(wideTree(10), { listDelayMs: 2 });
+
+  await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1");
+
+  assert.ok(
+    deps.maxConcurrentListings <= DEFAULT_SFTP_FILE_TRANSFER_CONCURRENCY,
+    `expected at most ${DEFAULT_SFTP_FILE_TRANSFER_CONCURRENCY}, saw ${deps.maxConcurrentListings}`,
+  );
+});
+
+// Jittered listings across a deep, wide tree: slots are freed and reclaimed in
+// an order no single hand-written case would cover.
+test("the pre-scan bound holds under a deep, wide tree with jittered listings", async () => {
+  const tree: Record<string, SftpFileEntry[]> = { "/src": [] };
+  const build = (path: string, depth: number, breadth: number) => {
+    if (depth === 0) {
+      tree[path] = [file("f.txt", 1)];
+      return;
+    }
+    tree[path] = Array.from({ length: breadth }, (_, i) => dir(`n${i}`));
+    for (let i = 0; i < breadth; i += 1) build(`${path}/n${i}`, depth - 1, breadth);
+  };
+  build("/src", 3, 4);
+
+  let active = 0;
+  let maxActive = 0;
+  const list = async (path: string) => {
+    active += 1;
+    maxActive = Math.max(maxActive, active);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 4));
+      return tree[path] ?? [];
+    } finally {
+      active -= 1;
+    }
+  };
+  const deps: DirectoryWalkDeps = {
+    listLocalFiles: list,
+    listRemoteFiles: (_id: string, path: string) => list(path),
+    isCancelled: () => false,
+    readStoredConcurrency: () => 4,
+  };
+
+  const total = await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1");
+
+  assert.equal(total, 64, "4^3 leaf files, one byte each");
+  assert.ok(maxActive <= 4, `expected at most 4 concurrent listings, saw ${maxActive}`);
 });

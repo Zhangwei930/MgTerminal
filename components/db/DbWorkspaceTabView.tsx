@@ -253,6 +253,8 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           <DbSchemaTree
             engine={connectionProfile.engine}
             tables={schema.tables}
+            routines={schema.routines}
+            triggers={schema.triggers}
             loading={schema.loading}
             error={schema.error}
             ready={status === 'connected'}

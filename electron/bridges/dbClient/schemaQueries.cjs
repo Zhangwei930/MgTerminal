@@ -176,10 +176,90 @@ ORDER BY acc.POSITION`;
   }
 }
 
+
+/**
+ * Lists stored procedures and functions, `kind` normalised to
+ * 'procedure' | 'function'.
+ */
+function buildRoutineListQuery(engine, database) {
+  assertEngine(engine);
+  const db = quoteSqlLiteral(database ?? "");
+
+  switch (engine) {
+    case "mysql":
+      return `SELECT ROUTINE_NAME AS name, LOWER(ROUTINE_TYPE) AS kind
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = ${db}
+ORDER BY ROUTINE_TYPE, ROUTINE_NAME`;
+
+    case "postgres":
+      return `SELECT routine_name AS name, LOWER(routine_type) AS kind
+FROM information_schema.routines
+WHERE routine_schema NOT IN ('pg_catalog', 'information_schema')
+ORDER BY routine_type, routine_name`;
+
+    case "mssql":
+      return `SELECT ROUTINE_NAME AS name, LOWER(ROUTINE_TYPE) AS kind
+FROM INFORMATION_SCHEMA.ROUTINES
+ORDER BY ROUTINE_TYPE, ROUTINE_NAME`;
+
+    case "oracle":
+      // ALL_OBJECTS also holds tables and views; without this filter they would
+      // appear a second time under Procedures.
+      return `SELECT OBJECT_NAME AS name, LOWER(OBJECT_TYPE) AS kind
+FROM ALL_OBJECTS
+WHERE OBJECT_TYPE IN ('PROCEDURE', 'FUNCTION')
+  AND OWNER NOT IN ('SYS', 'SYSTEM', 'XDB', 'OUTLN')
+ORDER BY OBJECT_TYPE, OBJECT_NAME`;
+
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
+/** Lists triggers with the table each one belongs to. */
+function buildTriggerListQuery(engine, database) {
+  assertEngine(engine);
+  const db = quoteSqlLiteral(database ?? "");
+
+  switch (engine) {
+    case "mysql":
+      return `SELECT TRIGGER_NAME AS name, EVENT_OBJECT_TABLE AS table_name
+FROM information_schema.TRIGGERS
+WHERE TRIGGER_SCHEMA = ${db}
+ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME`;
+
+    case "postgres":
+      // information_schema.triggers has one row per event, so an
+      // INSERT OR UPDATE trigger would otherwise appear twice.
+      return `SELECT DISTINCT trigger_name AS name, event_object_table AS table_name
+FROM information_schema.triggers
+WHERE trigger_schema NOT IN ('pg_catalog', 'information_schema')
+ORDER BY event_object_table, trigger_name`;
+
+    case "mssql":
+      return `SELECT t.name AS name, OBJECT_NAME(t.parent_id) AS table_name
+FROM sys.triggers t
+WHERE t.is_ms_shipped = 0
+ORDER BY OBJECT_NAME(t.parent_id), t.name`;
+
+    case "oracle":
+      return `SELECT TRIGGER_NAME AS name, TABLE_NAME AS table_name
+FROM ALL_TRIGGERS
+WHERE OWNER NOT IN ('SYS', 'SYSTEM', 'XDB', 'OUTLN')
+ORDER BY TABLE_NAME, TRIGGER_NAME`;
+
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
 module.exports = {
   ENGINES_WITH_SCHEMA_SUPPORT,
   quoteSqlLiteral,
   buildTableListQuery,
   buildColumnListQuery,
   buildPrimaryKeyQuery,
+  buildRoutineListQuery,
+  buildTriggerListQuery,
 };

@@ -971,6 +971,8 @@ export const enCoreMessages: Messages = {
   'db.schema.empty': 'No tables or views.',
   'db.schema.loading': 'Loading columns…',
   'db.schema.columnsFailed': 'Could not read columns.',
+  'db.schema.procedures': 'Procedures & functions',
+  'db.schema.triggers': 'Triggers',
   'db.tx.autoCommit': 'Auto-commit',
   'db.tx.autoCommitHint': 'Off opens a transaction. Turning it back on rolls back any uncommitted changes.',
   'db.tx.commit': 'Commit',

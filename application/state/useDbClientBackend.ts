@@ -42,6 +42,18 @@ export const useDbClientBackend = () => {
     [],
   );
 
+  const listRoutines = useCallback(async (connectionId: string): Promise<DbListRoutinesResult> => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.listDbRoutines) return { success: false, error: "DB client bridge unavailable" };
+    return bridge.listDbRoutines(connectionId);
+  }, []);
+
+  const listTriggers = useCallback(async (connectionId: string): Promise<DbListTriggersResult> => {
+    const bridge = magiesTerminalBridge.get();
+    if (!bridge?.listDbTriggers) return { success: false, error: "DB client bridge unavailable" };
+    return bridge.listDbTriggers(connectionId);
+  }, []);
+
   const exportResult = useCallback(async (payload: DbExportPayload): Promise<DbExportResult> => {
     const bridge = magiesTerminalBridge.get();
     if (!bridge?.exportDbResult) return { success: false, error: "DB client bridge unavailable" };
@@ -93,6 +105,6 @@ export const useDbClientBackend = () => {
 
   return {
     connect, close, cancelQuery, runQuery,
-    listTables, listColumns, listPrimaryKey, exportResult,
+    listTables, listColumns, listPrimaryKey, listRoutines, listTriggers, exportResult,
   };
 };

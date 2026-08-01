@@ -271,6 +271,29 @@ declare global {
     error?: string;
   }
 
+  interface DbSchemaRoutine {
+    name: string;
+    kind: 'procedure' | 'function';
+  }
+
+  interface DbSchemaTrigger {
+    name: string;
+    /** The table the trigger is attached to. */
+    table: string;
+  }
+
+  interface DbListRoutinesResult {
+    success: boolean;
+    routines?: DbSchemaRoutine[];
+    error?: string;
+  }
+
+  interface DbListTriggersResult {
+    success: boolean;
+    triggers?: DbSchemaTrigger[];
+    error?: string;
+  }
+
   interface DbExportPayload {
     content: string;
     defaultFileName: string;

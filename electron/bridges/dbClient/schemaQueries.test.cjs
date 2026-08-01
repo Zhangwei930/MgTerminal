@@ -168,3 +168,73 @@ test("a table name with a quote cannot break the primary key query", () => {
     assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
   }
 });
+
+// ── routines and triggers ───────────────────────────────────────────────────
+//
+// The remaining node types the schema tree shows: stored procedures, functions
+// and triggers.
+
+test("every engine can list routines, tagged procedure or function", () => {
+  const { buildRoutineListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildRoutineListQuery(engine, "appdb");
+    assert.match(sql, /select/i, `${engine} is not a SELECT`);
+    assert.match(
+      sql.toLowerCase(),
+      /procedure|function|routine_type|object_type/,
+      `${engine} does not distinguish procedures from functions`,
+    );
+  }
+});
+
+test("the routine query does not sweep in every other object type", () => {
+  const { buildRoutineListQuery } = require("./schemaQueries.cjs");
+  // Oracle's ALL_OBJECTS holds tables and views too; without a filter the tree
+  // would list them a second time under Procedures.
+  const oracle = buildRoutineListQuery("oracle", "db");
+  assert.match(oracle, /'PROCEDURE'/);
+  assert.match(oracle, /'FUNCTION'/);
+  assert.ok(!/'TABLE'/.test(oracle), "oracle must not pull in tables");
+});
+
+test("every engine can list triggers with the table they belong to", () => {
+  const { buildTriggerListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildTriggerListQuery(engine, "appdb").toLowerCase();
+    assert.match(sql, /select/, `${engine} is not a SELECT`);
+    assert.ok(sql.includes("table") || sql.includes("parent"), `${engine} loses the owning table`);
+  }
+});
+
+test("postgres does not list a trigger once per event", () => {
+  const { buildTriggerListQuery } = require("./schemaQueries.cjs");
+  // information_schema.triggers has one row per event, so an INSERT OR UPDATE
+  // trigger would otherwise appear twice in the tree.
+  assert.match(buildTriggerListQuery("postgres", "db").toLowerCase(), /distinct|group by/);
+});
+
+test("routine and trigger queries come back ordered", () => {
+  const { buildRoutineListQuery, buildTriggerListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    assert.match(buildRoutineListQuery(engine, "db").toLowerCase(), /order by/, `${engine} routines`);
+    assert.match(buildTriggerListQuery(engine, "db").toLowerCase(), /order by/, `${engine} triggers`);
+  }
+});
+
+test("a database name with a quote cannot break either query", () => {
+  const { buildRoutineListQuery, buildTriggerListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    for (const sql of [
+      buildRoutineListQuery(engine, "db'; DROP TABLE t; --"),
+      buildTriggerListQuery(engine, "db'; DROP TABLE t; --"),
+    ]) {
+      assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+    }
+  }
+});
+
+test("an unknown engine is rejected by both", () => {
+  const { buildRoutineListQuery, buildTriggerListQuery } = require("./schemaQueries.cjs");
+  assert.throws(() => buildRoutineListQuery("cassandra", "db"), /unsupported|unknown/i);
+  assert.throws(() => buildTriggerListQuery("cassandra", "db"), /unsupported|unknown/i);
+});

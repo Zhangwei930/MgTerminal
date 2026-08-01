@@ -103,6 +103,8 @@ declare global {
     listDbTables?(connectionId: string): Promise<DbListTablesResult>;
     listDbColumns?(connectionId: string, table: string): Promise<DbListColumnsResult>;
     listDbPrimaryKey?(connectionId: string, table: string): Promise<DbListPrimaryKeyResult>;
+    listDbRoutines?(connectionId: string): Promise<DbListRoutinesResult>;
+    listDbTriggers?(connectionId: string): Promise<DbListTriggersResult>;
     exportDbResult?(payload: DbExportPayload): Promise<DbExportResult>;
     closeDbConnection?(connectionId: string): Promise<DbCloseResult>;
     runDbQuery?(options: DbRunQueryOptions): Promise<{ queryId: string }>;

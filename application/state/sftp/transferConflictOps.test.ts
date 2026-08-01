@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   MAX_DUPLICATE_ATTEMPTS,
+  isPathNotFoundError,
   deleteTargetPath,
   getDuplicateTarget,
   splitNameForDuplicate,
@@ -151,19 +152,6 @@ test("getDuplicateTarget gives up after the attempt ceiling and uses a timestamp
   assert.ok(MAX_DUPLICATE_ATTEMPTS > 0);
 });
 
-// A stat that rejects is treated as "nothing is there". That is the difference
-// between renaming around an existing file and writing over it, so the reason
-// the stat failed matters — a transport error is not evidence of absence.
-// Pinned as-is; changing it is a behaviour decision, not a test fix.
-test("getDuplicateTarget treats a failing stat as a free name", async () => {
-  const deps = makeDeps([], {
-    statLocal: async () => { throw new Error("ECONNRESET"); },
-  });
-  const result = await getDuplicateTarget(deps, task(), pane(true), null, "utf-8");
-
-  assert.equal(result.fileName, "report (copy).csv");
-});
-
 // ── deleteTargetPath ────────────────────────────────────────────────────────
 
 test("deleteTargetPath deletes through the local bridge", async () => {
@@ -209,4 +197,115 @@ test("deleteTargetPath throws when the bridge cannot delete", async () => {
     () => deleteTargetPath(makeDeps([], { deleteSftp: undefined }), task(), pane(false), "s1", "utf-8"),
     /unavailable/i,
   );
+});
+
+// ── isPathNotFoundError ─────────────────────────────────────────────────────
+//
+// Separates "the target genuinely is not there" from "the probe failed". Only
+// the first makes a candidate name safe to use. Recognition is a strict
+// allowlist: anything unrecognised must read as false, because a false
+// positive here is what leads to overwriting a real file.
+
+test("a local ENOENT is recognised as not-found", () => {
+  assert.equal(isPathNotFoundError(new Error("ENOENT: no such file or directory, stat '/x'")), true);
+  assert.equal(isPathNotFoundError(Object.assign(new Error("boom"), { code: "ENOENT" })), true);
+});
+
+test("an sftp NO_SUCH_FILE is recognised as not-found", () => {
+  // ssh2 maps STATUS_CODE.NO_SUCH_FILE to exactly this text.
+  assert.equal(isPathNotFoundError(new Error("No such file or directory")), true);
+});
+
+test("an IPC-wrapped message is still recognised", () => {
+  assert.equal(
+    isPathNotFoundError(new Error(
+      "Error invoking remote method 'magiesTerminal:local:stat': Error: ENOENT: no such file or directory, stat '/x'",
+    )),
+    true,
+  );
+});
+
+test("a dead session is NOT treated as a missing file", () => {
+  // statSftp throws exactly this when the session is gone. Reading it as
+  // not-found would hand back a name that may well be occupied.
+  assert.equal(isPathNotFoundError(new Error("SFTP session not found")), false);
+});
+
+test("transport and permission failures are not not-found", () => {
+  for (const message of [
+    "ECONNRESET",
+    "Permission denied",
+    "EACCES: permission denied",
+    "Timed out",
+    "Bridge not available",
+  ]) {
+    assert.equal(isPathNotFoundError(new Error(message)), false, message);
+  }
+});
+
+test("non-errors are not not-found", () => {
+  assert.equal(isPathNotFoundError(null), false);
+  assert.equal(isPathNotFoundError(undefined), false);
+  assert.equal(isPathNotFoundError("ENOENT"), false);
+});
+
+// ── getDuplicateTarget: probe failures ──────────────────────────────────────
+
+test("a confirmed-missing candidate is used directly", async () => {
+  const deps = makeDeps([], {
+    statLocal: async () => { throw new Error("ENOENT: no such file or directory, stat '/x'"); },
+  });
+  const result = await getDuplicateTarget(deps, task(), pane(true), null, "utf-8");
+
+  assert.equal(result.fileName, "report (copy).csv", "not-found means the name is free");
+});
+
+// This is the fix: a probe that fails for any other reason is not evidence of
+// absence, so the name it was checking cannot be trusted.
+test("an unexplained probe failure falls back to a timestamped name", async () => {
+  const deps = makeDeps([], {
+    statLocal: async () => { throw new Error("ECONNRESET"); },
+  });
+  const result = await getDuplicateTarget(deps, task(), pane(true), null, "utf-8");
+
+  assert.match(
+    result.fileName,
+    /^report \(copy \d{10,}\)\.csv$/,
+    "a blip must not hand back ' (copy)', which may already exist",
+  );
+  assert.notEqual(result.fileName, "report (copy).csv");
+});
+
+test("a dead session falls back rather than claiming the name is free", async () => {
+  const deps = makeDeps([], {
+    statSftp: async () => { throw new Error("SFTP session not found"); },
+  });
+  const result = await getDuplicateTarget(deps, task(), pane(false), "sftp-1", "utf-8");
+
+  assert.match(result.fileName, /^report \(copy \d{10,}\)\.csv$/);
+});
+
+test("the fallback path is still a sibling of the original target", async () => {
+  const deps = makeDeps([], {
+    statLocal: async () => { throw new Error("ECONNRESET"); },
+  });
+  const result = await getDuplicateTarget(deps, task(), pane(true), null, "utf-8");
+
+  assert.equal(result.targetPath, `/dest/${result.fileName}`);
+});
+
+test("a mid-search failure falls back instead of using the current candidate", async () => {
+  // First candidate exists, second probe blows up: the second name is unknown,
+  // so it must not be used just because the probe did not resolve.
+  let call = 0;
+  const deps = makeDeps([], {
+    statLocal: async () => {
+      call += 1;
+      if (call === 1) return { type: "file" as const, size: 1, lastModified: 1 };
+      throw new Error("ECONNRESET");
+    },
+  });
+  const result = await getDuplicateTarget(deps, task(), pane(true), null, "utf-8");
+
+  assert.match(result.fileName, /^report \(copy \d{10,}\)\.csv$/);
 });

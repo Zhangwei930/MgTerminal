@@ -1,6 +1,21 @@
 # Registro de alterações
 
 
+## [0.6.0] - 2026-07-31
+
+### Segurança
+- **Corrigido um vazamento de credenciais no caminho de atualização automática**: a versão do `electron-updater` usada anteriormente vazava os cabeçalhos `Authorization` e `PRIVATE-TOKEN` para outra origem em redirecionamentos (GHSA-p2f4-r6v6-j797); já atualizada
+- **Limpadas as demais vulnerabilidades de dependências**: os dois problemas CRITICAL (injeção de comandos) foram eliminados e os alertas de dependências de produção caíram de 15 para 12
+
+### Funcionalidades
+- **Acesso a bancos de dados para a IA integrada**: o assistente agora enxerga as conexões de banco de dados que você tem abertas e pode executar consultas somente leitura. `INSERT`/`UPDATE`/`DELETE` e DDL também funcionam, mas cada um abre antes um pedido de aprovação exibindo a instrução SQL completa, e o modo observador os recusa. O assistente pode usar uma conexão, mas nunca abrir uma — as credenciais de SSH e do banco não são entregues a ele
+
+### Correções
+- **A varredura anterior à transferência de pastas não sobrecarrega mais a conexão**: as duas pré-varreduras que contam bytes e arquivos disparavam listagens de diretório em paralelo sem limite algum. Em árvores profundas ou largas isso aparecia como travamento ou queda da conexão logo após iniciar a transferência. Agora elas compartilham o mesmo limite de concorrência da própria transferência
+- **Uma sondagem de nome malsucedida não pode mais sobrescrever um arquivo existente**: ao procurar um nome `(copy N)` livre, qualquer falha era lida como «esse nome está disponível», de modo que uma breve instabilidade de rede podia devolver um nome de fato ocupado. Agora só conta um caminho cuja ausência foi confirmada; caso contrário, recorre-se a um nome com carimbo de tempo
+- **«Aplicar a todos» nos conflitos de envio não é mais silenciosamente rebaixado a uma escolha única**: dependendo do momento, a escolha valia apenas para aquele arquivo e a pergunta voltava em seguida
+- **Uma transferência cancelada não é mais relatada como erro**: uma mensagem de cancelamento iniciada com maiúscula, como `Cancelled by user`, era tratada como falha e gerava um aviso de erro; ao contrário, um erro real que mencionasse um caminho como `/var/cancelled-jobs` era tomado por cancelamento e seus detalhes descartados
+
 ## [0.5.28] - 2026-07-24
 
 ### Funcionalidades

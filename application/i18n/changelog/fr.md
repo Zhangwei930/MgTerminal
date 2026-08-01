@@ -1,6 +1,21 @@
 # Journal des modifications
 
 
+## [0.6.0] - 2026-07-31
+
+### Sécurité
+- **Correction d'une fuite d'identifiants sur le canal de mise à jour automatique** : la version d'`electron-updater` utilisée jusqu'ici transmettait les en-têtes `Authorization` et `PRIVATE-TOKEN` à une autre origine lors d'une redirection (GHSA-p2f4-r6v6-j797) ; mise à jour effectuée
+- **Nettoyage des vulnérabilités de dépendances restantes** : les deux problèmes CRITICAL (injection de commandes) sont éliminés, et les alertes sur les dépendances de production passent de 15 à 12
+
+### Fonctionnalités
+- **Accès aux bases de données pour l'IA intégrée** : l'assistant voit désormais les connexions de base de données que vous avez ouvertes et peut exécuter des requêtes en lecture seule. `INSERT`/`UPDATE`/`DELETE` et le DDL sont également possibles, mais chacun déclenche au préalable une demande d'approbation affichant l'instruction SQL complète, et le mode observateur les refuse. L'assistant peut utiliser une connexion mais jamais en ouvrir une — les identifiants SSH et de base de données ne lui sont pas transmis
+
+### Corrections
+- **L'analyse précédant un transfert de dossier ne sature plus la connexion** : les deux pré-analyses qui comptent les octets et les fichiers lançaient les listages de répertoires en parallèle sans aucune limite. Sur des arborescences profondes ou larges, cela se traduisait par un blocage voire une coupure juste après le lancement du transfert. Elles partagent désormais la même limite de parallélisme que le transfert lui-même
+- **Un échec de sondage de nom ne peut plus écraser un fichier existant** : lors de la recherche d'un nom `(copy N)` libre, tout échec était interprété comme « ce nom est disponible », si bien qu'une brève perturbation réseau pouvait renvoyer un nom en réalité occupé. Seul un chemin dont l'absence est confirmée compte désormais ; sinon, un nom horodaté est utilisé
+- **« Appliquer à tout » sur les conflits d'envoi n'est plus silencieusement réduit à un choix ponctuel** : selon la synchronisation, le choix ne s'appliquait qu'à ce seul fichier et la question revenait ensuite
+- **Un transfert annulé n'est plus signalé comme une erreur** : un message d'annulation commençant par une majuscule, tel que `Cancelled by user`, était traité comme un échec et déclenchait une notification d'erreur ; à l'inverse, une véritable erreur mentionnant un chemin comme `/var/cancelled-jobs` était prise pour une annulation et ses détails étaient perdus
+
 ## [0.5.28] - 2026-07-24
 
 ### Fonctionnalités

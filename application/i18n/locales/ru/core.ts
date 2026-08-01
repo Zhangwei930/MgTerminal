@@ -849,6 +849,8 @@ export const ruCoreMessages: Messages = {
   'db.edit.notSingleTable': 'Только чтение: результат получен не из одной таблицы.',
   'db.edit.noPrimaryKey': 'Только чтение: у таблицы нет первичного ключа — строку не определить.',
   'db.edit.keyNotSelected': 'Только чтение: выберите столбцы первичного ключа, чтобы править строки.',
+  'db.export.csv': 'Экспорт CSV',
+  'db.export.json': 'JSON',
   'db.schema.openHint': 'Клик — столбцы, двойной клик — просмотр строк',
 
   'proxyProfiles.action.add': 'Добавить прокси',

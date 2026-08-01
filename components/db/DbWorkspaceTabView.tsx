@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Loader2, Play, Square, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, Loader2, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
@@ -6,6 +6,8 @@ import { useDbClientBackend } from '../../application/state/useDbClientBackend';
 import { useDbSchema } from '../../application/state/useDbSchema';
 import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { useDbRowEditing } from '../../application/state/useDbRowEditing';
+import { resolveEditableTable } from '../../domain/db/editableResult';
+import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
@@ -36,7 +38,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
 }) => {
   const { t } = useI18n();
   const isVisible = useIsDbWorkspaceTabActive(connectionProfile.id);
-  const { connect, close, runQuery, cancelQuery } = useDbClientBackend();
+  const { connect, close, runQuery, cancelQuery, exportResult } = useDbClientBackend();
   const tabs = useDbWorkspaceTabs();
   const sqlDraft = tabs.find((tab) => tab.connectionId === connectionProfile.id)?.sqlDraft ?? '';
 
@@ -126,6 +128,26 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
     );
   }, [status, isRunning, sqlDraft, connectionId, runQuery]);
 
+  const handleExport = useCallback(
+    async (format: 'csv' | 'json') => {
+      if (!result) return;
+      const base = (resultSql && resolveEditableTable(resultSql)) || 'query-result';
+      // The BOM goes on the file only — Excel needs it to read UTF-8, and it
+      // is written here rather than by toCsv so a clipboard copy never gets it.
+      const content = format === 'csv'
+        ? UTF8_BOM + toCsv(result.columns, result.rows)
+        : toJson(result.columns, result.rows);
+
+      const outcome = await exportResult({
+        content,
+        defaultFileName: `${base.replace(/[^\w.-]/g, '_')}.${format}`,
+        format,
+      });
+      if (!outcome.success && !outcome.canceled) setQueryError(outcome.error ?? 'Export failed');
+    },
+    [exportResult, result, resultSql],
+  );
+
   const handleCancel = useCallback(() => {
     void cancelQuery(connectionId);
   }, [cancelQuery, connectionId]);
@@ -178,6 +200,17 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             </>
           )}
         </div>
+
+        {result && result.rows.length > 0 && (
+          <div className="flex items-center gap-1 border-l border-border/60 pl-3">
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('csv')}>
+              <Download size={13} className="mr-1.5" /> {t('db.export.csv')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('json')}>
+              {t('db.export.json')}
+            </Button>
+          </div>
+        )}
 
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {status === 'connecting' && (

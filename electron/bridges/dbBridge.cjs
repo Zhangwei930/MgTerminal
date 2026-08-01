@@ -21,6 +21,8 @@ const QUERY_ONCE_MAX_ROWS = 1_000;
 const QUERY_ONCE_DEFAULT_TIMEOUT_MS = 30_000;
 
 let portForwardingBridge = require("./portForwardingBridge.cjs");
+let dialog = null;
+let fsPromises = null;
 let createAdapter = require("./dbClient/adapterFactory.cjs").createAdapter;
 
 /** connectionId -> { adapter, tunnelId } */
@@ -308,6 +310,40 @@ async function listPrimaryKey({ connectionId, table } = {}) {
   };
 }
 
+const EXPORT_FILTERS = {
+  csv: [{ name: "CSV", extensions: ["csv"] }],
+  json: [{ name: "JSON", extensions: ["json"] }],
+};
+
+/**
+ * Writes an already-serialised result set to a file the user picks.
+ *
+ * Serialisation stays in the renderer (domain/db/resultExport) — this only owns
+ * the dialog and the write, which are the parts that need main-process access.
+ */
+async function exportResult(_event, { content, defaultFileName, format } = {}) {
+  const chooser = dialog ?? require("electron").dialog;
+  const fs = fsPromises ?? require("node:fs/promises");
+
+  const choice = await chooser.showSaveDialog({
+    defaultPath: defaultFileName,
+    filters: [
+      ...(EXPORT_FILTERS[format] ?? []),
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  // Cancelling is a choice, not a failure — reporting an error here would put
+  // a red banner in front of someone who simply changed their mind.
+  if (choice.canceled || !choice.filePath) return { success: false, canceled: true };
+
+  try {
+    await fs.writeFile(choice.filePath, content);
+    return { success: true, filePath: choice.filePath };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
 /** Live connections, described without any credential material. */
 function listConnections() {
   return Array.from(dbConnections.entries()).map(([connectionId, entry]) => ({
@@ -345,6 +381,8 @@ async function stopAllDbConnections() {
 function registerHandlers(ipcMain, deps = {}) {
   portForwardingBridge = deps.portForwardingBridge ?? portForwardingBridge;
   createAdapter = deps.createAdapter ?? createAdapter;
+  dialog = deps.dialog ?? dialog;
+  fsPromises = deps.fs ?? fsPromises;
 
   ipcMain.handle("magiesTerminal:db:connect", connect);
   ipcMain.handle("magiesTerminal:db:close", closeConnection);
@@ -355,6 +393,7 @@ function registerHandlers(ipcMain, deps = {}) {
   ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
   ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
   ipcMain.handle("magiesTerminal:db:listPrimaryKey", (_event, payload) => listPrimaryKey(payload));
+  ipcMain.handle("magiesTerminal:db:exportResult", exportResult);
   ipcMain.handle("magiesTerminal:db:stopAll", () => stopAllDbConnections());
 }
 
@@ -372,6 +411,7 @@ module.exports = {
   listTables,
   listColumns,
   listPrimaryKey,
+  exportResult,
   cancelQuery,
   stopAllDbConnections,
   QUERY_ONCE_DEFAULT_ROWS,

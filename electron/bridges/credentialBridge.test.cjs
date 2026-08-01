@@ -235,6 +235,9 @@ test('macOS encrypt auto-repairs stale keychain then uses safeStorage', () => {
         if (!available) throw new Error('Keychain ACL denied');
         return Buffer.from(`cipher:${value}`);
       },
+      // Encryption is verified by reading it straight back, so the fake needs
+      // the matching half — the real safeStorage always has it.
+      decryptString: (buf) => buf.toString('utf8').replace(/^cipher:/, ''),
     },
     {
       platform: 'darwin',
@@ -361,4 +364,74 @@ test('decrypt is refused while the vault unlock gate is locked', () => {
 
   locked = false;
   assert.equal(handlers.get('magiesTerminal:credentials:decrypt')(null, encrypted), 'secret');
+});
+
+// ── safeStorage round-trip verification ─────────────────────────────────────
+//
+// A half-broken macOS keychain encrypts happily and refuses to decrypt: an
+// ad-hoc signed build gets a new code identity on every rebuild, the ACL on the
+// existing key stops matching, and decryptString fails with errSecAuthFailed
+// while encryptString keeps working. Trusting encryption alone means writing
+// enc:v1 blobs that can never be read back — every saved password silently
+// becomes unrecoverable.
+
+test('a keychain that encrypts but cannot decrypt falls back to the local vault', () => {
+  const userDataPath = tempUserData();
+  const handlers = registerCredentialHandlers(
+    {
+      isEncryptionAvailable: () => true,
+      encryptString: (text) => Buffer.from(text, 'utf8'),
+      decryptString: () => { throw new Error('errSecAuthFailed'); },
+    },
+    { platform: 'darwin', userDataPath },
+  );
+
+  const encrypted = handlers.get('magiesTerminal:credentials:encrypt')(null, 'hunter2');
+
+  assert.ok(
+    encrypted.startsWith(ENC_PREFIX_V2),
+    `expected the local vault to take over, got ${encrypted.slice(0, 12)}`,
+  );
+  assert.equal(handlers.get('magiesTerminal:credentials:decrypt')(null, encrypted), 'hunter2');
+});
+
+test('a keychain that decrypts to the wrong value is not trusted either', () => {
+  const userDataPath = tempUserData();
+  const handlers = registerCredentialHandlers(
+    {
+      isEncryptionAvailable: () => true,
+      encryptString: (text) => Buffer.from(text, 'utf8'),
+      // Silent corruption is worse than an error: it looks like it worked.
+      decryptString: () => 'something else',
+    },
+    { platform: 'darwin', userDataPath },
+  );
+
+  const encrypted = handlers.get('magiesTerminal:credentials:encrypt')(null, 'hunter2');
+
+  assert.ok(encrypted.startsWith(ENC_PREFIX_V2));
+  assert.equal(handlers.get('magiesTerminal:credentials:decrypt')(null, encrypted), 'hunter2');
+});
+
+test('a healthy keychain is still used', () => {
+  const store = new Map();
+  const handlers = registerCredentialHandlers(
+    {
+      isEncryptionAvailable: () => true,
+      encryptString: (text) => {
+        const buf = Buffer.from(`k${store.size}`, 'utf8');
+        store.set(buf.toString('base64'), text);
+        return buf;
+      },
+      decryptString: (buf) => store.get(buf.toString('base64')),
+    },
+    { platform: 'darwin', userDataPath: tempUserData() },
+  );
+
+  const encrypted = handlers.get('magiesTerminal:credentials:encrypt')(null, 'hunter2');
+
+  assert.ok(
+    encrypted.startsWith(ENC_PREFIX_V1),
+    'a working keychain must not be abandoned for the local vault',
+  );
 });

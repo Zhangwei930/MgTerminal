@@ -308,14 +308,41 @@ function registerHandlers(ipcMain, electronModule, options = {}) {
     }
   };
 
+  /**
+   * Encrypts, then reads it straight back.
+   *
+   * A half-broken macOS keychain encrypts happily and refuses to decrypt: an
+   * ad-hoc signed build gets a new code identity on every rebuild, the ACL on
+   * the existing key stops matching, and decryptString fails with
+   * errSecAuthFailed while encryptString keeps working. Trusting encryption
+   * alone means writing enc:v1 blobs that can never be read back, so every
+   * saved password silently becomes unrecoverable — with no error at the moment
+   * it is saved, which is where it would actually be actionable.
+   *
+   * Returns null rather than throwing so the caller falls through to the local
+   * vault the same way it does for an outright encryption failure.
+   */
+  const encryptWithVerifiedSafeStorage = (plaintext) => {
+    let ciphertext;
+    try {
+      ciphertext = encryptWithSafeStorageAndRepair(plaintext);
+    } catch {
+      return null;
+    }
+    try {
+      // A wrong value is worse than an error — it looks like it worked.
+      return decryptV1(ciphertext) === plaintext ? ciphertext : null;
+    } catch {
+      return null;
+    }
+  };
+
   const encryptValue = (plaintext) => {
     // Prefer OS backend when healthy (unless tests force local vault).
     if (!preferLocalVault && (isSafeStorageAvailable() || platform === "darwin")) {
-      try {
-        return encryptWithSafeStorageAndRepair(plaintext);
-      } catch {
-        // fall through to local vault
-      }
+      const verified = encryptWithVerifiedSafeStorage(plaintext);
+      if (verified) return verified;
+      // fall through to local vault
     }
     if (isLocalVaultAvailable()) {
       return localVault.encrypt(plaintext);

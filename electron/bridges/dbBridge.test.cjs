@@ -184,3 +184,167 @@ test("stopAllDbConnections closes every tracked connection and clears the map", 
   const closeResult = await dbBridge.closeConnection(event, { connectionId: "c7" });
   assert.equal(closeResult.success, false);
 });
+
+// ── queryOnce / listConnections ─────────────────────────────────────────────
+//
+// The streaming query() pushes rows to event.sender, which only exists for a
+// BrowserWindow. Capability callers reach the app over TCP (MCP) or RPC (CLI)
+// and have no sender, so they need a request/response form that resolves with
+// the whole result.
+
+function createBatchingAdapter({ batches, result, delayMs = 0, throwError = null }) {
+  const calls = { cancel: 0, queries: [] };
+  return {
+    calls,
+    async connect() { return { serverVersion: "1.0" }; },
+    async query(sql, { maxRows, onRowBatch }) {
+      calls.queries.push({ sql, maxRows });
+      if (throwError) throw throwError;
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      for (const batch of batches) onRowBatch(batch);
+      return result;
+    },
+    async cancel() { calls.cancel += 1; },
+    async close() {},
+  };
+}
+
+async function connectWith(adapter, overrides = {}) {
+  // dbConnections is module-level state shared across tests. Without this,
+  // these cases only pass because they happen to reuse one connectionId.
+  await dbBridge.stopAllDbConnections();
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "c1",
+    engine: "postgres",
+    sshOptions: { hostname: "db.internal", username: "root" },
+    remoteHost: "10.0.0.5",
+    remotePort: 5432,
+    database: "clinic",
+    dbUsername: "reader",
+    dbPassword: "secret",
+    ...overrides,
+  });
+}
+
+test("queryOnce resolves with the full result and needs no sender", async () => {
+  const adapter = createBatchingAdapter({
+    batches: [
+      { columns: [{ name: "id", type: "number" }, { name: "name", type: "string" }], rows: [[1, "a"]] },
+      { rows: [[2, "b"], [3, "c"]] },
+    ],
+    result: { rowCount: 3, truncated: false },
+  });
+  await connectWith(adapter);
+
+  const result = await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT * FROM t" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.columns, [{ name: "id", type: "number" }, { name: "name", type: "string" }]);
+  assert.deepEqual(result.rows, [[1, "a"], [2, "b"], [3, "c"]], "batches are concatenated in order");
+  assert.equal(result.rowCount, 3);
+  assert.equal(result.truncated, false);
+  assert.equal(typeof result.durationMs, "number");
+});
+
+test("queryOnce reports a missing connection instead of throwing", async () => {
+  setup();
+  const result = await dbBridge.queryOnce({ connectionId: "nope", sql: "SELECT 1" });
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /not found/i);
+});
+
+test("queryOnce surfaces adapter failures as an error result", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: {}, throwError: new Error("syntax error at or near") });
+  await connectWith(adapter);
+
+  const result = await dbBridge.queryOnce({ connectionId: "c1", sql: "SELEC 1" });
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /syntax error/);
+});
+
+test("queryOnce clamps maxRows to the ceiling a caller cannot raise", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: { rowCount: 0, truncated: false } });
+  await connectWith(adapter);
+
+  await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT 1", maxRows: 10_000_000 });
+
+  assert.equal(
+    adapter.calls.queries[0].maxRows,
+    dbBridge.QUERY_ONCE_MAX_ROWS,
+    "an unbounded result set would be pulled entirely into memory and into the model's context",
+  );
+});
+
+test("queryOnce applies a modest default when maxRows is omitted", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: { rowCount: 0, truncated: false } });
+  await connectWith(adapter);
+
+  await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT 1" });
+
+  assert.equal(adapter.calls.queries[0].maxRows, dbBridge.QUERY_ONCE_DEFAULT_ROWS);
+  assert.ok(dbBridge.QUERY_ONCE_DEFAULT_ROWS <= dbBridge.QUERY_ONCE_MAX_ROWS);
+});
+
+test("queryOnce honours a smaller caller-supplied maxRows", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: { rowCount: 0, truncated: false } });
+  await connectWith(adapter);
+
+  await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT 1", maxRows: 5 });
+
+  assert.equal(adapter.calls.queries[0].maxRows, 5);
+});
+
+test("queryOnce cancels and reports a timeout rather than hanging the caller", async () => {
+  const adapter = createBatchingAdapter({
+    batches: [], result: { rowCount: 0, truncated: false }, delayMs: 200,
+  });
+  await connectWith(adapter);
+
+  const result = await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT pg_sleep(60)", timeoutMs: 20 });
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /timed out/i);
+  assert.equal(adapter.calls.cancel, 1, "a timed-out query must be cancelled, not left running");
+});
+
+test("queryOnce passes truncation through so callers know rows were dropped", async () => {
+  const adapter = createBatchingAdapter({
+    batches: [{ columns: [{ name: "id", type: "number" }], rows: [[1]] }],
+    result: { rowCount: 1, truncated: true },
+  });
+  await connectWith(adapter);
+
+  const result = await dbBridge.queryOnce({ connectionId: "c1", sql: "SELECT * FROM big", maxRows: 1 });
+
+  assert.equal(result.truncated, true);
+});
+
+test("listConnections describes live connections without leaking credentials", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: {} });
+  await connectWith(adapter);
+
+  const connections = dbBridge.listConnections();
+
+  assert.equal(connections.length, 1);
+  const [conn] = connections;
+  assert.equal(conn.connectionId, "c1");
+  assert.equal(conn.engine, "postgres");
+  assert.equal(conn.database, "clinic");
+  assert.equal(conn.remoteHost, "10.0.0.5");
+  assert.equal(conn.remotePort, 5432);
+
+  const serialised = JSON.stringify(connections);
+  assert.ok(!serialised.includes("secret"), "the DB password must never appear");
+  assert.ok(!serialised.includes("reader"), "the DB username must never appear");
+});
+
+test("listConnections is empty once a connection closes", async () => {
+  const adapter = createBatchingAdapter({ batches: [], result: {} });
+  await connectWith(adapter);
+  await dbBridge.closeConnection({ sender: createSender() }, { connectionId: "c1" });
+
+  assert.deepEqual(dbBridge.listConnections(), []);
+});

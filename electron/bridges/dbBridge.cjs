@@ -1,6 +1,7 @@
 "use strict";
 
 const { getFreeLocalPort } = require("./freePortPicker.cjs");
+const { buildTableListQuery, buildColumnListQuery } = require("./dbClient/schemaQueries.cjs");
 
 const DEFAULT_MAX_ROWS = 10_000;
 
@@ -208,6 +209,81 @@ async function queryOnce({ connectionId, sql, maxRows, timeoutMs } = {}) {
   }
 }
 
+
+/**
+ * Schema introspection. The queries live in dbClient/schemaQueries.cjs, one per
+ * engine; this layer runs them through the ordinary query path and normalises
+ * the four catalogs' vocabularies into one shape.
+ */
+
+/** Maps a result row array onto the column names the query aliased. */
+function rowsToObjects(columns, rows) {
+  const names = (columns || []).map((c) => String(c?.name ?? "").toLowerCase());
+  return (rows || []).map((row) => {
+    const out = {};
+    names.forEach((name, i) => { out[name] = row[i]; });
+    return out;
+  });
+}
+
+/**
+ * Normalises nullability across catalogs: MySQL/Postgres/SQL Server say
+ * 'YES'/'NO', Oracle says 'Y'/'N'. Anything not recognised as nullable is
+ * treated as NOT NULL — the conservative reading for a schema display.
+ */
+function parseNullable(value) {
+  const v = String(value ?? "").trim().toUpperCase();
+  return v === "YES" || v === "Y";
+}
+
+async function runSchemaQuery(connectionId, sql) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+
+  const result = await queryOnce({ connectionId, sql, maxRows: QUERY_ONCE_MAX_ROWS });
+  if (!result.success) return { success: false, error: result.error };
+  return { success: true, rows: rowsToObjects(result.columns, result.rows) };
+}
+
+/** Tables and views in the connected database, each tagged 'table' | 'view'. */
+async function listTables({ connectionId } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+
+  const sql = buildTableListQuery(entry.engine, entry.database ?? "");
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    tables: out.rows.map((r) => ({
+      name: String(r.name ?? ""),
+      kind: String(r.kind ?? "table").toLowerCase() === "view" ? "view" : "table",
+    })),
+  };
+}
+
+/** Columns of one table, in declaration order. */
+async function listColumns({ connectionId, table } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+  if (!table) return { success: false, error: "table is required" };
+
+  const sql = buildColumnListQuery(entry.engine, entry.database ?? "", table);
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    columns: out.rows.map((r) => ({
+      name: String(r.name ?? ""),
+      dataType: String(r.data_type ?? ""),
+      nullable: parseNullable(r.is_nullable),
+      position: Number(r.position ?? 0),
+    })),
+  };
+}
+
 /** Live connections, described without any credential material. */
 function listConnections() {
   return Array.from(dbConnections.entries()).map(([connectionId, entry]) => ({
@@ -263,6 +339,8 @@ module.exports = {
   // over IPC would only widen the surface.
   queryOnce,
   listConnections,
+  listTables,
+  listColumns,
   cancelQuery,
   stopAllDbConnections,
   QUERY_ONCE_DEFAULT_ROWS,

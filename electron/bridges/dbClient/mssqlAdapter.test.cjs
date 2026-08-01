@@ -113,3 +113,38 @@ test("cancel calls the active request's cancel method", async () => {
     assert.equal(cancelCalled, true);
   });
 });
+
+test("the pool holds exactly one connection", async () => {
+  // Every other engine's adapter is a single session. This one is a pool, and
+  // with the default size a transaction breaks silently: BEGIN TRANSACTION and
+  // the statements after it land on different connections, so the work is
+  // never inside the transaction and COMMIT has nothing to commit.
+  //
+  // min is pinned too — a pool that can shrink to zero may drop the session
+  // holding an open transaction while the user is still typing.
+  let captured = null;
+  const fakePool = {
+    connect: async () => {},
+    close: async () => {},
+    request: () => makeRequest(async () => ({ recordset: [{ version: "x" }] })),
+  };
+
+  const OriginalPool = sql.ConnectionPool;
+  class CapturingPool extends OriginalPool {
+    constructor(config) {
+      captured = config;
+      super(config);
+    }
+  }
+  sql.ConnectionPool = CapturingPool;
+  try {
+    await withFakePool(fakePool, async () => {
+      await createMssqlAdapter().connect({ host: "127.0.0.1", port: 1433 });
+    });
+  } finally {
+    sql.ConnectionPool = OriginalPool;
+  }
+
+  assert.equal(captured?.pool?.max, 1, "pool must not open a second connection");
+  assert.equal(captured?.pool?.min, 1, "pool must keep its connection alive");
+});

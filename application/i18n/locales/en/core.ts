@@ -971,6 +971,10 @@ export const enCoreMessages: Messages = {
   'db.schema.empty': 'No tables or views.',
   'db.schema.loading': 'Loading columns…',
   'db.schema.columnsFailed': 'Could not read columns.',
+  'db.tx.autoCommit': 'Auto-commit',
+  'db.tx.autoCommitHint': 'Off opens a transaction. Turning it back on rolls back any uncommitted changes.',
+  'db.tx.commit': 'Commit',
+  'db.tx.rollback': 'Rollback',
   'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',

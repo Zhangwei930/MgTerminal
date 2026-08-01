@@ -671,6 +671,10 @@ export const zhCNCoreMessages: Messages = {
   'db.schema.empty': '没有表或视图。',
   'db.schema.loading': '正在读取字段…',
   'db.schema.columnsFailed': '无法读取字段。',
+  'db.tx.autoCommit': '自动提交',
+  'db.tx.autoCommitHint': '关闭后会开启事务；重新开启会回滚尚未提交的更改。',
+  'db.tx.commit': '提交',
+  'db.tx.rollback': '回滚',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

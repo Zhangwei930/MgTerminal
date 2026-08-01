@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, GitBranch, Loader2, Play, Square, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, GitBranch, History, Loader2, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
@@ -6,6 +6,7 @@ import { useDbClientBackend } from '../../application/state/useDbClientBackend';
 import { useDbSchema } from '../../application/state/useDbSchema';
 import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { useDbRowEditing } from '../../application/state/useDbRowEditing';
+import { dbQueryHistoryStore, useDbQueryHistory } from '../../application/state/dbQueryHistoryStore';
 import { resolveEditableTable } from '../../domain/db/editableResult';
 import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
 import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
@@ -17,6 +18,7 @@ import { Button } from '../ui/button';
 import { attemptDbConnection } from './dbConnectAttempt';
 import { buildDbConnectRequest } from './dbConnectRequest';
 import { DbResultsGrid } from './DbResultsGrid';
+import { DbQueryHistoryPanel } from './DbQueryHistoryPanel';
 import { DbSchemaTree } from './DbSchemaTree';
 import { SqlCodeEditor } from './SqlCodeEditor';
 
@@ -52,6 +54,8 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   // The draft keeps changing as the user types; editing has to key off the SQL
   // that actually produced the rows on screen.
   const [resultSql, setResultSql] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const queryHistory = useDbQueryHistory();
 
   const connectionId = connectionProfile.id;
   const activeQueryIdRef = useRef<string | null>(null);
@@ -119,11 +123,21 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           if (activeQueryIdRef.current !== queryId) return;
           setIsRunning(false);
           setMeta(payload);
+          dbQueryHistoryStore.record({
+            sql: sqlToRun,
+            connectionId,
+            ok: true,
+            rowCount: payload.rowCount,
+            durationMs: payload.durationMs,
+          });
         },
         onError: (payload) => {
           if (activeQueryIdRef.current !== queryId) return;
           setIsRunning(false);
           setQueryError(payload.error);
+          // A failed statement is recorded too — finding the one that errored
+          // is exactly when history earns its keep.
+          dbQueryHistoryStore.record({ sql: sqlToRun, connectionId, ok: false });
         },
       },
     );
@@ -244,6 +258,14 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           )}
         </div>
 
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setHistoryOpen((prev) => !prev)}
+          title={t('db.history.title')}
+        >
+          <History size={13} />
+        </Button>
         {result && result.rows.length > 0 && (
           <div className="flex items-center gap-1 border-l border-border/60 pl-3">
             <Button size="sm" variant="ghost" onClick={() => void handleExport('csv')}>
@@ -326,6 +348,16 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             )}
           </div>
         </div>
+        {historyOpen && (
+          <DbQueryHistoryPanel
+            history={queryHistory}
+            connectionId={connectionId}
+            onPick={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
+            onToggleFavourite={dbQueryHistoryStore.toggleFavourite}
+            onClear={dbQueryHistoryStore.clear}
+            onClose={() => setHistoryOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

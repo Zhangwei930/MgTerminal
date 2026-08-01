@@ -20,6 +20,69 @@ import { buildCacheKey, setSharedRemoteHostCache } from "./sharedRemoteHostCache
 /** Shared empty set for navigation resets — never mutate this. */
 const EMPTY_SET = new Set<string>();
 
+/**
+ * Whether `candidate` sits underneath `parent`.
+ *
+ * Not a bare startsWith: "/srv/data-old" begins with "/srv/data" but is a
+ * sibling, and treating it as a descendant would refuse a legitimate move.
+ * A path is never its own descendant.
+ */
+export function isDescendantPath(candidate: string, parent: string): boolean {
+  const normalizedCandidate = normalizeSftpPathForCompare(candidate);
+  const normalizedParent = normalizeSftpPathForCompare(parent);
+  if (normalizedCandidate === normalizedParent) return false;
+
+  if (/^[a-z]:\\$/.test(normalizedParent)) {
+    return normalizedCandidate.startsWith(normalizedParent);
+  }
+
+  if (normalizedParent === "/") {
+    return normalizedCandidate.startsWith("/");
+  }
+
+  const separator = normalizedParent.includes("\\") ? "\\" : "/";
+  return normalizedCandidate.startsWith(`${normalizedParent}${separator}`);
+}
+
+/**
+ * The safety filter in front of a move: which of `sourcePaths` may actually be
+ * moved into `targetPath`.
+ *
+ * Drops, in order: blanks and duplicates; any path already covered by a
+ * selected ancestor (moving the ancestor carries it, and moving both would
+ * later reference a path that no longer exists); a move onto itself; a
+ * directory moved inside itself; and a move that would land a source exactly
+ * where it already is.
+ */
+export function selectMovableSources(sourcePaths: string[], targetPath: string): string[] {
+  const uniqueSources = Array.from(new Set(sourcePaths.filter(Boolean)));
+  // Shortest first, so an ancestor is always seen before the children it absorbs.
+  const filteredSources = uniqueSources
+    .sort((a, b) => a.length - b.length)
+    .filter((path, index, arr) =>
+      !arr.slice(0, index).some((otherPath) => isSameSftpPath(path, otherPath) || isDescendantPath(path, otherPath)),
+    );
+
+  return filteredSources.filter((sourcePath) => {
+    if (isSameSftpPath(sourcePath, targetPath)) return false;
+    if (isDescendantPath(targetPath, sourcePath)) return false;
+    const destinationPath = joinPath(targetPath, getFileName(sourcePath));
+    return !isSameSftpPath(destinationPath, sourcePath);
+  });
+}
+
+/**
+ * Files matching the pane's filter. ".." always survives so the user can still
+ * navigate up out of a filtered view.
+ */
+export function filterPaneFiles(pane: SftpPane): SftpFileEntry[] {
+  const term = pane.filter.trim().toLowerCase();
+  if (!term) return pane.files;
+  return pane.files.filter(
+    (f) => f.name === ".." || f.name.toLowerCase().includes(term),
+  );
+}
+
 interface UseSftpPaneActionsParams {
   hosts: Host[];
   getActivePane: (side: "left" | "right") => SftpPane | null;
@@ -100,30 +163,10 @@ export const useSftpPaneActions = ({
   clearSelectionsExcept,
   dirCacheTtlMs,
 }: UseSftpPaneActionsParams): UseSftpPaneActionsResult => {
-  const normalizePathForCompare = useCallback((path: string): string => {
-    return normalizeSftpPathForCompare(path);
-  }, []);
-
   const isSamePath = useCallback((a: string, b: string): boolean => {
     return isSameSftpPath(a, b);
   }, []);
 
-  const isDescendantPath = useCallback((candidate: string, parent: string): boolean => {
-    const normalizedCandidate = normalizePathForCompare(candidate);
-    const normalizedParent = normalizePathForCompare(parent);
-    if (normalizedCandidate === normalizedParent) return false;
-
-    if (/^[a-z]:\\$/.test(normalizedParent)) {
-      return normalizedCandidate.startsWith(normalizedParent);
-    }
-
-    if (normalizedParent === "/") {
-      return normalizedCandidate.startsWith("/");
-    }
-
-    const separator = normalizedParent.includes("\\") ? "\\" : "/";
-    return normalizedCandidate.startsWith(`${normalizedParent}${separator}`);
-  }, [normalizePathForCompare]);
 
   // Build the shared cache key for the active pane. Prefer the last connected
   // host (which includes session-time overrides), fall back to the vault hosts list.
@@ -603,13 +646,7 @@ export const useSftpPaneActions = ({
     updateActiveTab(side, (prev) => ({ ...prev, filter }));
   }, [updateActiveTab]);
 
-  const getFilteredFiles = useCallback((pane: SftpPane): SftpFileEntry[] => {
-    const term = pane.filter.trim().toLowerCase();
-    if (!term) return pane.files;
-    return pane.files.filter(
-      (f) => f.name === ".." || f.name.toLowerCase().includes(term),
-    );
-  }, []);
+  const getFilteredFiles = useCallback((pane: SftpPane): SftpFileEntry[] => filterPaneFiles(pane), []);
 
   const createDirectoryAtPath = useCallback(
     async (side: "left" | "right", path: string, name: string) => {
@@ -892,19 +929,7 @@ export const useSftpPaneActions = ({
       const pane = getActivePane(side);
       if (!pane?.connection || sourcePaths.length === 0) return;
 
-      const uniqueSources = Array.from(new Set(sourcePaths.filter(Boolean)));
-      const filteredSources = uniqueSources
-        .sort((a, b) => a.length - b.length)
-        .filter((path, index, arr) =>
-          !arr.slice(0, index).some((otherPath) => isSamePath(path, otherPath) || isDescendantPath(path, otherPath)),
-        );
-
-      const movableSources = filteredSources.filter((sourcePath) => {
-        if (isSamePath(sourcePath, targetPath)) return false;
-        if (isDescendantPath(targetPath, sourcePath)) return false;
-        const destinationPath = joinPath(targetPath, getFileName(sourcePath));
-        return !isSamePath(destinationPath, sourcePath);
-      });
+      const movableSources = selectMovableSources(sourcePaths, targetPath);
 
       if (movableSources.length === 0) return;
 
@@ -982,7 +1007,7 @@ export const useSftpPaneActions = ({
         throw err;
       }
     },
-    [clearCacheForConnection, getActivePane, handleSessionError, isDescendantPath, isSamePath, isSessionError, refresh, sftpSessionsRef, updateActiveTab],
+    [clearCacheForConnection, getActivePane, handleSessionError, isSamePath, isSessionError, refresh, sftpSessionsRef, updateActiveTab],
   );
 
   const changePermissions = useCallback(

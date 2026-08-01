@@ -1,6 +1,15 @@
 # Registro de alterações
 
 
+## [0.6.1] - 2026-08-01
+
+### Correções
+- **Salvar uma conexão de banco de dados não sobrescreve mais as já armazenadas**: o carregamento descriptografa cada senha com uma ida e volta ao processo principal, e salvar antes disso terminar acrescentava a uma lista vazia e substituía o conjunto salvo, enquanto o carregamento em andamento se descartava como obsoleto — as conexões salvas sumiam. Nada é gravado antes de o carregamento concluir
+- **Uma conexão de banco de dados que falha não fica mais presa em «conectando»**: a exceção lançada quando o túnel SSH não pode ser estabelecido nunca era capturada, deixando a tela esperando sem nada exibido. Falhas de autenticação, túneis impossíveis e portas fechadas agora informam a causa
+
+### Melhorias
+- **O cartão de aprovação da IA mostra a instrução SQL completa**: em uma instrução de escrita, o SQL só aparecia dentro do JSON de argumentos recolhido. Agora fica na linha de título do cartão como um comando de shell, com ícone próprio de banco de dados e sem o enganoso prompt `$`
+
 ## [0.6.0] - 2026-07-31
 
 ### Segurança

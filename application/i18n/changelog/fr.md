@@ -1,6 +1,15 @@
 # Journal des modifications
 
 
+## [0.6.1] - 2026-08-01
+
+### Corrections
+- **Enregistrer une connexion de base de données n'écrase plus celles déjà stockées** : le chargement déchiffre chaque mot de passe via un aller-retour au processus principal ; un enregistrement avant la fin ajoutait à une liste vide et remplaçait l'ensemble stocké, tandis que le chargement en cours se jugeait périmé et s'annulait — les connexions enregistrées disparaissaient. Plus rien n'est écrit avant la fin du chargement
+- **Une connexion de base de données en échec ne reste plus bloquée sur « connexion… »** : l'exception levée quand le tunnel SSH ne peut pas être établi n'était jamais interceptée, laissant la vue attendre indéfiniment sans rien afficher. Échecs d'authentification, tunnels impossibles et ports fermés indiquent désormais la cause
+
+### Améliorations
+- **La carte d'approbation de l'IA affiche l'instruction SQL complète** : pour une instruction d'écriture, le SQL n'apparaissait que dans le JSON des arguments replié. Il figure désormais sur la ligne de titre de la carte comme une commande shell, avec sa propre icône de base de données et sans l'invite `$` trompeuse
+
 ## [0.6.0] - 2026-07-31
 
 ### Sécurité

@@ -1,6 +1,15 @@
 # Changelog
 
 
+## [0.6.1] - 2026-08-01
+
+### Fixes
+- **Saving a database connection no longer overwrites the ones already stored**: loading saved connections decrypts each password through a main-process round-trip, and saving before that finished appended to an empty list and replaced the stored set, while the in-flight load discarded itself as stale — the saved connections were gone. Nothing is written back until the load completes
+- **A failed database connection no longer sits on "connecting" forever**: the exception thrown when an SSH tunnel cannot be established was never caught, so the view waited indefinitely with nothing on screen. Authentication failures, unreachable tunnels and closed ports now all report what went wrong
+
+### Improvements
+- **The AI approval card shows the full SQL statement**: when the assistant asks to run a writing statement, the SQL used to appear only inside the collapsed arguments JSON. It now sits on the card's title line like a shell command, with its own database icon and without the misleading `$` shell prompt
+
 ## [0.6.0] - 2026-07-31
 
 ### Security

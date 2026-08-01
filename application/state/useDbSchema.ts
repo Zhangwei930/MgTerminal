@@ -14,6 +14,7 @@ import { useDbClientBackend } from "./useDbClientBackend";
 export const useDbSchema = (connectionId: string, ready: boolean) => {
   const {
     listTables, listColumns, listIndexes, listForeignKeys, listRoutines, listTriggers,
+    getTableDdl,
   } = useDbClientBackend();
   const [tables, setTables] = useState<DbSchemaTable[] | null>(null);
   const [routines, setRoutines] = useState<DbSchemaRoutine[]>([]);
@@ -113,11 +114,21 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
     [connectionId, getColumns, listForeignKeys, listIndexes],
   );
 
+  /** The CREATE TABLE for one table, or its error as a comment the editor can hold. */
+  const loadTableDdl = useCallback(
+    async (table: string): Promise<string> => {
+      const result = await getTableDdl(connectionId, table);
+      if (result?.success && result.ddl) return result.ddl;
+      return `-- ${result?.error ?? 'Could not read the DDL for this table.'}`;
+    },
+    [connectionId, getTableDdl],
+  );
+
   /** Synchronous peek for callers that cannot await — returns null if unseen. */
   const peekColumns = useCallback((table: string) => columnCache.current.get(table) ?? null, []);
 
   return {
     tables, routines, triggers, loading, error, reload,
-    getColumns, getTableDetail, peekColumns,
+    getColumns, getTableDetail, loadTableDdl, peekColumns,
   };
 };

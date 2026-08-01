@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronRight, Eye, FunctionSquare, Key, Link2, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Code2, Eye, FunctionSquare, Key, Link2, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import type { DbEngine } from '../../domain/models';
@@ -17,6 +17,8 @@ interface DbSchemaTreeProps {
   getTableDetail: (table: string) => Promise<TableDetail | null>;
   /** Double-clicking a table hands its preview SQL to the editor. */
   onOpenTable: (sql: string) => void;
+  /** Shows a table's CREATE TABLE in the editor. */
+  onShowDdl: (table: string) => void;
 }
 
 interface TableDetail {
@@ -52,6 +54,7 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
   onReload,
   getTableDetail,
   onOpenTable,
+  onShowDdl,
 }) => {
   const { t } = useI18n();
   const [filter, setFilter] = useState('');
@@ -135,13 +138,21 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
                   if (event.key === 'Enter') onOpenTable(buildPreviewSelect(engine, table.name));
                 }}
                 title={t('db.schema.openHint')}
-                className="flex cursor-default items-center gap-1 px-2 py-0.5 text-xs hover:bg-muted/60"
+                className="group flex cursor-default items-center gap-1 px-2 py-0.5 text-xs hover:bg-muted/60"
               >
                 {state ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
                 {table.kind === 'view'
                   ? <Eye size={11} className="shrink-0 text-muted-foreground" />
                   : <Table2 size={11} className="shrink-0 text-muted-foreground" />}
                 <span className="truncate">{table.name}</span>
+                <button
+                  type="button"
+                  onClick={(event) => { event.stopPropagation(); onShowDdl(table.name); }}
+                  title={t('db.schema.showDdl')}
+                  className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100"
+                >
+                  <Code2 size={10} />
+                </button>
               </div>
 
               {state?.status === 'loading' && (

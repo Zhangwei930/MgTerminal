@@ -326,6 +326,10 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             onReload={() => void schema.reload()}
             getTableDetail={schema.getTableDetail}
             onOpenTable={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
+            onShowDdl={(table) => {
+              void schema.loadTableDdl(table).then((ddl) =>
+                dbWorkspaceTabStore.setSqlDraft(connectionId, ddl));
+            }}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col">

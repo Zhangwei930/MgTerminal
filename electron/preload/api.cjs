@@ -940,6 +940,9 @@ function createPreloadApi(ctx) {
   listDbPrimaryKey: async (connectionId, table) => {
     return ipcRenderer.invoke("magiesTerminal:db:listPrimaryKey", { connectionId, table });
   },
+  getDbTableDdl: async (connectionId, table) => {
+    return ipcRenderer.invoke("magiesTerminal:db:getTableDdl", { connectionId, table });
+  },
   listDbIndexes: async (connectionId, table) => {
     return ipcRenderer.invoke("magiesTerminal:db:listIndexes", { connectionId, table });
   },

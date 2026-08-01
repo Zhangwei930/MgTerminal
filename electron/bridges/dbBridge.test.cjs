@@ -741,3 +741,73 @@ test("index and foreign key calls are reachable over IPC", async () => {
   assert.ok(handlers.has("magiesTerminal:db:listIndexes"));
   assert.ok(handlers.has("magiesTerminal:db:listForeignKeys"));
 });
+
+// ── table DDL ───────────────────────────────────────────────────────────────
+
+test("mysql returns the server's own CREATE TABLE", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "SHOW CREATE TABLE": {
+      columns: [{ name: "Table" }, { name: "Create Table" }],
+      rows: [["patients", "CREATE TABLE `patients` (\n  `id` int NOT NULL AUTO_INCREMENT\n)"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "d1", engine: "mysql", hostId: "", remoteHost: "db", remotePort: 3306, database: "app",
+  });
+
+  const result = await dbBridge.getTableDdl({ connectionId: "d1", table: "patients" });
+
+  assert.equal(result.success, true);
+  assert.equal(result.native, true, "the server's own DDL, not a reconstruction");
+  // AUTO_INCREMENT is exactly what a reconstruction would lose.
+  assert.match(result.ddl, /AUTO_INCREMENT/);
+});
+
+test("postgres reconstructs the statement from the catalog", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.columns": {
+      columns: [{ name: "name" }, { name: "data_type" }, { name: "is_nullable" }, { name: "position" }],
+      rows: [["id", "integer", "NO", 1], ["note", "text", "YES", 2]],
+    },
+    "PRIMARY KEY": {
+      columns: [{ name: "name" }, { name: "position" }],
+      rows: [["id", 1]],
+    },
+    "FOREIGN KEY": { columns: [], rows: [] },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "d2", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.getTableDdl({ connectionId: "d2", table: "patients" });
+
+  assert.equal(result.success, true);
+  assert.equal(result.native, false, "a reconstruction must not claim to be the server's DDL");
+  assert.match(result.ddl, /CREATE TABLE "patients"/);
+  assert.match(result.ddl, /"id" integer NOT NULL/);
+  assert.match(result.ddl, /PRIMARY KEY \("id"\)/);
+  assert.match(result.ddl, /Reconstructed/i, "the caveat must travel with the statement");
+});
+
+test("a table that does not exist reports an error rather than empty DDL", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({});
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "d3", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.getTableDdl({ connectionId: "d3", table: "nope" });
+  assert.equal(result.success, false);
+  assert.match(result.error, /column|not found|no such/i);
+});
+
+test("the DDL call is reachable over IPC", async () => {
+  const handlers = new Map();
+  dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
+  assert.ok(handlers.has("magiesTerminal:db:getTableDdl"));
+});

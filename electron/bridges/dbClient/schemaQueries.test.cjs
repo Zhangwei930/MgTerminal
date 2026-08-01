@@ -307,3 +307,39 @@ test("an unknown engine is rejected by both", () => {
   assert.throws(() => buildIndexListQuery("cassandra", "db", "t"), /unsupported|unknown/i);
   assert.throws(() => buildForeignKeyListQuery("cassandra", "db", "t"), /unsupported|unknown/i);
 });
+
+// ── native DDL ──────────────────────────────────────────────────────────────
+//
+// MySQL and Oracle can return their own CREATE TABLE. That is always better
+// than a reconstruction, because it is what the server actually has —
+// defaults, auto-increment, check constraints and all. Postgres and SQL Server
+// have no equivalent call.
+
+test("mysql and oracle expose a native DDL query", () => {
+  const { buildNativeDdlQuery } = require("./schemaQueries.cjs");
+  assert.match(buildNativeDdlQuery("mysql", "db", "patients"), /SHOW CREATE TABLE/i);
+  assert.match(buildNativeDdlQuery("oracle", "db", "patients"), /DBMS_METADATA/i);
+});
+
+test("postgres and mssql have none, and say so with null", () => {
+  const { buildNativeDdlQuery } = require("./schemaQueries.cjs");
+  // Not an error: the caller falls back to reconstructing the statement.
+  assert.equal(buildNativeDdlQuery("postgres", "db", "t"), null);
+  assert.equal(buildNativeDdlQuery("mssql", "db", "t"), null);
+});
+
+test("the native DDL query quotes its table safely", () => {
+  const { buildNativeDdlQuery } = require("./schemaQueries.cjs");
+  // MySQL interpolates the name as an identifier, Oracle as a literal — both
+  // have to survive a quote in the name.
+  const mysql = buildNativeDdlQuery("mysql", "db", "we`ird");
+  assert.ok(mysql.includes("`we``ird`"), "mysql must double the backtick");
+
+  const oracle = buildNativeDdlQuery("oracle", "db", "we'ird");
+  assert.equal((oracle.match(/'/g) || []).length % 2, 0, "oracle left unbalanced quotes");
+});
+
+test("an unknown engine is rejected", () => {
+  const { buildNativeDdlQuery } = require("./schemaQueries.cjs");
+  assert.throws(() => buildNativeDdlQuery("cassandra", "db", "t"), /unsupported|unknown/i);
+});

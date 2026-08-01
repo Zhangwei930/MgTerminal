@@ -271,6 +271,14 @@ declare global {
     error?: string;
   }
 
+  interface DbTableDdlResult {
+    success: boolean;
+    ddl?: string;
+    /** True when the server produced its own DDL rather than a reconstruction. */
+    native?: boolean;
+    error?: string;
+  }
+
   interface DbSchemaIndex {
     name: string;
     unique: boolean;

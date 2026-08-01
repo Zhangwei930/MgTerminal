@@ -9,7 +9,9 @@ const {
   buildTriggerListQuery,
   buildIndexListQuery,
   buildForeignKeyListQuery,
+  buildNativeDdlQuery,
 } = require("./dbClient/schemaQueries.cjs");
+const { buildCreateTableDdl } = require("./dbClient/createTableDdl.cjs");
 
 const DEFAULT_MAX_ROWS = 10_000;
 
@@ -410,6 +412,60 @@ async function listTriggers({ connectionId } = {}) {
   };
 }
 
+/**
+ * A table's CREATE TABLE statement.
+ *
+ * Prefers whatever the server can produce itself — MySQL's SHOW CREATE TABLE
+ * and Oracle's DBMS_METADATA include defaults, auto-increment and check
+ * constraints, none of which are in what the catalog queries read. Postgres and
+ * SQL Server have no such call, so their statement is reconstructed and flagged
+ * as such; `native` tells the caller which of the two it received.
+ */
+async function getTableDdl({ connectionId, table } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+  if (!table) return { success: false, error: "table is required" };
+
+  const nativeSql = buildNativeDdlQuery(entry.engine, entry.database ?? "", table);
+  if (nativeSql) {
+    const result = await queryOnce({ connectionId, sql: nativeSql, maxRows: 1 });
+    if (!result.success) return { success: false, error: result.error };
+    const row = result.rows?.[0] ?? [];
+    // SHOW CREATE TABLE returns [name, ddl]; DBMS_METADATA returns just the DDL.
+    const ddl = row.length > 1 ? row[1] : row[0];
+    if (ddl) return { success: true, native: true, ddl: String(ddl) };
+    return { success: false, error: "The server returned no DDL for this table" };
+  }
+
+  const [columns, primaryKey, foreignKeys] = await Promise.all([
+    listColumns({ connectionId, table }),
+    listPrimaryKey({ connectionId, table }),
+    listForeignKeys({ connectionId, table }),
+  ]);
+  if (!columns.success) return { success: false, error: columns.error };
+  if (!columns.columns.length) {
+    // No columns means no such table — reporting an empty CREATE TABLE would
+    // look like a table that exists and holds nothing.
+    return { success: false, error: `No columns found for table ${table}` };
+  }
+
+  try {
+    return {
+      success: true,
+      native: false,
+      ddl: buildCreateTableDdl({
+        engine: entry.engine,
+        table,
+        columns: columns.columns,
+        primaryKey: primaryKey.success ? primaryKey.columns : [],
+        foreignKeys: foreignKeys.success ? foreignKeys.foreignKeys : [],
+      }),
+    };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
 const EXPORT_FILTERS = {
   csv: [{ name: "CSV", extensions: ["csv"] }],
   json: [{ name: "JSON", extensions: ["json"] }],
@@ -493,6 +549,7 @@ function registerHandlers(ipcMain, deps = {}) {
   ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
   ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
   ipcMain.handle("magiesTerminal:db:listPrimaryKey", (_event, payload) => listPrimaryKey(payload));
+  ipcMain.handle("magiesTerminal:db:getTableDdl", (_event, payload) => getTableDdl(payload));
   ipcMain.handle("magiesTerminal:db:listIndexes", (_event, payload) => listIndexes(payload));
   ipcMain.handle("magiesTerminal:db:listForeignKeys", (_event, payload) => listForeignKeys(payload));
   ipcMain.handle("magiesTerminal:db:listRoutines", (_event, payload) => listRoutines(payload));
@@ -519,6 +576,7 @@ module.exports = {
   listTriggers,
   listIndexes,
   listForeignKeys,
+  getTableDdl,
   exportResult,
   cancelQuery,
   stopAllDbConnections,

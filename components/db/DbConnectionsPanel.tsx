@@ -1,4 +1,4 @@
-import { Database, Plug, Plus, Trash2 } from 'lucide-react';
+import { Database, Pencil, Plug, Plus, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { activeTabStore, toDbWorkspaceTabId } from '../../application/state/activeTabStore';
@@ -7,7 +7,9 @@ import { type DbConnectionProfile, type DbEngine } from '../../domain/models';
 import {
   applyEngineToDraft,
   buildDbConnectionPayload,
+  buildDbConnectionUpdate,
   canSaveDbConnectionDraft,
+  draftFromDbConnection,
   emptyDbConnectionDraft,
 } from './dbConnectionDraft';
 import type { Host } from '../../types';
@@ -44,6 +46,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
   const [showNewForm, setShowNewForm] = useState(false);
   const [showHostSelector, setShowHostSelector] = useState(false);
   const [draft, setDraft] = useState(emptyDbConnectionDraft());
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const hostById = new Map<string, Host>(hosts.map((h) => [h.id, h]));
   const filtered = dbConnections.filter((c) =>
@@ -57,9 +60,22 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
 
   const handleSave = () => {
     if (!canSaveDbConnectionDraft(draft)) return;
-    onAddDbConnection(buildDbConnectionPayload(draft));
+    const existing = editingId ? dbConnections.find((c) => c.id === editingId) : undefined;
+    if (existing) {
+      const updated = buildDbConnectionUpdate(draft, existing);
+      onUpdateDbConnections(dbConnections.map((c) => (c.id === existing.id ? updated : c)));
+    } else {
+      onAddDbConnection(buildDbConnectionPayload(draft));
+    }
     setDraft(emptyDbConnectionDraft());
+    setEditingId(null);
     setShowNewForm(false);
+  };
+
+  const handleEdit = (conn: DbConnectionProfile) => {
+    setDraft(draftFromDbConnection(conn));
+    setEditingId(conn.id);
+    setShowNewForm(true);
   };
 
   const handleDelete = (id: string) => {
@@ -72,7 +88,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
         <Button
           variant="secondary"
           className={vaultHeaderSecondaryButtonClass}
-          onClick={() => { setDraft(emptyDbConnectionDraft()); setShowNewForm(true); }}
+          onClick={() => { setDraft(emptyDbConnectionDraft()); setEditingId(null); setShowNewForm(true); }}
         >
           <Plus size={14} /> {t('db.connections.new')}
         </Button>
@@ -114,6 +130,14 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   <Button
                     size="sm"
                     variant="ghost"
+                    onClick={() => handleEdit(conn)}
+                    aria-label={t('action.edit')}
+                  >
+                    <Pencil size={13} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     className="text-destructive hover:bg-destructive/10"
                     onClick={() => handleDelete(conn.id)}
                   >
@@ -129,8 +153,8 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
       {showNewForm && (
         <AsidePanel
           open
-          onClose={() => setShowNewForm(false)}
-          title={t('db.connections.new')}
+          onClose={() => { setShowNewForm(false); setEditingId(null); }}
+          title={editingId ? t('db.connections.edit') : t('db.connections.new')}
           width="w-[360px]"
         >
           <AsidePanelContent>
@@ -173,14 +197,14 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <Label>Remote host</Label>
+                  <Label>{t('db.connections.remoteHost')}</Label>
                   <Input
                     value={draft.remoteHost}
                     onChange={(e) => setDraft({ ...draft, remoteHost: e.target.value })}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Port</Label>
+                  <Label>{t('db.connections.remotePort')}</Label>
                   <Input
                     type="number"
                     value={draft.remotePort}
@@ -203,6 +227,7 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   type="password"
                   value={draft.dbPassword}
                   onChange={(e) => setDraft({ ...draft, dbPassword: e.target.value })}
+                  placeholder={editingId ? t('db.connections.passwordKeep') : undefined}
                 />
               </div>
             </div>

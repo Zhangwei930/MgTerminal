@@ -7,6 +7,7 @@ const { VAULT_CAPABILITIES } = require("./vault.cjs");
 const { PORT_FORWARD_CAPABILITIES } = require("./portforward.cjs");
 const { HARNESS_CAPABILITIES } = require("./harness.cjs");
 const { KUBERNETES_CAPABILITIES } = require("./kubernetes.cjs");
+const { DB_CAPABILITIES } = require("./db.cjs");
 
 const ALL_CAPABILITIES = Object.freeze([
   ...META_CAPABILITIES,
@@ -16,6 +17,7 @@ const ALL_CAPABILITIES = Object.freeze([
   ...PORT_FORWARD_CAPABILITIES,
   ...HARNESS_CAPABILITIES,
   ...KUBERNETES_CAPABILITIES,
+  ...DB_CAPABILITIES,
 ]);
 
 module.exports = {
@@ -26,5 +28,6 @@ module.exports = {
   PORT_FORWARD_CAPABILITIES,
   HARNESS_CAPABILITIES,
   KUBERNETES_CAPABILITIES,
+  DB_CAPABILITIES,
   ALL_CAPABILITIES,
 };

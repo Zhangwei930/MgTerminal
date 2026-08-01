@@ -218,3 +218,126 @@ test("implemented vault capabilities do not return CAPABILITY_NOT_IMPLEMENTED", 
   const result = await dispatch("vault/host/get", { hostId: "host-1" });
   assert.notEqual(result.code, "CAPABILITY_NOT_IMPLEMENTED");
 });
+
+// ── db capabilities: policy declarations must produce real approval behaviour ─
+//
+// These use the *real* evaluatePermissionWithGrants rather than the permissive
+// stub above, because the guarantee under test is exactly that the policy flags
+// in catalog/db.cjs translate into prompting. A stub that always returns
+// requiresApproval:false would pass while the real thing silently ran writes.
+
+const { evaluatePermissionWithGrants: realEvaluate } = require("../../capabilities/policy.cjs");
+
+function createDbDispatcher(overrides = {}) {
+  const queried = [];
+  const approvals = [];
+  const dbBridge = {
+    listConnections: () => [{ connectionId: "c1", engine: "postgres", database: "clinic" }],
+    async queryOnce(payload) {
+      queried.push(payload);
+      return { success: true, columns: [], rows: [], rowCount: 0, truncated: false, durationMs: 1 };
+    },
+  };
+  const dispatch = createTestDispatcher({
+    dbBridge,
+    evaluatePermissionWithGrants: realEvaluate,
+    requestApprovalFromRenderer: async (toolName, toolArgs, chatSessionId) => {
+      approvals.push({ toolName, toolArgs, chatSessionId });
+      return overrides.approve !== false;
+    },
+    ...overrides,
+  });
+  return { dispatch, queried, approvals };
+}
+
+test("db write requires approval and shows the statement being approved", async () => {
+  const { dispatch, queried, approvals } = createDbDispatcher();
+
+  const result = await dispatch("db/query/write", {
+    connectionId: "c1",
+    sql: "DELETE FROM patients WHERE id = 1",
+    chatSessionId: "chat-1",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(approvals.length, 1, "a write must prompt in confirm mode");
+  assert.equal(
+    approvals[0].toolArgs.sql,
+    "DELETE FROM patients WHERE id = 1",
+    "the user has to see the exact statement they are approving",
+  );
+  assert.equal(queried.length, 1);
+});
+
+test("a denied approval stops the statement from reaching the database", async () => {
+  const { dispatch, queried, approvals } = createDbDispatcher({ approve: false });
+
+  const result = await dispatch("db/query/write", {
+    connectionId: "c1",
+    sql: "DROP TABLE patients",
+    chatSessionId: "chat-1",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(approvals.length, 1);
+  assert.equal(queried.length, 0, "denial must happen before execution, not after");
+});
+
+test("db read-only runs without prompting", async () => {
+  const { dispatch, queried, approvals } = createDbDispatcher();
+
+  const result = await dispatch("db/query/readonly", {
+    connectionId: "c1",
+    sql: "SELECT count(*) FROM patients",
+    chatSessionId: "chat-1",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(approvals.length, 0, "prompting on every read is the friction that trains click-through");
+  assert.equal(queried.length, 1);
+});
+
+// The unprompted path must not become a way around the prompted one.
+test("a write sent to the read-only capability is refused, not run unprompted", async () => {
+  const { dispatch, queried, approvals } = createDbDispatcher();
+
+  const result = await dispatch("db/query/readonly", {
+    connectionId: "c1",
+    sql: "DELETE FROM patients",
+    chatSessionId: "chat-1",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(approvals.length, 0);
+  assert.equal(queried.length, 0, "it must never reach the database");
+  assert.match(result.error, /db_query_write/);
+});
+
+test("observer mode blocks db writes outright", async () => {
+  const { dispatch, queried } = createDbDispatcher({ permissionMode: PERMISSION_MODES.OBSERVER });
+
+  const result = await dispatch("db/query/write", {
+    connectionId: "c1",
+    sql: "UPDATE patients SET name = 'x'",
+    chatSessionId: "chat-1",
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(queried.length, 0);
+});
+
+test("observer mode still allows db reads and connection listing", async () => {
+  const { dispatch, queried } = createDbDispatcher({ permissionMode: PERMISSION_MODES.OBSERVER });
+
+  const listed = await dispatch("db/connections/list", { chatSessionId: "chat-1" });
+  assert.equal(listed.ok, true);
+  assert.equal(listed.connections.length, 1);
+
+  const read = await dispatch("db/query/readonly", {
+    connectionId: "c1",
+    sql: "SELECT 1",
+    chatSessionId: "chat-1",
+  });
+  assert.equal(read.ok, true);
+  assert.equal(queried.length, 1);
+});

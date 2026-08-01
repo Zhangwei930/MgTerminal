@@ -54,7 +54,7 @@ test("a first conflict is surfaced to the user and waits for an answer", async (
   assert.equal(ctx.conflicts[0].sourcePath, "local");
   assert.equal(ctx.resolvers.size, 1, "a resolver is parked until the user answers");
 
-  resolveUploadConflict(ctx.deps, ctx.conflicts, ctx.conflicts[0].transferId, "replace");
+  resolveUploadConflict(ctx.deps, ctx.conflicts[0].transferId, "replace");
   assert.equal(await pending, "replace");
 });
 
@@ -63,7 +63,7 @@ test("a remembered choice answers immediately without prompting again", async ()
   const defaults = new Map<string, FileConflictAction>();
 
   const first = requestUploadConflictDecision(ctx.deps, defaults, incoming());
-  resolveUploadConflict(ctx.deps, ctx.conflicts, ctx.conflicts[0].transferId, "skip", true);
+  resolveUploadConflict(ctx.deps, ctx.conflicts[0].transferId, "skip", true);
   assert.equal(await first, "skip");
 
   const second = await requestUploadConflictDecision(ctx.deps, defaults, incoming({ fileName: "other.csv" }));
@@ -78,7 +78,7 @@ test("a choice is only remembered when applyToAll was set", async () => {
   const defaults = new Map<string, FileConflictAction>();
 
   const first = requestUploadConflictDecision(ctx.deps, defaults, incoming());
-  resolveUploadConflict(ctx.deps, ctx.conflicts, ctx.conflicts[0].transferId, "skip", false);
+  resolveUploadConflict(ctx.deps, ctx.conflicts[0].transferId, "skip", false);
   await first;
 
   requestUploadConflictDecision(ctx.deps, defaults, incoming({ fileName: "other.csv" }));
@@ -90,7 +90,7 @@ test("a remembered choice does not leak to a different conflict kind", async () 
   const defaults = new Map<string, FileConflictAction>();
 
   const first = requestUploadConflictDecision(ctx.deps, defaults, incoming());
-  resolveUploadConflict(ctx.deps, ctx.conflicts, ctx.conflicts[0].transferId, "skip", true);
+  resolveUploadConflict(ctx.deps, ctx.conflicts[0].transferId, "skip", true);
   await first;
 
   // A directory landing on a directory is a different decision than a file
@@ -120,7 +120,7 @@ test("resolving removes the conflict from the UI and unparks its resolver", asyn
   const pending = requestUploadConflictDecision(ctx.deps, new Map(), incoming());
   const id = ctx.conflicts[0].transferId;
 
-  resolveUploadConflict(ctx.deps, ctx.conflicts, id, "overwrite" as FileConflictAction);
+  resolveUploadConflict(ctx.deps, id, "overwrite" as FileConflictAction);
 
   assert.equal(await pending, "overwrite");
   assert.equal(ctx.conflicts.length, 0);
@@ -129,7 +129,7 @@ test("resolving removes the conflict from the UI and unparks its resolver", asyn
 
 test("resolving an unknown id is a no-op rather than a crash", () => {
   const ctx = makeDeps();
-  assert.doesNotThrow(() => resolveUploadConflict(ctx.deps, ctx.conflicts, "nope", "skip"));
+  assert.doesNotThrow(() => resolveUploadConflict(ctx.deps, "nope", "skip"));
 });
 
 test("resolving twice does not reject the second time", async () => {
@@ -137,23 +137,41 @@ test("resolving twice does not reject the second time", async () => {
   const pending = requestUploadConflictDecision(ctx.deps, new Map(), incoming());
   const id = ctx.conflicts[0].transferId;
 
-  resolveUploadConflict(ctx.deps, ctx.conflicts, id, "skip");
+  resolveUploadConflict(ctx.deps, id, "skip");
   await pending;
-  assert.doesNotThrow(() => resolveUploadConflict(ctx.deps, ctx.conflicts, id, "replace"));
+  assert.doesNotThrow(() => resolveUploadConflict(ctx.deps, id, "replace"));
 });
 
-// applyToAll is only honoured when the conflict is still in the list handed in.
-// Pinned because it makes "apply to all" silently a one-off if the list is stale.
-test("applyToAll is ignored when the conflict is absent from the supplied list", async () => {
+// The parked resolver is the proof a conflict is real; the conflict list is
+// only a UI snapshot and can lag. Honouring applyToAll off the list meant a
+// stale snapshot silently downgraded "apply to all" to a one-off, and the user
+// got asked again about something they had already decided for everything.
+test("applyToAll is honoured even when the supplied list is stale", async () => {
   const ctx = makeDeps();
   const defaults = new Map<string, FileConflictAction>();
   const pending = requestUploadConflictDecision(ctx.deps, defaults, incoming());
   const id = ctx.conflicts[0].transferId;
 
-  resolveUploadConflict(ctx.deps, [], id, "skip", true);
-  await pending;
+  resolveUploadConflict(ctx.deps, id, "skip", true);
+  assert.equal(await pending, "skip");
 
-  assert.equal(defaults.size, 0, "nothing was remembered");
+  assert.equal(defaults.size, 1, "the choice is remembered regardless of the snapshot");
+  const next = await requestUploadConflictDecision(ctx.deps, defaults, incoming({ fileName: "other.csv" }));
+  assert.equal(next, "skip", "and it actually applies to the next one");
+});
+
+test("a resolver that is already gone still does not remember anything", async () => {
+  const ctx = makeDeps();
+  const defaults = new Map<string, FileConflictAction>();
+  const pending = requestUploadConflictDecision(ctx.deps, defaults, incoming());
+  const id = ctx.conflicts[0].transferId;
+
+  resolveUploadConflict(ctx.deps, id, "skip");
+  await pending;
+  // Second call: nothing is parked under that id any more.
+  resolveUploadConflict(ctx.deps, id, "replace", true);
+
+  assert.equal(defaults.size, 0, "a vanished resolver must not set a default");
 });
 
 // ── cancelPendingUploadConflicts ────────────────────────────────────────────

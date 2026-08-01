@@ -478,10 +478,12 @@ export const useSftpExternalOperations = (
     [],
   );
 
+  // No longer depends on uploadConflicts: the parked resolver is the source of
+  // truth, so this callback stays stable across conflict-list renders.
   const resolveUploadConflict = useCallback(
     (conflictId: string, action: FileConflictAction, applyToAll = false) =>
-      resolveUploadConflictDecision(conflictDeps, uploadConflicts, conflictId, action, applyToAll),
-    [conflictDeps, uploadConflicts],
+      resolveUploadConflictDecision(conflictDeps, conflictId, action, applyToAll),
+    [conflictDeps],
   );
 
   const cancelPendingUploadConflicts = useCallback(

@@ -65,6 +65,7 @@ test("connect opens a tunnel then the adapter, tracking the connection", async (
   const result = await dbBridge.connect(event, {
     connectionId: "c1",
     engine: "mysql",
+    hostId: "h1",
     sshOptions: { hostname: "db.internal", username: "root" },
     remoteHost: "127.0.0.1",
     remotePort: 3306,
@@ -88,7 +89,7 @@ test("connect tears down the tunnel if the driver connect fails", async () => {
 
   await assert.rejects(
     () => dbBridge.connect(event, {
-      connectionId: "c2", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+      connectionId: "c2", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
     }),
     /auth failed/,
   );
@@ -103,7 +104,7 @@ test("connect surfaces a tunnel failure without touching the driver", async () =
 
   await assert.rejects(
     () => dbBridge.connect(event, {
-      connectionId: "c3", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+      connectionId: "c3", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
     }),
     /boom/,
   );
@@ -114,7 +115,7 @@ test("query returns a queryId immediately and streams rows/complete afterward", 
   const { adapter } = setup();
   const event = { sender: createSender() };
   await dbBridge.connect(event, {
-    connectionId: "c4", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+    connectionId: "c4", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
   });
 
   const sent = [];
@@ -147,7 +148,7 @@ test("closeConnection closes the adapter and stops the tunnel", async () => {
   const { adapter, portForwardingBridge } = setup();
   const event = { sender: createSender() };
   await dbBridge.connect(event, {
-    connectionId: "c5", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+    connectionId: "c5", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
   });
 
   const result = await dbBridge.closeConnection(event, { connectionId: "c5" });
@@ -160,7 +161,7 @@ test("cancelQuery delegates to the adapter's cancel", async () => {
   const { adapter } = setup();
   const event = { sender: createSender() };
   await dbBridge.connect(event, {
-    connectionId: "c6", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+    connectionId: "c6", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
   });
 
   const result = await dbBridge.cancelQuery(event, { connectionId: "c6" });
@@ -174,7 +175,7 @@ test("stopAllDbConnections closes every tracked connection and clears the map", 
   const { adapter, portForwardingBridge } = setup();
   const event = { sender: createSender() };
   await dbBridge.connect(event, {
-    connectionId: "c7", engine: "mysql", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
+    connectionId: "c7", engine: "mysql", hostId: "h1", sshOptions: {}, remoteHost: "127.0.0.1", remotePort: 3306,
   });
 
   await dbBridge.stopAllDbConnections();
@@ -347,4 +348,75 @@ test("listConnections is empty once a connection closes", async () => {
   await dbBridge.closeConnection({ sender: createSender() }, { connectionId: "c1" });
 
   assert.deepEqual(dbBridge.listConnections(), []);
+});
+
+// ── direct connections (no SSH tunnel) ──────────────────────────────────────
+//
+// A database reachable from this machine needs no SSH leg. Requiring one was
+// why every connection carried both an SSH host and a separate "host address",
+// which is easy to fill in wrongly and produces an opaque Connection refused.
+
+test("a connection without a host id skips the tunnel entirely", async () => {
+  await dbBridge.stopAllDbConnections();
+  const portForwardingBridge = createFakePortForwardingBridge();
+  const adapter = createFakeAdapter();
+  setup({ portForwardingBridge, adapter });
+
+  const result = await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "direct-1",
+    engine: "postgres",
+    hostId: "",
+    remoteHost: "db.example.com",
+    remotePort: 5432,
+    database: "app",
+    dbUsername: "reader",
+    dbPassword: "pw",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(adapter.calls.connect, 1);
+  assert.equal(
+    adapter.calls.connectOpts.host,
+    "db.example.com",
+    "a direct connection dials the database address itself, not a local tunnel port",
+  );
+  assert.equal(adapter.calls.connectOpts.port, 5432);
+});
+
+test("closing a direct connection does not try to stop a tunnel", async () => {
+  await dbBridge.stopAllDbConnections();
+  const portForwardingBridge = createFakePortForwardingBridge();
+  setup({ portForwardingBridge, adapter: createFakeAdapter() });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "direct-2", engine: "postgres", hostId: "",
+    remoteHost: "db.example.com", remotePort: 5432,
+  });
+
+  const closed = await dbBridge.closeConnection({ sender: createSender() }, { connectionId: "direct-2" });
+
+  assert.equal(closed.success, true);
+  assert.deepEqual(portForwardingBridge.stopped, [], "there was never a tunnel to stop");
+});
+
+test("a tunnelled connection still goes through the forwarder", async () => {
+  await dbBridge.stopAllDbConnections();
+  const portForwardingBridge = createFakePortForwardingBridge();
+  const adapter = createFakeAdapter();
+  setup({ portForwardingBridge, adapter });
+
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "tunnelled-1",
+    engine: "postgres",
+    hostId: "h1",
+    sshOptions: { hostname: "jump.example.com", username: "ubuntu" },
+    remoteHost: "127.0.0.1",
+    remotePort: 55432,
+  });
+
+  assert.equal(
+    adapter.calls.connectOpts.host,
+    "127.0.0.1",
+    "a tunnelled connection dials the local forwarded port",
+  );
+  assert.notEqual(adapter.calls.connectOpts.port, 55432, "it uses the picked local port, not the remote one");
 });

@@ -184,15 +184,36 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label>{t('db.connections.selectHost')}</Label>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => setShowHostSelector(true)}
-                >
-                  {hostById.get(draft.hostId)?.label ?? t('db.connections.selectHost')}
-                </Button>
+              <div className="space-y-1.5 rounded-lg border border-border/50 p-2.5">
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(draft.hostId)}
+                    onChange={(e) => setDraft({ ...draft, hostId: e.target.checked ? draft.hostId : '' })}
+                    className="h-3.5 w-3.5 accent-primary"
+                  />
+                  {t('db.connections.useTunnel')}
+                </label>
+                {draft.hostId ? (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => setShowHostSelector(true)}
+                  >
+                    {hostById.get(draft.hostId)?.label ?? t('db.connections.selectHost')}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-muted-foreground"
+                      onClick={() => setShowHostSelector(true)}
+                    >
+                      {t('db.connections.selectHost')}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground/70">{t('db.connections.directHint')}</p>
+                  </>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">

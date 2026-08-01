@@ -21,11 +21,10 @@ test("a draft needs both a label and a host", () => {
   assert.equal(canSaveDbConnectionDraft(draft({ label: "mgtest", hostId: "h1" })), true);
 });
 
-test("a draft without a host cannot be saved", () => {
-  // The host is picked through a button-opened selector rather than typed, so
-  // it is the field most easily missed — and an unsaved host means an empty
-  // selector and a permanently disabled button.
-  assert.equal(canSaveDbConnectionDraft(draft({ label: "mgtest", hostId: "" })), false);
+// Superseded by direct connections: an empty hostId now means "no tunnel",
+// which is a valid configuration rather than an incomplete one.
+test("a draft without a host is a direct connection, not an invalid one", () => {
+  assert.equal(canSaveDbConnectionDraft(draft({ label: "mgtest", hostId: "" })), true);
 });
 
 test("a draft without a label cannot be saved", () => {
@@ -202,4 +201,41 @@ test("editing can change engine and port together", () => {
   );
   assert.equal(next.engine, "mysql");
   assert.equal(next.remotePort, 3306);
+});
+
+// ── direct connections ──────────────────────────────────────────────────────
+//
+// The SSH leg is optional. A database reachable from this machine — local,
+// on the LAN, or a cloud endpoint — needs nothing but its own address. Forcing
+// a saved SSH host on those is the reason the form had two different "host"
+// fields, which is a real source of confusion.
+
+test("a draft without an SSH host can be saved when it is direct", () => {
+  assert.equal(
+    canSaveDbConnectionDraft({ ...emptyDbConnectionDraft(), label: "local", hostId: "" }),
+    true,
+    "a direct connection needs no SSH host",
+  );
+});
+
+test("a draft still needs a label", () => {
+  assert.equal(canSaveDbConnectionDraft({ ...emptyDbConnectionDraft(), label: "", hostId: "" }), false);
+  assert.equal(canSaveDbConnectionDraft({ ...emptyDbConnectionDraft(), label: "  ", hostId: "h1" }), false);
+});
+
+test("a tunnelled draft is still saveable", () => {
+  assert.equal(
+    canSaveDbConnectionDraft({ ...emptyDbConnectionDraft(), label: "via ssh", hostId: "h1" }),
+    true,
+  );
+});
+
+test("the payload keeps an empty hostId rather than inventing one", () => {
+  const payload = buildDbConnectionPayload({ ...emptyDbConnectionDraft(), label: "local", hostId: "" });
+  assert.equal(payload.hostId, "", "empty means direct, and must survive to the backend");
+});
+
+test("a direct draft defaults its address to loopback", () => {
+  const payload = buildDbConnectionPayload({ ...emptyDbConnectionDraft(), label: "local", hostId: "", remoteHost: "" });
+  assert.equal(payload.remoteHost, "127.0.0.1");
 });

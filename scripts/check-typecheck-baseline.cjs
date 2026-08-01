@@ -6,6 +6,7 @@
 // (e.g. after fixing some of the backlog, or — sparingly — to grandfather a new one).
 
 const { spawnSync } = require("node:child_process");
+const path = require("node:path");
 const {
   parseTscOutput,
   loadBaseline,
@@ -13,6 +14,7 @@ const {
   writeBaseline,
   diffAgainstBaseline,
   exceedsTotalCap,
+  findBaselinePollution,
   DEFAULT_BASELINE_PATH,
 } = require("./typecheckBaseline.cjs");
 
@@ -30,6 +32,19 @@ function main() {
   const current = parseTscOutput(output);
 
   if (shouldUpdate) {
+    const polluted = findBaselinePollution(path.join(__dirname, ".."));
+    if (polluted.length > 0 && !process.argv.includes("--force")) {
+      console.error("[typecheck-baseline] Refusing to regenerate from this checkout.");
+      console.error(`Found local installs CI does not have: ${polluted.join(", ")}.`);
+      console.error("They resolve imports CI cannot, so the baseline would drop errors CI still reports");
+      console.error("and the next push to main would fail. Regenerate from a throwaway worktree:");
+      console.error("\n  git worktree add /tmp/baseline-wt main && cd /tmp/baseline-wt \\");
+      console.error("    && npm ci && npm run typecheck:baseline:update\n");
+      console.error("then copy scripts/typecheck-baseline.json back. Use --force to override.");
+      process.exitCode = 1;
+      return;
+    }
+
     const unique = new Set(current).size;
     writeBaseline(DEFAULT_BASELINE_PATH, current, current.length);
     console.log(`[typecheck-baseline] Wrote ${unique} identities (cap ${current.length} total errors) to ${DEFAULT_BASELINE_PATH}`);
@@ -41,7 +56,14 @@ function main() {
   const { newViolations, fixed } = diffAgainstBaseline(current, baseline);
 
   if (fixed.length > 0) {
-    console.log(`[typecheck-baseline] ${fixed.length} baseline error(s) no longer reproduce — consider running "npm run typecheck:baseline:update" to shrink the baseline:`);
+    // Don't advertise shrinking from a checkout that resolves more than CI —
+    // those entries are "fixed" only locally, and acting on the suggestion is
+    // exactly how this baseline drifted out of CI parity before.
+    const polluted = findBaselinePollution(path.join(__dirname, ".."));
+    const advice = polluted.length > 0
+      ? `these likely still reproduce in CI (this checkout has ${polluted.join(", ")}); do NOT shrink the baseline from here`
+      : 'consider running "npm run typecheck:baseline:update" to shrink the baseline';
+    console.log(`[typecheck-baseline] ${fixed.length} baseline error(s) no longer reproduce — ${advice}:`);
     for (const id of fixed) console.log(`  - ${id}`);
   }
 

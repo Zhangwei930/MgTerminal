@@ -87,6 +87,21 @@ function exceedsTotalCap(currentCount, maxTotalErrors) {
   return typeof maxTotalErrors === "number" && currentCount > maxTotalErrors;
 }
 
+/**
+ * Directories a long-lived local checkout accumulates that CI never has. CI
+ * runs `npm ci` against the root package.json only, so mobile/node_modules
+ * resolves @capacitor/* imports here that stay unresolved there. Regenerating
+ * the baseline from such a checkout drops errors CI still reports, and the
+ * next push fails on main — this has happened twice (PR #104, and again when
+ * the total cap landed).
+ */
+const CI_ABSENT_INSTALL_DIRS = ["mobile/node_modules"];
+
+/** Returns the CI-absent directories present in `repoRoot`, relative paths. */
+function findBaselinePollution(repoRoot, existsSync = require("node:fs").existsSync) {
+  return CI_ABSENT_INSTALL_DIRS.filter((rel) => existsSync(path.join(repoRoot, rel)));
+}
+
 module.exports = {
   parseTscOutput,
   loadBaseline,
@@ -94,5 +109,6 @@ module.exports = {
   writeBaseline,
   diffAgainstBaseline,
   exceedsTotalCap,
+  findBaselinePollution,
   DEFAULT_BASELINE_PATH: path.join(__dirname, "typecheck-baseline.json"),
 };

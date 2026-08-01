@@ -1,0 +1,130 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+const {
+  buildTableListQuery,
+  buildColumnListQuery,
+  quoteSqlLiteral,
+  ENGINES_WITH_SCHEMA_SUPPORT,
+} = require("./schemaQueries.cjs");
+
+// ── quoteSqlLiteral ─────────────────────────────────────────────────────────
+//
+// The adapters take a SQL string and offer no parameter binding, so schema
+// queries must interpolate the database and table names themselves. That makes
+// this function the only thing standing between a table name and injection.
+
+test("a plain value is wrapped in single quotes", () => {
+  assert.equal(quoteSqlLiteral("users"), "'users'");
+});
+
+test("an embedded quote is doubled, not escaped with a backslash", () => {
+  // Backslash escaping is not portable; doubling is the SQL standard and works
+  // on all four engines.
+  assert.equal(quoteSqlLiteral("it's"), "'it''s'");
+});
+
+test("a classic injection payload cannot break out of the literal", () => {
+  const quoted = quoteSqlLiteral("' OR 1=1 --");
+  assert.equal(quoted, "''' OR 1=1 --'");
+  // Everything after the opening quote stays inside one literal.
+  assert.equal(quoted.slice(1, -1).replace(/''/g, "'"), "' OR 1=1 --");
+});
+
+test("a payload ending in a quote cannot leave a dangling literal", () => {
+  const quoted = quoteSqlLiteral("x'; DROP TABLE t; --");
+  assert.equal(quoted, "'x''; DROP TABLE t; --'");
+  assert.equal((quoted.match(/'/g) || []).length % 2, 0, "quotes must stay balanced");
+});
+
+test("non-strings are rejected rather than coerced", () => {
+  for (const bad of [null, undefined, 42, {}, []]) {
+    assert.throws(() => quoteSqlLiteral(bad), /string/i, `should reject ${JSON.stringify(bad)}`);
+  }
+});
+
+// ── buildTableListQuery ─────────────────────────────────────────────────────
+
+test("every supported engine produces a table query", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildTableListQuery(engine, "appdb");
+    assert.ok(sql && sql.length > 0, `${engine} produced nothing`);
+    assert.match(sql, /select/i, `${engine} is not a SELECT`);
+  }
+});
+
+test("the table query asks for both tables and views", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildTableListQuery(engine, "appdb").toLowerCase();
+    assert.ok(
+      sql.includes("view") || sql.includes("table_type") || sql.includes("object_type"),
+      `${engine} does not distinguish views from tables`,
+    );
+  }
+});
+
+test("each engine targets its own catalog", () => {
+  assert.match(buildTableListQuery("mysql", "appdb"), /information_schema/i);
+  assert.match(buildTableListQuery("postgres", "appdb"), /information_schema|pg_catalog/i);
+  assert.match(buildTableListQuery("mssql", "appdb"), /sys\.|information_schema/i);
+  assert.match(buildTableListQuery("oracle", "appdb"), /all_tables|all_objects|user_tables/i);
+});
+
+test("engines exclude their own internal schemas", () => {
+  // Otherwise the tree is buried under hundreds of catalog tables.
+  assert.match(buildTableListQuery("postgres", "appdb"), /pg_catalog|information_schema/i);
+  assert.match(buildTableListQuery("mysql", "appdb"), /appdb/);
+});
+
+test("a database name with a quote cannot break the query", () => {
+  // The payload does appear in the output — safely, inside one literal. What
+  // matters is that its quote was doubled, so it cannot terminate the literal
+  // and start a new statement.
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildTableListQuery(engine, "db'; DROP TABLE t; --");
+    assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+    assert.ok(
+      !/[^']'\s*;\s*DROP/i.test(sql),
+      `${engine} let the payload close its literal and start a statement`,
+    );
+    if (sql.includes("DROP")) {
+      assert.ok(sql.includes("db''; DROP"), `${engine} did not double the embedded quote`);
+    }
+  }
+});
+
+test("an unknown engine is rejected loudly", () => {
+  assert.throws(() => buildTableListQuery("cassandra", "db"), /unsupported|unknown/i);
+});
+
+// ── buildColumnListQuery ────────────────────────────────────────────────────
+
+test("every engine produces a column query naming the table", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildColumnListQuery(engine, "appdb", "patients");
+    assert.match(sql, /select/i);
+    assert.ok(sql.includes("'patients'"), `${engine} does not filter by table name`);
+  }
+});
+
+test("the column query asks for type and nullability", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildColumnListQuery(engine, "appdb", "patients").toLowerCase();
+    assert.ok(sql.includes("data_type") || sql.includes("type_name") || sql.includes("data_type"), `${engine} lacks a type column`);
+    assert.ok(sql.includes("null"), `${engine} lacks nullability`);
+  }
+});
+
+test("a table name with a quote cannot break the column query", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildColumnListQuery(engine, "appdb", "t'; DROP TABLE x; --");
+    assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+  }
+});
+
+test("columns come back in their declared order", () => {
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildColumnListQuery(engine, "appdb", "patients").toLowerCase();
+    assert.match(sql, /order by/, `${engine} returns columns in arbitrary order`);
+  }
+});

@@ -420,3 +420,92 @@ test("a tunnelled connection still goes through the forwarder", async () => {
   );
   assert.notEqual(adapter.calls.connectOpts.port, 55432, "it uses the picked local port, not the remote one");
 });
+
+// ── schema introspection ────────────────────────────────────────────────────
+
+function createSchemaAdapter(rowsByPattern) {
+  const calls = { queries: [] };
+  return {
+    calls,
+    async connect() { return { serverVersion: "16" }; },
+    async query(sql, { onRowBatch }) {
+      calls.queries.push(sql);
+      const key = Object.keys(rowsByPattern).find((k) => sql.includes(k));
+      const { columns, rows } = rowsByPattern[key] ?? { columns: [], rows: [] };
+      onRowBatch({ columns, rows });
+      return { rowCount: rows.length, truncated: false };
+    },
+    async cancel() {}, async close() {},
+  };
+}
+
+test("listTables returns normalised tables and views", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.tables": {
+      columns: [{ name: "name" }, { name: "kind" }],
+      rows: [["patients", "table"], ["v_active", "view"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listTables({ connectionId: "s1" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.tables, [
+    { name: "patients", kind: "table" },
+    { name: "v_active", kind: "view" },
+  ]);
+});
+
+test("listColumns returns name, type, nullability and order", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.columns": {
+      columns: [{ name: "name" }, { name: "data_type" }, { name: "is_nullable" }, { name: "position" }],
+      rows: [["id", "integer", "NO", 1], ["name", "text", "YES", 2]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s2", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listColumns({ connectionId: "s2", table: "patients" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.columns, [
+    { name: "id", dataType: "integer", nullable: false, position: 1 },
+    { name: "name", dataType: "text", nullable: true, position: 2 },
+  ]);
+});
+
+test("oracle's Y/N nullability is normalised like everyone else's", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "ALL_TAB_COLUMNS": {
+      columns: [{ name: "name" }, { name: "data_type" }, { name: "is_nullable" }, { name: "position" }],
+      rows: [["ID", "NUMBER", "N", 1], ["NAME", "VARCHAR2", "Y", 2]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s3", engine: "oracle", hostId: "", remoteHost: "db", remotePort: 1521, database: "app",
+  });
+
+  const result = await dbBridge.listColumns({ connectionId: "s3", table: "PATIENTS" });
+
+  assert.equal(result.columns[0].nullable, false, "N means not nullable");
+  assert.equal(result.columns[1].nullable, true, "Y means nullable");
+});
+
+test("schema calls on an unknown connection report an error", async () => {
+  await dbBridge.stopAllDbConnections();
+  setup({ adapter: createSchemaAdapter({}) });
+  const tables = await dbBridge.listTables({ connectionId: "nope" });
+  assert.equal(tables.success, false);
+  assert.match(tables.error, /not found/i);
+});

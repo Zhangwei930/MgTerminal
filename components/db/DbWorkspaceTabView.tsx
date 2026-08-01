@@ -8,6 +8,7 @@ import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagno
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
 import type { Host, Identity, KnownHost, SSHKey } from '../../types';
 import { Button } from '../ui/button';
+import { attemptDbConnection } from './dbConnectAttempt';
 import { DbResultsGrid } from './DbResultsGrid';
 import { SqlCodeEditor } from './SqlCodeEditor';
 
@@ -53,7 +54,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
     let cancelled = false;
     const sshOptions = buildConnectionDiagnosticsRequest({ host, keys, identities, knownHosts });
 
-    connect({
+    void attemptDbConnection(connect, {
       connectionId,
       engine: connectionProfile.engine,
       sshOptions,
@@ -62,14 +63,10 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
       database: connectionProfile.database,
       dbUsername: connectionProfile.dbUsername,
       dbPassword: connectionProfile.dbPassword,
-    }).then((res) => {
+    }).then((outcome) => {
       if (cancelled) return;
-      if (res.success) {
-        setStatus('connected');
-      } else {
-        setStatus('error');
-        setConnectError(res.error ?? 'Connection failed');
-      }
+      setStatus(outcome.status);
+      setConnectError(outcome.status === 'error' ? outcome.error : null);
     });
 
     return () => {

@@ -984,6 +984,7 @@ export const enCoreMessages: Messages = {
   'db.edit.keyNotSelected': 'Read-only: select the primary key columns to edit rows.',
   'db.export.csv': 'Export CSV',
   'db.export.json': 'JSON',
+  'db.export.sql': 'SQL',
   'db.explain.run': 'Explain',
   'db.explain.hint': 'Show the execution plan without running the query',
   'db.explain.selectOnly': 'Only a SELECT statement can be explained.',

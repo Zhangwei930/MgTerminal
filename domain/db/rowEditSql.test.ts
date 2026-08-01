@@ -29,6 +29,13 @@ test('a non-finite number is rejected rather than written as NaN', () => {
   }
 });
 
+test('an object is written as JSON, not [object Object]', () => {
+  // A json/jsonb column arrives parsed. String() would produce a value the
+  // column happily accepts while destroying the data.
+  assert.equal(formatSqlValue({ a: 1 }), `'{"a":1}'`);
+  assert.equal(formatSqlValue([1, 2]), `'[1,2]'`);
+});
+
 test('a date is written as a quoted ISO timestamp', () => {
   const value = formatSqlValue(new Date(Date.UTC(2026, 0, 2, 3, 4, 5)));
   assert.match(value, /^'2026-01-02/);

@@ -333,7 +333,7 @@ declare global {
   interface DbExportPayload {
     content: string;
     defaultFileName: string;
-    format: 'csv' | 'json';
+    format: 'csv' | 'json' | 'sql';
   }
 
   interface DbExportResult {

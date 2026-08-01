@@ -10,6 +10,7 @@ import { dbQueryHistoryStore, useDbQueryHistory } from '../../application/state/
 import { resolveEditableTable } from '../../domain/db/editableResult';
 import { buildPreviewSelect } from '../../domain/db/previewQuery';
 import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
+import { buildInsertStatements } from '../../domain/db/sqlDump';
 import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
@@ -180,23 +181,48 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   }, [connectionId, connectionProfile.engine, runQuery, runSql, sqlDraft, t]);
 
   const handleExport = useCallback(
-    async (format: 'csv' | 'json') => {
+    async (format: 'csv' | 'json' | 'sql') => {
       if (!result) return;
-      const base = (resultSql && resolveEditableTable(resultSql)) || 'query-result';
-      // The BOM goes on the file only — Excel needs it to read UTF-8, and it
-      // is written here rather than by toCsv so a clipboard copy never gets it.
-      const content = format === 'csv'
-        ? UTF8_BOM + toCsv(result.columns, result.rows)
-        : toJson(result.columns, result.rows);
+      const sourceTable = resultSql ? resolveEditableTable(resultSql) : null;
+      const base = sourceTable || 'query-result';
+
+      let content: string;
+      if (format === 'csv') {
+        // The BOM goes on the file only — Excel needs it to read UTF-8, and it
+        // is written here rather than by toCsv so a clipboard copy never gets it.
+        content = UTF8_BOM + toCsv(result.columns, result.rows);
+      } else if (format === 'json') {
+        content = toJson(result.columns, result.rows);
+      } else {
+        // INSERT statements need a table to insert into. A result assembled
+        // from several tables has none, so the statements are emitted against a
+        // placeholder the user has to replace — better than silently picking
+        // one of the tables involved.
+        try {
+          content = buildInsertStatements({
+            engine: connectionProfile.engine,
+            table: sourceTable ?? 'TABLE_NAME_HERE',
+            columns: result.columns,
+            rows: result.rows,
+          });
+        } catch (err) {
+          setQueryError(err instanceof Error ? err.message : String(err));
+          return;
+        }
+        if (!sourceTable) {
+          content = `-- This result does not come from a single table.\n`
+            + `-- Replace TABLE_NAME_HERE before running these statements.\n\n${content}`;
+        }
+      }
 
       const outcome = await exportResult({
         content,
         defaultFileName: `${base.replace(/[^\w.-]/g, '_')}.${format}`,
-        format,
+        format: format === 'sql' ? 'sql' : format,
       });
       if (!outcome.success && !outcome.canceled) setQueryError(outcome.error ?? 'Export failed');
     },
-    [exportResult, result, resultSql],
+    [connectionProfile.engine, exportResult, result, resultSql],
   );
 
   const handleCancel = useCallback(() => {
@@ -288,6 +314,9 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             </Button>
             <Button size="sm" variant="ghost" onClick={() => void handleExport('json')}>
               {t('db.export.json')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('sql')}>
+              {t('db.export.sql')}
             </Button>
           </div>
         )}

@@ -5,6 +5,7 @@ import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStor
 import { useDbClientBackend } from '../../application/state/useDbClientBackend';
 import { useDbSchema } from '../../application/state/useDbSchema';
 import { useDbTransaction } from '../../application/state/useDbTransaction';
+import { useDbRowEditing } from '../../application/state/useDbRowEditing';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
@@ -45,12 +46,21 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   const [queryError, setQueryError] = useState<string | null>(null);
   const [result, setResult] = useState<{ columns: DbResultColumn[]; rows: unknown[][] } | null>(null);
   const [meta, setMeta] = useState<{ rowCount: number; durationMs: number; truncated: boolean; affectedRows?: number } | null>(null);
+  // The draft keeps changing as the user types; editing has to key off the SQL
+  // that actually produced the rows on screen.
+  const [resultSql, setResultSql] = useState<string | null>(null);
 
   const connectionId = connectionProfile.id;
   const activeQueryIdRef = useRef<string | null>(null);
   // One schema for the tab: the tree renders it, the editor completes against it.
   const schema = useDbSchema(connectionId, status === 'connected');
   const transaction = useDbTransaction(connectionId, connectionProfile.engine);
+  const rowEditing = useDbRowEditing({
+    connectionId,
+    engine: connectionProfile.engine,
+    sql: resultSql,
+    columns: result?.columns ?? [],
+  });
 
   useEffect(() => {
     const request = buildDbConnectRequest({
@@ -88,6 +98,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
     setQueryError(null);
     setResult(null);
     setMeta(null);
+    setResultSql(sqlDraft);
 
     let accumulatedColumns: DbResultColumn[] = [];
     let accumulatedRows: unknown[][] = [];
@@ -227,7 +238,14 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             />
           </div>
           <div className="min-h-0 flex-1">
-            {result && <DbResultsGrid columns={result.columns} rows={result.rows} />}
+            {result && (
+              <DbResultsGrid
+                columns={result.columns}
+                rows={result.rows}
+                onCommitEdit={rowEditing.editable ? rowEditing.commitEdit : undefined}
+                readOnlyReason={rowEditing.reason ? t(`db.edit.${rowEditing.reason}`) : undefined}
+              />
+            )}
           </div>
         </div>
       </div>

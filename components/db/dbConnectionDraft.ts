@@ -26,12 +26,14 @@ export function emptyDbConnectionDraft(): DbConnectionDraft {
 }
 
 /**
- * Whether the draft has the two fields a connection cannot exist without.
- * Drives the Save button's enabled state — the host in particular is chosen
- * through a selector rather than typed, so it is the one users miss.
+ * Whether the draft has what a connection cannot exist without — only a label.
+ *
+ * An SSH host is deliberately not required: a database reachable from this
+ * machine needs no tunnel, and demanding one is what forced every connection
+ * to carry two different "host" fields.
  */
 export function canSaveDbConnectionDraft(draft: DbConnectionDraft): boolean {
-  return Boolean(draft.label.trim()) && Boolean(draft.hostId);
+  return Boolean(draft.label.trim());
 }
 
 /**

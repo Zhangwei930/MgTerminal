@@ -5,8 +5,17 @@ export interface DbConnectionProfile {
   id: string;
   label: string;
   engine: DbEngine;
-  hostId: string; // Host to tunnel through — the SSH leg is mandatory
-  remoteHost: string; // DB bind address as seen from the SSH host, usually '127.0.0.1'
+  /**
+   * Saved SSH host to tunnel through. Empty means a direct connection: the
+   * database is reachable from this machine and no SSH leg is involved.
+   */
+  hostId: string;
+  /**
+   * Where the database listens. For a direct connection this is the address
+   * this machine dials; when tunnelling it is the address as seen from the
+   * SSH host, usually '127.0.0.1'.
+   */
+  remoteHost: string;
   remotePort: number;
   database?: string;
   dbUsername?: string;

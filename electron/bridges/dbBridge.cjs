@@ -30,33 +30,50 @@ function withTrustedSender(event) {
   };
 }
 
+/**
+ * Opens a database connection, tunnelling through SSH only when a saved host
+ * is given. An empty `hostId` means the database is reachable from this
+ * machine directly — local, on the LAN, or a cloud endpoint — and no SSH leg
+ * is involved at all.
+ */
 async function connect(event, payload) {
   const {
     connectionId, engine, sshOptions = {}, remoteHost, remotePort, database, dbUsername, dbPassword,
+    hostId,
   } = payload;
 
-  const tunnelId = `db-${connectionId}`;
-  const localPort = await getFreeLocalPort();
+  const useTunnel = Boolean(hostId);
+  let tunnelId = null;
+  let dialHost = remoteHost;
+  let dialPort = remotePort;
 
-  const forwardResult = await portForwardingBridge.startPortForward(event, {
-    ...sshOptions,
-    type: "local",
-    tunnelId,
-    ruleId: tunnelId,
-    localPort,
-    bindAddress: "127.0.0.1",
-    remoteHost,
-    remotePort,
-  });
-  if (!forwardResult?.success) {
-    throw new Error(forwardResult?.error || "Failed to establish SSH tunnel");
+  if (useTunnel) {
+    tunnelId = `db-${connectionId}`;
+    const localPort = await getFreeLocalPort();
+
+    const forwardResult = await portForwardingBridge.startPortForward(event, {
+      ...sshOptions,
+      type: "local",
+      tunnelId,
+      ruleId: tunnelId,
+      localPort,
+      bindAddress: "127.0.0.1",
+      remoteHost,
+      remotePort,
+    });
+    if (!forwardResult?.success) {
+      throw new Error(forwardResult?.error || "Failed to establish SSH tunnel");
+    }
+    // The driver dials the local end of the tunnel, not the database directly.
+    dialHost = "127.0.0.1";
+    dialPort = localPort;
   }
 
   const adapter = createAdapter(engine);
   try {
     const { serverVersion } = await adapter.connect({
-      host: "127.0.0.1",
-      port: localPort,
+      host: dialHost,
+      port: dialPort,
       database,
       username: dbUsername,
       password: dbPassword,
@@ -75,7 +92,7 @@ async function connect(event, payload) {
     });
     return { connectionId, success: true, serverVersion };
   } catch (err) {
-    await portForwardingBridge.stopPortForward(event, { tunnelId }).catch(() => {});
+    if (tunnelId) await portForwardingBridge.stopPortForward(event, { tunnelId }).catch(() => {});
     throw err;
   }
 }
@@ -86,7 +103,9 @@ async function closeConnection(event, { connectionId }) {
 
   dbConnections.delete(connectionId);
   await entry.adapter.close().catch(() => {});
-  await portForwardingBridge.stopPortForward(event, { tunnelId: entry.tunnelId }).catch(() => {});
+  if (entry.tunnelId) {
+    await portForwardingBridge.stopPortForward(event, { tunnelId: entry.tunnelId }).catch(() => {});
+  }
   return { connectionId, success: true };
 }
 
@@ -216,7 +235,9 @@ async function stopAllDbConnections() {
   await Promise.all(
     entries.map(async ([, entry]) => {
       await entry.adapter.close().catch(() => {});
-      await portForwardingBridge.stopPortForward(fakeEvent, { tunnelId: entry.tunnelId }).catch(() => {});
+      if (entry.tunnelId) {
+        await portForwardingBridge.stopPortForward(fakeEvent, { tunnelId: entry.tunnelId }).catch(() => {});
+      }
     }),
   );
 }

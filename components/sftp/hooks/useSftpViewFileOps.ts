@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { SftpFileEntry } from "../../../types";
 import { getParentPath, joinPath as joinFsPath } from "../../../application/state/sftp/utils";
+import { isTransferCancellationMessage } from "../../../domain/transferReliability";
 import { logger } from "../../../lib/logger";
 import { toast } from "../../ui/toast";
 import { getFileExtension, getLanguageId, FileOpenerType, SystemAppInfo } from "../../../lib/sftpFileUtils";
@@ -515,7 +516,7 @@ export const useSftpViewFileOps = ({
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : t("sftp.error.downloadFailed");
-            if (!errorMessage.includes("cancelled") && !errorMessage.includes("canceled")) {
+            if (!isTransferCancellationMessage(errorMessage)) {
               toast.error(errorMessage, "SFTP");
             }
           }
@@ -755,7 +756,7 @@ export const useSftpViewFileOps = ({
             },
             (error) => {
               errorHandled = true;
-              const isCancelError = error.includes("cancelled") || error.includes("canceled");
+              const isCancelError = isTransferCancellationMessage(error);
               sftpRef.current.updateExternalUpload(transferId, {
                 status: isCancelError ? "cancelled" : "failed",
                 error: isCancelError ? undefined : error,
@@ -778,7 +779,7 @@ export const useSftpViewFileOps = ({
           }
 
           if (result?.error && !errorHandled) {
-            const isCancelError = result.error.includes("cancelled") || result.error.includes("canceled");
+            const isCancelError = isTransferCancellationMessage(result.error);
             sftpRef.current.updateExternalUpload(transferId, {
               status: isCancelError ? "cancelled" : "failed",
               error: isCancelError ? undefined : result.error,

@@ -5,6 +5,7 @@ import {
   checksumsMatch,
   computeRetryBackoffMs,
   isPersistableTransfer,
+  isTransferCancellationMessage,
   parsePersistedTransferQueue,
   resolveResumeOffset,
   serializeTransferQueue,
@@ -114,4 +115,42 @@ test("isPersistableTransfer and checksumsMatch helpers", () => {
   assert.equal(checksumsMatch("sha256:AbC", "ABC"), true);
   assert.equal(checksumsMatch("aaa", "bbb"), false);
   assert.equal(checksumsMatch(undefined, "x"), true);
+});
+
+// ── isTransferCancellationMessage ───────────────────────────────────────────
+//
+// Decides whether a failed transfer is reported as "cancelled" (silent, no
+// error kept) or "failed" (toast + error recorded). Both misreadings cost the
+// user something: a real error read as cancellation fails silently, and a
+// cancellation read as an error raises a toast for something they chose to do.
+
+test("recognises the cancellation wording the backends emit", () => {
+  assert.equal(isTransferCancellationMessage("Transfer cancelled"), true);
+  assert.equal(isTransferCancellationMessage("operation canceled"), true, "US spelling too");
+  assert.equal(isTransferCancellationMessage("Download cancelled by user"), true);
+});
+
+test("a genuine failure is not read as cancellation", () => {
+  assert.equal(isTransferCancellationMessage("Permission denied"), false);
+  assert.equal(isTransferCancellationMessage("ENOSPC: no space left on device"), false);
+  assert.equal(isTransferCancellationMessage(""), false);
+});
+
+test("non-string input is never cancellation", () => {
+  assert.equal(isTransferCancellationMessage(undefined), false);
+  assert.equal(isTransferCancellationMessage(null), false);
+});
+
+// The match is a plain substring test, which has two known soft spots. Both are
+// pinned as current behaviour rather than fixed, since loosening or tightening
+// the match changes which failures go silent.
+test("the match is case-sensitive, so a capitalised cancellation reads as failure", () => {
+  // A backend emitting "Cancelled by user" surfaces an error toast today.
+  assert.equal(isTransferCancellationMessage("Cancelled by user"), false);
+});
+
+test("the word anywhere in the text counts, including inside a path", () => {
+  // A real error mentioning such a path is reported as a cancellation and the
+  // message is discarded.
+  assert.equal(isTransferCancellationMessage("cannot write /var/cancelled-jobs/out"), true);
 });

@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { SftpFileEntry, SftpFilenameEncoding, TransferStatus, TransferTask } from "../../../domain/models";
 import { STORAGE_KEY_SFTP_TRANSFER_CONCURRENCY } from "../../../infrastructure/config/storageKeys";
 import { localStorageAdapter } from "../../../infrastructure/persistence/localStorageAdapter";
@@ -15,6 +15,149 @@ interface UseSftpDirectoryTransferOpsParams {
   listRemoteFiles: (sftpId: string, path: string, encoding?: SftpFilenameEncoding) => Promise<SftpFileEntry[]>;
 }
 
+export const MAX_SYMLINK_DEPTH = 32;
+
+/**
+ * The side-effecting edges a directory walk needs. Passing them explicitly
+ * keeps estimateDirectoryBytes/countDirectoryFiles testable without a React
+ * renderer — the hook below binds them from its refs and props.
+ */
+export interface DirectoryWalkDeps {
+  listLocalFiles: (path: string) => Promise<SftpFileEntry[]>;
+  listRemoteFiles: (sftpId: string, path: string, encoding?: SftpFilenameEncoding) => Promise<SftpFileEntry[]>;
+  isCancelled: (taskId: string) => boolean;
+}
+
+export function getEntrySize(entry: SftpFileEntry): number {
+  if (typeof entry.size === "string") {
+    const parsed = parseInt(entry.size, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+  return typeof entry.size === "number" && entry.size > 0 ? entry.size : 0;
+}
+
+function listSource(
+  deps: DirectoryWalkDeps,
+  sourcePath: string,
+  sourceSftpId: string | null,
+  sourceIsLocal: boolean,
+  sourceEncoding: SftpFilenameEncoding,
+): Promise<SftpFileEntry[]> | null {
+  if (sourceIsLocal) return deps.listLocalFiles(sourcePath);
+  if (sourceSftpId) return deps.listRemoteFiles(sourceSftpId, sourcePath, sourceEncoding);
+  return null;
+}
+
+/** Recursively sum the bytes under a directory (for progress totals). */
+export async function estimateDirectoryBytes(
+  deps: DirectoryWalkDeps,
+  sourcePath: string,
+  sourceSftpId: string | null,
+  sourceIsLocal: boolean,
+  sourceEncoding: SftpFilenameEncoding,
+  rootTaskId: string,
+  symlinkDepth = 0,
+  followSymlinks = false,
+): Promise<number> {
+  const estT0 = performance.now();
+  if (deps.isCancelled(rootTaskId)) {
+    throw new Error("Transfer cancelled");
+  }
+
+  const listing = listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding);
+  if (!listing) {
+    throw new Error("No source connection");
+  }
+  const files = await listing;
+
+  let totalBytes = 0;
+  const subdirs: { entry: SftpFileEntry; nextDepth: number }[] = [];
+
+  for (const file of files) {
+    if (file.name === ".." || file.name === ".") continue;
+
+    if (file.type === "directory") {
+      subdirs.push({ entry: file, nextDepth: symlinkDepth });
+    } else if (followSymlinks && file.type === "symlink" && file.linkTarget === "directory") {
+      if (symlinkDepth < MAX_SYMLINK_DEPTH) {
+        subdirs.push({ entry: file, nextDepth: symlinkDepth + 1 });
+      }
+      // Skip at max depth — consistent with transferDirectory
+    } else {
+      totalBytes += getEntrySize(file);
+    }
+  }
+
+  if (subdirs.length > 0) {
+    if (deps.isCancelled(rootTaskId)) {
+      throw new Error("Transfer cancelled");
+    }
+
+    const subResults = await Promise.all(
+      subdirs.map(({ entry: subdir, nextDepth }) =>
+        estimateDirectoryBytes(
+          deps,
+          joinPath(sourcePath, subdir.name),
+          sourceSftpId,
+          sourceIsLocal,
+          sourceEncoding,
+          rootTaskId,
+          nextDepth,
+          followSymlinks,
+        ),
+      ),
+    );
+    totalBytes += subResults.reduce((sum, size) => sum + size, 0);
+  }
+
+  logger.debug(`[SFTP:perf] estimateDirectoryBytes ${sourcePath} = ${totalBytes} — ${(performance.now() - estT0).toFixed(0)}ms`);
+  return totalBytes;
+}
+
+/** Recursively count all files under a directory (for progress display). */
+export async function countDirectoryFiles(
+  deps: DirectoryWalkDeps,
+  sourcePath: string,
+  sourceSftpId: string | null,
+  sourceIsLocal: boolean,
+  sourceEncoding: SftpFilenameEncoding,
+  rootTaskId: string,
+  symlinkDepth = 0,
+  followSymlinks = false,
+): Promise<number> {
+  if (deps.isCancelled(rootTaskId)) return 0;
+
+  const listing = listSource(deps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding);
+  if (!listing) return 0;
+  const files = await listing;
+
+  let count = 0;
+  const subdirPromises: Promise<number>[] = [];
+  for (const file of files) {
+    if (file.name === ".." || file.name === ".") continue;
+    if (file.type === "directory") {
+      subdirPromises.push(
+        countDirectoryFiles(deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks),
+      );
+    } else if (followSymlinks && file.type === "symlink" && file.linkTarget === "directory") {
+      // Only recurse if within depth limit; skip entirely at max depth
+      // (consistent with transferDirectory which also skips these)
+      if (symlinkDepth < MAX_SYMLINK_DEPTH) {
+        subdirPromises.push(
+          countDirectoryFiles(deps, joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth + 1, followSymlinks),
+        );
+      }
+    } else {
+      count++;
+    }
+  }
+  if (subdirPromises.length > 0) {
+    const subCounts = await Promise.all(subdirPromises);
+    count += subCounts.reduce((a, b) => a + b, 0);
+  }
+  return count;
+}
+
 export function useSftpDirectoryTransferOps({
   cancelledTasksRef,
   activeChildIdsRef,
@@ -22,18 +165,17 @@ export function useSftpDirectoryTransferOps({
   listLocalFiles,
   listRemoteFiles,
 }: UseSftpDirectoryTransferOpsParams) {
-  const getEntrySize = useCallback((entry: SftpFileEntry): number => {
-    if (typeof entry.size === "string") {
-      const parsed = parseInt(entry.size, 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-    }
-    return typeof entry.size === "number" && entry.size > 0 ? entry.size : 0;
-  }, []);
+  const walkDeps: DirectoryWalkDeps = useMemo(
+    () => ({
+      listLocalFiles,
+      listRemoteFiles,
+      isCancelled: (taskId: string) => cancelledTasksRef.current.has(taskId),
+    }),
+    [cancelledTasksRef, listLocalFiles, listRemoteFiles],
+  );
 
-  const MAX_SYMLINK_DEPTH = 32;
-
-  const estimateDirectoryBytes = useCallback(
-    async (
+  const estimateDirectoryBytesCallback = useCallback(
+    (
       sourcePath: string,
       sourceSftpId: string | null,
       sourceIsLocal: boolean,
@@ -41,65 +183,11 @@ export function useSftpDirectoryTransferOps({
       rootTaskId: string,
       symlinkDepth = 0,
       followSymlinks = false,
-    ): Promise<number> => {
-      const estT0 = performance.now();
-      if (cancelledTasksRef.current.has(rootTaskId)) {
-        throw new Error("Transfer cancelled");
-      }
-
-      const files = sourceIsLocal
-        ? await listLocalFiles(sourcePath)
-        : sourceSftpId
-          ? await listRemoteFiles(sourceSftpId, sourcePath, sourceEncoding)
-          : null;
-
-      if (!files) {
-        throw new Error("No source connection");
-      }
-
-      let totalBytes = 0;
-      const subdirs: { entry: SftpFileEntry; nextDepth: number }[] = [];
-
-      for (const file of files) {
-        if (file.name === ".." || file.name === ".") continue;
-
-        if (file.type === "directory") {
-          subdirs.push({ entry: file, nextDepth: symlinkDepth });
-        } else if (followSymlinks && file.type === "symlink" && file.linkTarget === "directory") {
-          if (symlinkDepth < MAX_SYMLINK_DEPTH) {
-            subdirs.push({ entry: file, nextDepth: symlinkDepth + 1 });
-          }
-          // Skip at max depth — consistent with transferDirectory
-        } else {
-          totalBytes += getEntrySize(file);
-        }
-      }
-
-      if (subdirs.length > 0) {
-        if (cancelledTasksRef.current.has(rootTaskId)) {
-          throw new Error("Transfer cancelled");
-        }
-
-        const subResults = await Promise.all(
-          subdirs.map(({ entry: subdir, nextDepth }) =>
-            estimateDirectoryBytes(
-              joinPath(sourcePath, subdir.name),
-              sourceSftpId,
-              sourceIsLocal,
-              sourceEncoding,
-              rootTaskId,
-              nextDepth,
-              followSymlinks,
-            ),
-          ),
-        );
-        totalBytes += subResults.reduce((sum, size) => sum + size, 0);
-      }
-
-      logger.debug(`[SFTP:perf] estimateDirectoryBytes ${sourcePath} = ${totalBytes} — ${(performance.now() - estT0).toFixed(0)}ms`);
-      return totalBytes;
-    },
-    [cancelledTasksRef, getEntrySize, listLocalFiles, listRemoteFiles],
+    ): Promise<number> =>
+      estimateDirectoryBytes(
+        walkDeps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks,
+      ),
+    [walkDeps],
   );
 
   const transferFile = async (
@@ -188,8 +276,7 @@ export function useSftpDirectoryTransferOps({
     });
   };
 
-  /** Recursively count all files under a directory (for progress display). */
-  const countDirectoryFiles = async (
+  const countDirectoryFilesCallback = (
     sourcePath: string,
     sourceSftpId: string | null,
     sourceIsLocal: boolean,
@@ -197,42 +284,10 @@ export function useSftpDirectoryTransferOps({
     rootTaskId: string,
     symlinkDepth = 0,
     followSymlinks = false,
-  ): Promise<number> => {
-    if (cancelledTasksRef.current.has(rootTaskId)) return 0;
-
-    const files = sourceIsLocal
-      ? await listLocalFiles(sourcePath)
-      : sourceSftpId
-        ? await listRemoteFiles(sourceSftpId, sourcePath, sourceEncoding)
-        : null;
-    if (!files) return 0;
-
-    let count = 0;
-    const subdirPromises: Promise<number>[] = [];
-    for (const file of files) {
-      if (file.name === ".." || file.name === ".") continue;
-      if (file.type === "directory") {
-        subdirPromises.push(
-          countDirectoryFiles(joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks),
-        );
-      } else if (followSymlinks && file.type === "symlink" && file.linkTarget === "directory") {
-        // Only recurse if within depth limit; skip entirely at max depth
-        // (consistent with transferDirectory which also skips these)
-        if (symlinkDepth < MAX_SYMLINK_DEPTH) {
-          subdirPromises.push(
-            countDirectoryFiles(joinPath(sourcePath, file.name), sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth + 1, followSymlinks),
-          );
-        }
-      } else {
-        count++;
-      }
-    }
-    if (subdirPromises.length > 0) {
-      const subCounts = await Promise.all(subdirPromises);
-      count += subCounts.reduce((a, b) => a + b, 0);
-    }
-    return count;
-  };
+  ): Promise<number> =>
+    countDirectoryFiles(
+      walkDeps, sourcePath, sourceSftpId, sourceIsLocal, sourceEncoding, rootTaskId, symlinkDepth, followSymlinks,
+    );
 
   /** Returns number of failed child file transfers */
   const transferDirectory = async (
@@ -441,5 +496,10 @@ export function useSftpDirectoryTransferOps({
   };
 
 
-  return { estimateDirectoryBytes, transferFile, countDirectoryFiles, transferDirectory };
+  return {
+    estimateDirectoryBytes: estimateDirectoryBytesCallback,
+    transferFile,
+    countDirectoryFiles: countDirectoryFilesCallback,
+    transferDirectory,
+  };
 }

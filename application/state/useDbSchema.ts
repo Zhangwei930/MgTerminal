@@ -140,12 +140,29 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
     [connectionId, getTableDdl],
   );
 
+  /**
+   * The whole schema — every table with its columns — for a structure
+   * comparison. One query per table, so it is only ever done on demand.
+   */
+  const readSnapshot = useCallback(async () => {
+    const result = await listTables(connectionId);
+    if (!result?.success) return null;
+    const onlyTables = (result.tables ?? []).filter((table) => table.kind === 'table');
+
+    const snapshot = { tables: [] as { name: string; columns: DbSchemaColumn[] }[] };
+    for (const table of onlyTables) {
+      const columns = await getColumns(table.name);
+      snapshot.tables.push({ name: table.name, columns: columns ?? [] });
+    }
+    return snapshot;
+  }, [connectionId, getColumns, listTables]);
+
   /** Synchronous peek for callers that cannot await — returns null if unseen. */
   const peekColumns = useCallback((table: string) => columnCache.current.get(table) ?? null, []);
 
   return {
     tables, routines, triggers, loading, error, reload,
-    getColumns, getTableDetail, loadTableDdl, peekColumns,
+    getColumns, getTableDetail, loadTableDdl, peekColumns, readSnapshot,
     relations, relationsLoading, loadRelations,
   };
 };

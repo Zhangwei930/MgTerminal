@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, GitBranch, History, Loader2, Network, Play, Square, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, GitBranch, GitCompare, History, Loader2, Network, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
@@ -21,12 +21,15 @@ import { attemptDbConnection } from './dbConnectAttempt';
 import { buildDbConnectRequest } from './dbConnectRequest';
 import { DbResultsGrid } from './DbResultsGrid';
 import { DbErDiagram } from './DbErDiagram';
+import { DbSchemaDiffPanel } from './DbSchemaDiffPanel';
 import { DbQueryHistoryPanel } from './DbQueryHistoryPanel';
 import { DbSchemaTree } from './DbSchemaTree';
 import { SqlCodeEditor } from './SqlCodeEditor';
 
 interface DbWorkspaceTabViewProps {
   connectionProfile: DbConnectionProfile;
+  /** Every saved connection, so a structure comparison can pick a target. */
+  connections: DbConnectionProfile[];
   host: Host | undefined;
   keys: SSHKey[];
   identities: Identity[];
@@ -37,6 +40,7 @@ type ConnectionStatus = 'connecting' | 'connected' | 'error';
 
 export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   connectionProfile,
+  connections,
   host,
   keys,
   identities,
@@ -59,6 +63,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   const [resultSql, setResultSql] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [erOpen, setErOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
   const queryHistory = useDbQueryHistory();
 
   const connectionId = connectionProfile.id;
@@ -291,6 +296,15 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           size="sm"
           variant="ghost"
           disabled={status !== 'connected'}
+          onClick={() => setDiffOpen(true)}
+          title={t('db.diff.title')}
+        >
+          <GitCompare size={13} />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={status !== 'connected'}
           onClick={() => {
             setErOpen(true);
             void schema.loadRelations();
@@ -407,6 +421,16 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           />
         )}
       </div>
+
+      {diffOpen && (
+        <DbSchemaDiffPanel
+          sourceProfile={connectionProfile}
+          sourceSnapshot={schema.readSnapshot}
+          candidates={connections.filter((c) => c.id !== connectionId)}
+          onClose={() => setDiffOpen(false)}
+          onScript={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
+        />
+      )}
 
       {erOpen && (
         <DbErDiagram

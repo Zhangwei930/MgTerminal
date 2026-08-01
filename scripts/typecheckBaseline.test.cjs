@@ -11,6 +11,7 @@ const {
   writeBaseline,
   diffAgainstBaseline,
   exceedsTotalCap,
+  findBaselinePollution,
 } = require("./typecheckBaseline.cjs");
 
 const SAMPLE_OUTPUT = `foo.ts(1,2): error TS2339: Property 'x' does not exist on type 'Y'.
@@ -119,4 +120,20 @@ test("exceedsTotalCap catches duplicate errors the identity set cannot", () => {
 test("exceedsTotalCap treats a missing cap as unlimited", () => {
   assert.equal(exceedsTotalCap(9999, null), false);
   assert.equal(exceedsTotalCap(9999, undefined), false);
+});
+
+// CI installs only the root package.json. A long-lived local checkout usually
+// also has mobile/node_modules, which resolves @capacitor/* imports that CI
+// cannot — so a baseline regenerated here silently drops errors CI still sees.
+// This has broken main twice (PR #104, and again when the total cap landed).
+test("findBaselinePollution flags local installs CI does not have", () => {
+  const present = new Set(["/repo/mobile/node_modules"]);
+  assert.deepEqual(
+    findBaselinePollution("/repo", (p) => present.has(p)),
+    ["mobile/node_modules"],
+  );
+});
+
+test("findBaselinePollution is empty in a clean checkout", () => {
+  assert.deepEqual(findBaselinePollution("/repo", () => false), []);
 });

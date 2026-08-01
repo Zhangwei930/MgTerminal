@@ -683,6 +683,9 @@ export const zhCNCoreMessages: Messages = {
   'db.edit.keyNotSelected': '只读：需要查出主键列才能编辑行。',
   'db.export.csv': '导出 CSV',
   'db.export.json': 'JSON',
+  'db.explain.run': '执行计划',
+  'db.explain.hint': '查看执行计划，不实际运行查询',
+  'db.explain.selectOnly': '只有 SELECT 语句可以查看执行计划。',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

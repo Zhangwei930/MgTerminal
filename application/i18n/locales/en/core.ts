@@ -983,6 +983,9 @@ export const enCoreMessages: Messages = {
   'db.edit.keyNotSelected': 'Read-only: select the primary key columns to edit rows.',
   'db.export.csv': 'Export CSV',
   'db.export.json': 'JSON',
+  'db.explain.run': 'Explain',
+  'db.explain.hint': 'Show the execution plan without running the query',
+  'db.explain.selectOnly': 'Only a SELECT statement can be explained.',
   'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',

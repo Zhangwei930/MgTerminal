@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, Loader2, Play, Square, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, GitBranch, Loader2, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
@@ -8,6 +8,7 @@ import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { useDbRowEditing } from '../../application/state/useDbRowEditing';
 import { resolveEditableTable } from '../../domain/db/editableResult';
 import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
+import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
@@ -92,21 +93,21 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionId]);
 
-  const handleRun = useCallback(() => {
-    if (status !== 'connected' || isRunning || !sqlDraft.trim()) return;
+  const runSql = useCallback((sqlToRun: string) => {
+    if (status !== 'connected' || isRunning || !sqlToRun.trim()) return;
     const queryId = crypto.randomUUID();
     activeQueryIdRef.current = queryId;
     setIsRunning(true);
     setQueryError(null);
     setResult(null);
     setMeta(null);
-    setResultSql(sqlDraft);
+    setResultSql(sqlToRun);
 
     let accumulatedColumns: DbResultColumn[] = [];
     let accumulatedRows: unknown[][] = [];
 
     void runQuery(
-      { connectionId, queryId, sql: sqlDraft },
+      { connectionId, queryId, sql: sqlToRun },
       {
         onRows: (payload) => {
           if (activeQueryIdRef.current !== queryId) return;
@@ -126,7 +127,40 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
         },
       },
     );
-  }, [status, isRunning, sqlDraft, connectionId, runQuery]);
+  }, [status, isRunning, connectionId, runQuery]);
+
+  const handleRun = useCallback(() => runSql(sqlDraft), [runSql, sqlDraft]);
+
+  /**
+   * Asking for a plan must not be a write, which is why buildExplainQuery
+   * refuses anything but a SELECT. Oracle needs two steps: EXPLAIN PLAN FOR
+   * returns nothing and writes to PLAN_TABLE, so the plan is read back after.
+   */
+  const handleExplain = useCallback(() => {
+    if (!canExplain(sqlDraft)) {
+      setQueryError(t('db.explain.selectOnly'));
+      return;
+    }
+    let explainSql: string;
+    try {
+      explainSql = buildExplainQuery(connectionProfile.engine, sqlDraft);
+    } catch (err) {
+      setQueryError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+
+    const followUp = explainFollowUpQuery(connectionProfile.engine);
+    if (!followUp) {
+      runSql(explainSql);
+      return;
+    }
+
+    const queryId = crypto.randomUUID();
+    void runQuery(
+      { connectionId, queryId, sql: explainSql },
+      { onComplete: () => runSql(followUp), onError: (payload) => setQueryError(payload.error) },
+    );
+  }, [connectionId, connectionProfile.engine, runQuery, runSql, sqlDraft, t]);
 
   const handleExport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -160,6 +194,15 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
       <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
         <Button size="sm" onClick={handleRun} disabled={status !== 'connected' || isRunning}>
           <Play size={13} className="mr-1.5" /> {t('db.workspace.run')}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleExplain}
+          disabled={status !== 'connected' || isRunning}
+          title={t('db.explain.hint')}
+        >
+          <GitBranch size={13} className="mr-1.5" /> {t('db.explain.run')}
         </Button>
         {isRunning && (
           <Button size="sm" variant="ghost" onClick={handleCancel}>

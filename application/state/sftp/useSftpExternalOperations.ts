@@ -1,11 +1,16 @@
 import { useCallback, useRef, useMemo, useState } from "react";
 import { FileConflict, FileConflictAction, TransferStatus, SftpFilenameEncoding } from "../../../domain/models";
-import { getSftpConflictTypeKey } from "../../../domain/sftpConflict";
 import { magiesTerminalBridge } from "../../../infrastructure/services/magiesTerminalBridge";
 import { logger } from "../../../lib/logger";
 import { notify } from "../../notification";
 import { joinPath } from "./utils";
 import { createUploadTaskCallbacks } from "./uploadTaskCallbacks";
+import {
+  cancelPendingUploadConflicts as cancelPendingConflicts,
+  requestUploadConflictDecision,
+  resolveUploadConflict as resolveUploadConflictDecision,
+} from "./uploadConflictCoordinator";
+import type { IncomingUploadConflict, UploadConflictDeps } from "./uploadConflictCoordinator";
 import {
   UploadController,
   uploadFromDataTransfer,
@@ -465,73 +470,30 @@ export const useSftpExternalOperations = (
     dismissExternalUpload,
   }), [addExternalUpload, updateExternalUpload, dismissExternalUpload]);
 
-  const resolveUploadConflict = useCallback((conflictId: string, action: FileConflictAction, applyToAll = false) => {
-    const conflict = uploadConflicts.find((item) => item.transferId === conflictId);
-    setUploadConflicts((prev) => prev.filter((item) => item.transferId !== conflictId));
-    const resolver = uploadConflictResolversRef.current.get(conflictId);
-    if (!resolver) return;
-    uploadConflictResolversRef.current.delete(conflictId);
-    if (conflict && applyToAll) {
-      resolver.setDefault(action);
-    }
-    resolver.resolve(action);
-  }, [uploadConflicts]);
+  const conflictDeps: UploadConflictDeps = useMemo(
+    () => ({
+      setConflicts: setUploadConflicts,
+      resolvers: uploadConflictResolversRef.current,
+    }),
+    [],
+  );
 
-  const cancelPendingUploadConflicts = useCallback(() => {
-    const resolvers = Array.from(uploadConflictResolversRef.current.values());
-    if (resolvers.length === 0) return;
+  const resolveUploadConflict = useCallback(
+    (conflictId: string, action: FileConflictAction, applyToAll = false) =>
+      resolveUploadConflictDecision(conflictDeps, uploadConflicts, conflictId, action, applyToAll),
+    [conflictDeps, uploadConflicts],
+  );
 
-    uploadConflictResolversRef.current.clear();
-    setUploadConflicts([]);
-    for (const resolver of resolvers) {
-      resolver.resolve("stop");
-    }
-  }, []);
+  const cancelPendingUploadConflicts = useCallback(
+    () => cancelPendingConflicts(conflictDeps),
+    [conflictDeps],
+  );
 
   const createUploadConflictResolver = useCallback(() => {
     const conflictDefaults = new Map<string, FileConflictAction>();
-
-    return async (conflict: {
-      fileName: string;
-      targetPath: string;
-      isDirectory: boolean;
-      existingType?: 'file' | 'directory' | 'symlink';
-      existingSize: number;
-      newSize: number;
-      existingModified: number;
-      newModified: number;
-      applyToAllCount: number;
-    }): Promise<FileConflictAction> => {
-      const conflictType = getSftpConflictTypeKey(conflict.isDirectory, conflict.existingType);
-      const defaultAction = conflictDefaults.get(conflictType);
-      if (defaultAction) return defaultAction;
-
-      const conflictId = `upload-conflict-${crypto.randomUUID()}`;
-      const fileConflict: FileConflict = {
-        transferId: conflictId,
-        fileName: conflict.fileName,
-        sourcePath: "local",
-        targetPath: conflict.targetPath,
-        isDirectory: conflict.isDirectory,
-        existingType: conflict.existingType,
-        applyToAllCount: conflict.applyToAllCount,
-        existingSize: conflict.existingSize,
-        newSize: conflict.newSize,
-        existingModified: conflict.existingModified,
-        newModified: conflict.newModified,
-      };
-
-      setUploadConflicts((prev) => [...prev, fileConflict]);
-      return new Promise<FileConflictAction>((resolve) => {
-        uploadConflictResolversRef.current.set(conflictId, {
-          resolve,
-          setDefault: (action) => {
-            conflictDefaults.set(conflictType, action);
-          },
-        });
-      });
-    };
-  }, []);
+    return (conflict: IncomingUploadConflict): Promise<FileConflictAction> =>
+      requestUploadConflictDecision(conflictDeps, conflictDefaults, conflict);
+  }, [conflictDeps]);
 
   // Create upload bridge that wraps magiesTerminalBridge
   const createUploadBridge = useMemo((): UploadBridge => {

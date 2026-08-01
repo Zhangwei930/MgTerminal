@@ -629,6 +629,7 @@ export function AppView({ ctx }: { ctx: AppViewContext }) {
               <Suspense fallback={null}>
                 <LazyDbWorkspaceTabView
                   connectionProfile={connectionProfile}
+                  connections={dbConnections as DbConnectionProfile[]}
                   host={hostById.get(connectionProfile.hostId)}
                   keys={keys}
                   identities={identities}

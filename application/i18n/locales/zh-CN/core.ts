@@ -675,6 +675,9 @@ export const zhCNCoreMessages: Messages = {
   'db.tx.autoCommitHint': '关闭后会开启事务；重新开启会回滚尚未提交的更改。',
   'db.tx.commit': '提交',
   'db.tx.rollback': '回滚',
+  'db.edit.notSingleTable': '只读：该结果不是来自单张表。',
+  'db.edit.noPrimaryKey': '只读：该表没有主键，无法定位某一行。',
+  'db.edit.keyNotSelected': '只读：需要查出主键列才能编辑行。',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

@@ -975,6 +975,9 @@ export const enCoreMessages: Messages = {
   'db.tx.autoCommitHint': 'Off opens a transaction. Turning it back on rolls back any uncommitted changes.',
   'db.tx.commit': 'Commit',
   'db.tx.rollback': 'Rollback',
+  'db.edit.notSingleTable': 'Read-only: this result does not come from a single table.',
+  'db.edit.noPrimaryKey': 'Read-only: this table has no primary key, so a row cannot be identified.',
+  'db.edit.keyNotSelected': 'Read-only: select the primary key columns to edit rows.',
   'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',

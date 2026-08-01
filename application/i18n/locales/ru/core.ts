@@ -841,6 +841,7 @@ export const ruCoreMessages: Messages = {
   'db.schema.filter': 'Фильтр таблиц…',
   'db.schema.empty': 'Нет таблиц и представлений.',
   'db.schema.loading': 'Загрузка столбцов…',
+  'db.schema.columnsFailed': 'Не удалось прочитать столбцы.',
   'db.schema.openHint': 'Клик — столбцы, двойной клик — просмотр строк',
 
   'proxyProfiles.action.add': 'Добавить прокси',

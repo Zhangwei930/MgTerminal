@@ -1,15 +1,18 @@
 import { AlertTriangle, ChevronDown, ChevronRight, Eye, Loader2, RefreshCw, Table2 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import type { DbEngine } from '../../domain/models';
 import { buildPreviewSelect } from '../../domain/db/previewQuery';
-import { useDbClientBackend } from '../../application/state/useDbClientBackend';
 
 interface DbSchemaTreeProps {
-  connectionId: string;
   engine: DbEngine;
+  tables: DbSchemaTable[] | null;
+  loading: boolean;
+  error: string | null;
   /** Only true once the connection is live — the catalog queries need it. */
   ready: boolean;
+  onReload: () => void;
+  getColumns: (table: string) => Promise<DbSchemaColumn[] | null>;
   /** Double-clicking a table hands its preview SQL to the editor. */
   onOpenTable: (sql: string) => void;
 }
@@ -17,75 +20,45 @@ interface DbSchemaTreeProps {
 /** Columns are fetched per table on first expand, then kept. */
 type ColumnState =
   | { status: 'loading' }
-  | { status: 'error'; error: string }
+  | { status: 'error' }
   | { status: 'loaded'; columns: DbSchemaColumn[] };
 
 export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
-  connectionId,
   engine,
+  tables,
+  loading,
+  error,
   ready,
+  onReload,
+  getColumns,
   onOpenTable,
 }) => {
   const { t } = useI18n();
-  const { listTables, listColumns } = useDbClientBackend();
-  const [tables, setTables] = useState<DbSchemaTable[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, ColumnState | undefined>>({});
 
-  const loadTables = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await listTables(connectionId);
-      if (result?.success) setTables(result.tables ?? []);
-      else setError(result?.error || 'Failed to read schema');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [connectionId, listTables]);
-
-  useEffect(() => {
-    if (!ready) return;
-    void loadTables();
-  }, [ready, loadTables]);
-
   const toggleTable = useCallback(
     async (name: string) => {
-      const current = expanded[name];
-      if (current) {
-        // Collapsing drops the cached columns too — a refresh should not have
-        // to know which tables happen to be open.
+      if (expanded[name]) {
         setExpanded((prev) => ({ ...prev, [name]: undefined }));
         return;
       }
       setExpanded((prev) => ({ ...prev, [name]: { status: 'loading' } }));
-
-      try {
-        const result = await listColumns(connectionId, name);
-        setExpanded((prev) => ({
-          ...prev,
-          [name]: result?.success
-            ? { status: 'loaded', columns: result.columns ?? [] }
-            : { status: 'error', error: result?.error || 'Failed to read columns' },
-        }));
-      } catch (err) {
-        setExpanded((prev) => ({
-          ...prev,
-          [name]: { status: 'error', error: err instanceof Error ? err.message : String(err) },
-        }));
-      }
+      const columns = await getColumns(name);
+      setExpanded((prev) => ({
+        ...prev,
+        [name]: columns ? { status: 'loaded', columns } : { status: 'error' },
+      }));
     },
-    [connectionId, expanded, listColumns],
+    [expanded, getColumns],
   );
 
   const handleRefresh = useCallback(() => {
+    // Collapse everything: the cached columns behind these rows are dropped by
+    // the reload, so leaving rows expanded would show stale children.
     setExpanded({});
-    void loadTables();
-  }, [loadTables]);
+    onReload();
+  }, [onReload]);
 
   const needle = filter.trim().toLowerCase();
   const visible = (tables ?? []).filter((table) => !needle || table.name.toLowerCase().includes(needle));
@@ -127,7 +100,6 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
 
         {visible.map((table) => {
           const state = expanded[table.name];
-          const isOpen = Boolean(state);
           return (
             <div key={`${table.kind}:${table.name}`}>
               <div
@@ -141,7 +113,7 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
                 title={t('db.schema.openHint')}
                 className="flex cursor-default items-center gap-1 px-2 py-0.5 text-xs hover:bg-muted/60"
               >
-                {isOpen ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
+                {state ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
                 {table.kind === 'view'
                   ? <Eye size={11} className="shrink-0 text-muted-foreground" />
                   : <Table2 size={11} className="shrink-0 text-muted-foreground" />}
@@ -154,7 +126,7 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
                 </div>
               )}
               {state?.status === 'error' && (
-                <div className="py-0.5 pl-7 text-xs text-destructive">{state.error}</div>
+                <div className="py-0.5 pl-7 text-xs text-destructive">{t('db.schema.columnsFailed')}</div>
               )}
               {state?.status === 'loaded' && state.columns.map((column) => (
                 <div

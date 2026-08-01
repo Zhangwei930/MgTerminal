@@ -670,6 +670,7 @@ export const zhCNCoreMessages: Messages = {
   'db.schema.filter': '筛选表…',
   'db.schema.empty': '没有表或视图。',
   'db.schema.loading': '正在读取字段…',
+  'db.schema.columnsFailed': '无法读取字段。',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

@@ -474,6 +474,7 @@ async function getTableDdl({ connectionId, table } = {}) {
 const EXPORT_FILTERS = {
   csv: [{ name: "CSV", extensions: ["csv"] }],
   json: [{ name: "JSON", extensions: ["json"] }],
+  sql: [{ name: "SQL", extensions: ["sql"] }],
 };
 
 /**

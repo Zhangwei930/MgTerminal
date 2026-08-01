@@ -37,7 +37,14 @@ export function formatSqlValue(value: unknown): string {
     return String(value);
   }
   if (value instanceof Date) return `'${value.toISOString()}'`;
-  return `'${String(value).replace(/'/g, "''")}'`;
+
+  // A json/jsonb column arrives as a parsed object, and String() would write
+  // it out as '[object Object]' — a value the column would accept and that
+  // destroys the data.
+  const text = typeof value === 'object'
+    ? JSON.stringify(value)
+    : String(value);
+  return `'${text.replace(/'/g, "''")}'`;
 }
 
 function buildWhere(engine: DbEngine, keys: RowKey[]): string {

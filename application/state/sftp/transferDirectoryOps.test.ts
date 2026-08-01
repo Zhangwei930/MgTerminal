@@ -1,0 +1,194 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  MAX_SYMLINK_DEPTH,
+  countDirectoryFiles,
+  estimateDirectoryBytes,
+  getEntrySize,
+} from "./transferDirectoryOps.ts";
+import type { DirectoryWalkDeps } from "./transferDirectoryOps.ts";
+import type { SftpFileEntry } from "../../../domain/models.ts";
+
+const entry = (overrides: Partial<SftpFileEntry> & { name: string }): SftpFileEntry => ({
+  type: "file",
+  size: 0,
+  sizeFormatted: "",
+  lastModified: 0,
+  lastModifiedFormatted: "",
+  ...overrides,
+});
+
+const dir = (name: string) => entry({ name, type: "directory" });
+const file = (name: string, size: number) => entry({ name, size });
+const dirSymlink = (name: string) => entry({ name, type: "symlink", linkTarget: "directory" });
+
+/**
+ * Builds deps backed by a plain path -> entries map. `visited` records every
+ * listing so tests can assert which paths a walk did and did not touch.
+ * Listing an unmapped path throws, so an unintended recursion fails loudly.
+ */
+function makeDeps(
+  tree: Record<string, SftpFileEntry[]>,
+  options: { cancelled?: Set<string> } = {},
+): DirectoryWalkDeps & { visited: string[] } {
+  const visited: string[] = [];
+  const list = async (path: string) => {
+    visited.push(path);
+    const entries = tree[path];
+    if (!entries) throw new Error(`unexpected listing of ${path}`);
+    return entries;
+  };
+  return {
+    visited,
+    listLocalFiles: list,
+    listRemoteFiles: (_sftpId: string, path: string) => list(path),
+    isCancelled: (taskId: string) => Boolean(options.cancelled?.has(taskId)),
+  };
+}
+
+// ── getEntrySize ────────────────────────────────────────────────────────────
+
+test("getEntrySize reads numeric sizes and rejects non-positive ones", () => {
+  assert.equal(getEntrySize(entry({ name: "a", size: 42 })), 42);
+  assert.equal(getEntrySize(entry({ name: "a", size: 0 })), 0);
+  assert.equal(getEntrySize(entry({ name: "a", size: -1 })), 0, "negative sizes floor to 0");
+});
+
+test("getEntrySize parses string sizes some SFTP servers return", () => {
+  assert.equal(getEntrySize(entry({ name: "a", size: "1024" as unknown as number })), 1024);
+  assert.equal(getEntrySize(entry({ name: "a", size: "0" as unknown as number })), 0);
+  assert.equal(
+    getEntrySize(entry({ name: "a", size: "not-a-number" as unknown as number })),
+    0,
+    "unparseable sizes must not produce NaN, which would poison the running total",
+  );
+});
+
+test("getEntrySize treats a missing size as zero", () => {
+  assert.equal(getEntrySize(entry({ name: "a", size: undefined as unknown as number })), 0);
+});
+
+// ── estimateDirectoryBytes ──────────────────────────────────────────────────
+
+test("estimateDirectoryBytes sums file sizes across nested directories", async () => {
+  const deps = makeDeps({
+    "/src": [file("a.txt", 100), dir("nested"), file("b.txt", 50)],
+    "/src/nested": [file("c.txt", 7), dir("deeper")],
+    "/src/nested/deeper": [file("d.txt", 3)],
+  });
+
+  const total = await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1");
+  assert.equal(total, 160);
+});
+
+test("estimateDirectoryBytes skips . and .. so listings cannot recurse forever", async () => {
+  const deps = makeDeps({
+    "/src": [entry({ name: ".", type: "directory" }), entry({ name: "..", type: "directory" }), file("a.txt", 5)],
+  });
+
+  assert.equal(await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1"), 5);
+  assert.deepEqual(deps.visited, ["/src"], "no recursion into . or ..");
+});
+
+test("estimateDirectoryBytes counts symlinks as files when not following them", async () => {
+  const deps = makeDeps({
+    "/src": [entry({ name: "link", type: "symlink", linkTarget: "directory", size: 12 })],
+  });
+
+  const total = await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1", 0, false);
+  assert.equal(total, 12, "uploads/copies treat symlinks as regular entries");
+  assert.deepEqual(deps.visited, ["/src"]);
+});
+
+test("estimateDirectoryBytes descends into symlinked directories when following them", async () => {
+  const deps = makeDeps({
+    "/src": [dirSymlink("link")],
+    "/src/link": [file("a.txt", 9)],
+  });
+
+  const total = await estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1", 0, true);
+  assert.equal(total, 9);
+});
+
+test("estimateDirectoryBytes stops following symlinks at the depth ceiling", async () => {
+  const deps = makeDeps({
+    "/src": [dirSymlink("link")],
+    "/src/link": [file("a.txt", 9)],
+  });
+
+  const total = await estimateDirectoryBytes(
+    deps, "/src", null, true, "utf-8", "task-1", MAX_SYMLINK_DEPTH, true,
+  );
+  assert.equal(total, 0, "at the ceiling the symlink is skipped entirely, contributing nothing");
+  assert.deepEqual(deps.visited, ["/src"], "no listing past the ceiling");
+});
+
+test("estimateDirectoryBytes throws when the root task is cancelled", async () => {
+  const deps = makeDeps({ "/src": [file("a.txt", 5)] }, { cancelled: new Set(["task-1"]) });
+
+  await assert.rejects(
+    () => estimateDirectoryBytes(deps, "/src", null, true, "utf-8", "task-1"),
+    /Transfer cancelled/,
+  );
+  assert.deepEqual(deps.visited, [], "cancellation is checked before any listing");
+});
+
+test("estimateDirectoryBytes throws when a remote walk has no sftp connection", async () => {
+  const deps = makeDeps({ "/src": [] });
+
+  await assert.rejects(
+    () => estimateDirectoryBytes(deps, "/src", null, false, "utf-8", "task-1"),
+    /No source connection/,
+  );
+});
+
+// ── countDirectoryFiles ─────────────────────────────────────────────────────
+
+test("countDirectoryFiles counts files, not directories, across the tree", async () => {
+  const deps = makeDeps({
+    "/src": [file("a.txt", 1), dir("nested"), file("b.txt", 1)],
+    "/src/nested": [file("c.txt", 1), dir("empty")],
+    "/src/nested/empty": [],
+  });
+
+  assert.equal(await countDirectoryFiles(deps, "/src", null, true, "utf-8", "task-1"), 3);
+});
+
+test("countDirectoryFiles skips . and ..", async () => {
+  const deps = makeDeps({
+    "/src": [entry({ name: "." }), entry({ name: ".." }), file("a.txt", 1)],
+  });
+
+  assert.equal(await countDirectoryFiles(deps, "/src", null, true, "utf-8", "task-1"), 1);
+});
+
+test("countDirectoryFiles stops following symlinks at the depth ceiling", async () => {
+  const deps = makeDeps({
+    "/src": [dirSymlink("link")],
+    "/src/link": [file("a.txt", 1)],
+  });
+
+  assert.equal(
+    await countDirectoryFiles(deps, "/src", null, true, "utf-8", "task-1", MAX_SYMLINK_DEPTH, true),
+    0,
+  );
+  assert.deepEqual(deps.visited, ["/src"]);
+});
+
+// Deliberate asymmetry with estimateDirectoryBytes, which throws on the same
+// input. countDirectoryFiles only feeds the progress denominator, so a
+// cancelled walk degrades to 0 rather than surfacing an error the caller would
+// have to special-case. Pinned here so the difference is a decision, not drift.
+test("countDirectoryFiles returns 0 on cancellation rather than throwing", async () => {
+  const deps = makeDeps({ "/src": [file("a.txt", 1)] }, { cancelled: new Set(["task-1"]) });
+
+  assert.equal(await countDirectoryFiles(deps, "/src", null, true, "utf-8", "task-1"), 0);
+  assert.deepEqual(deps.visited, []);
+});
+
+test("countDirectoryFiles returns 0 when a remote walk has no sftp connection", async () => {
+  const deps = makeDeps({ "/src": [] });
+
+  assert.equal(await countDirectoryFiles(deps, "/src", null, false, "utf-8", "task-1"), 0);
+});

@@ -78,24 +78,25 @@ export function requestUploadConflictDecision(
 }
 
 /**
- * Applies the user's answer. `conflicts` is the currently surfaced list —
- * `applyToAll` is honoured only when the conflict is still in it, so a stale
- * list quietly downgrades "apply to all" to a one-off.
+ * Applies the user's answer.
+ *
+ * The parked resolver is what proves the conflict is real, so `applyToAll` is
+ * keyed off that rather than off the surfaced list, which is a UI snapshot and
+ * can lag behind. Keying it off the list meant a stale snapshot silently turned
+ * "apply to all" into a one-off and asked again about an already-made decision.
  */
 export function resolveUploadConflict(
   deps: UploadConflictDeps,
-  conflicts: FileConflict[],
   conflictId: string,
   action: FileConflictAction,
   applyToAll = false,
 ): void {
-  const conflict = conflicts.find((item) => item.transferId === conflictId);
   deps.setConflicts((prev) => prev.filter((item) => item.transferId !== conflictId));
   const resolver = deps.resolvers.get(conflictId);
   if (!resolver) return;
   // Delete before resolving so a second call cannot settle the same promise.
   deps.resolvers.delete(conflictId);
-  if (conflict && applyToAll) {
+  if (applyToAll) {
     resolver.setDefault(action);
   }
   resolver.resolve(action);

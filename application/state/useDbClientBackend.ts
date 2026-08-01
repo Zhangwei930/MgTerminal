@@ -61,7 +61,9 @@ export const useDbClientBackend = () => {
   );
 
   const listForeignKeys = useCallback(
-    async (connectionId: string, table: string): Promise<DbListForeignKeysResult> => {
+    // `table` omitted means every foreign key in the database — what the ER
+    // diagram needs, in one query rather than one per table.
+    async (connectionId: string, table?: string): Promise<DbListForeignKeysResult> => {
       const bridge = magiesTerminalBridge.get();
       if (!bridge?.listDbForeignKeys) return { success: false, error: "DB client bridge unavailable" };
       return bridge.listDbForeignKeys(connectionId, table);

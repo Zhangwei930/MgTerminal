@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Download, GitBranch, History, Loader2, Play, Square, Undo2 } from 'lucide-react';
+import { AlertTriangle, Check, Download, GitBranch, History, Loader2, Network, Play, Square, Undo2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
@@ -8,6 +8,7 @@ import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { useDbRowEditing } from '../../application/state/useDbRowEditing';
 import { dbQueryHistoryStore, useDbQueryHistory } from '../../application/state/dbQueryHistoryStore';
 import { resolveEditableTable } from '../../domain/db/editableResult';
+import { buildPreviewSelect } from '../../domain/db/previewQuery';
 import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
 import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
@@ -18,6 +19,7 @@ import { Button } from '../ui/button';
 import { attemptDbConnection } from './dbConnectAttempt';
 import { buildDbConnectRequest } from './dbConnectRequest';
 import { DbResultsGrid } from './DbResultsGrid';
+import { DbErDiagram } from './DbErDiagram';
 import { DbQueryHistoryPanel } from './DbQueryHistoryPanel';
 import { DbSchemaTree } from './DbSchemaTree';
 import { SqlCodeEditor } from './SqlCodeEditor';
@@ -55,6 +57,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   // that actually produced the rows on screen.
   const [resultSql, setResultSql] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [erOpen, setErOpen] = useState(false);
   const queryHistory = useDbQueryHistory();
 
   const connectionId = connectionProfile.id;
@@ -261,6 +264,18 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
         <Button
           size="sm"
           variant="ghost"
+          disabled={status !== 'connected'}
+          onClick={() => {
+            setErOpen(true);
+            void schema.loadRelations();
+          }}
+          title={t('db.er.title')}
+        >
+          <Network size={13} />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
           onClick={() => setHistoryOpen((prev) => !prev)}
           title={t('db.history.title')}
         >
@@ -363,6 +378,27 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           />
         )}
       </div>
+
+      {erOpen && (
+        <DbErDiagram
+          tables={(schema.tables ?? []).filter((t2) => t2.kind === 'table').map((t2) => t2.name)}
+          relations={(schema.relations ?? []).map((fk) => ({
+            from: fk.table,
+            to: fk.referencedTable,
+            fromColumn: fk.column,
+            toColumn: fk.referencedColumn,
+          }))}
+          loading={schema.relationsLoading}
+          onClose={() => setErOpen(false)}
+          onPickTable={(table) => {
+            dbWorkspaceTabStore.setSqlDraft(
+              connectionId,
+              buildPreviewSelect(connectionProfile.engine, table),
+            );
+            setErOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -353,13 +353,17 @@ async function listIndexes({ connectionId, table } = {}) {
   return { success: true, indexes: Array.from(byName.values()) };
 }
 
-/** A table's foreign keys, with the column and table each one points at. */
+/**
+ * Foreign keys, with the column and table each one points at.
+ *
+ * `table` is optional: without it every foreign key in the database comes back,
+ * which is what the ER diagram needs — one query rather than one per table.
+ */
 async function listForeignKeys({ connectionId, table } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
-  if (!table) return { success: false, error: "table is required" };
 
-  const sql = buildForeignKeyListQuery(entry.engine, entry.database ?? "", table);
+  const sql = buildForeignKeyListQuery(entry.engine, entry.database ?? "", table ?? null);
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -367,6 +371,7 @@ async function listForeignKeys({ connectionId, table } = {}) {
     success: true,
     foreignKeys: out.rows.map((r) => ({
       name: String(r.name ?? ""),
+      table: String(r.table_name ?? ""),
       column: String(r.column_name ?? ""),
       referencedTable: String(r.referenced_table ?? ""),
       referencedColumn: String(r.referenced_column ?? ""),

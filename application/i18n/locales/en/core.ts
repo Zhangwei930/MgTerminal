@@ -995,6 +995,10 @@ export const enCoreMessages: Messages = {
   'db.history.reuse': 'Load into the editor',
   'db.history.clear': 'Clear history (keeps saved queries)',
   'db.history.close': 'Close',
+  'db.er.title': 'Relationships',
+  'db.er.summary': '{tables} tables · {relations} foreign keys',
+  'db.er.empty': 'No tables to diagram.',
+  'db.er.close': 'Close',
   'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',

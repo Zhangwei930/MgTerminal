@@ -311,57 +311,72 @@ ORDER BY ai.INDEX_NAME, aic.COLUMN_POSITION`;
   }
 }
 
-/** Lists a table's foreign keys, with the column and table each one points at. */
+/**
+ * Foreign keys, with the column and table each one points at.
+ *
+ * `table` is optional: omitting it returns every foreign key in the database,
+ * which is what the ER diagram needs — one query rather than one per table.
+ * The owning table is always selected, since a whole-schema result is useless
+ * without knowing which table each key belongs to.
+ */
 function buildForeignKeyListQuery(engine, database, table) {
   assertEngine(engine);
   const db = quoteSqlLiteral(database ?? "");
-  const tbl = quoteSqlLiteral(table ?? "");
+  const tbl = table ? quoteSqlLiteral(table) : null;
 
   switch (engine) {
     case "mysql":
       // KEY_COLUMN_USAGE holds primary and unique keys too; without the
       // REFERENCED_TABLE_NAME filter every primary key looks like a foreign key.
-      return `SELECT CONSTRAINT_NAME AS name, COLUMN_NAME AS column_name,
+      return `SELECT CONSTRAINT_NAME AS name, TABLE_NAME AS table_name, COLUMN_NAME AS column_name,
        REFERENCED_TABLE_NAME AS referenced_table,
        REFERENCED_COLUMN_NAME AS referenced_column
 FROM information_schema.KEY_COLUMN_USAGE
-WHERE TABLE_SCHEMA = ${db} AND TABLE_NAME = ${tbl}
+WHERE TABLE_SCHEMA = ${db}${tbl ? ` AND TABLE_NAME = ${tbl}` : ""}
   AND REFERENCED_TABLE_NAME IS NOT NULL
 ORDER BY CONSTRAINT_NAME, ORDINAL_POSITION`;
 
     case "postgres":
-      return `SELECT tc.constraint_name AS name, kcu.column_name AS column_name,
+      return `SELECT tc.constraint_name AS name, tc.table_name AS table_name,
+       kcu.column_name AS column_name,
        ccu.table_name AS referenced_table, ccu.column_name AS referenced_column
 FROM information_schema.table_constraints tc
 JOIN information_schema.key_column_usage kcu
   ON kcu.constraint_name = tc.constraint_name AND kcu.table_schema = tc.table_schema
 JOIN information_schema.constraint_column_usage ccu
   ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
-WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = ${tbl}
+WHERE tc.constraint_type = 'FOREIGN KEY'
+  AND tc.table_schema NOT IN ('pg_catalog', 'information_schema')${tbl ? `
+  AND tc.table_name = ${tbl}` : ""}
 ORDER BY tc.constraint_name, kcu.ordinal_position`;
 
     case "mssql":
-      return `SELECT fk.name AS name, pc.name AS column_name,
+      return `SELECT fk.name AS name, OBJECT_NAME(fk.parent_object_id) AS table_name,
+       pc.name AS column_name,
        OBJECT_NAME(fkc.referenced_object_id) AS referenced_table,
        rc.name AS referenced_column
 FROM sys.foreign_keys fk
 JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
 JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id AND pc.column_id = fkc.parent_column_id
 JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
-WHERE OBJECT_NAME(fk.parent_object_id) = ${tbl}
+WHERE fk.is_ms_shipped = 0${tbl ? `
+  AND OBJECT_NAME(fk.parent_object_id) = ${tbl}` : ""}
 ORDER BY fk.name, fkc.constraint_column_id`;
 
     case "oracle":
       // ALL_CONSTRAINTS records R_CONSTRAINT_NAME rather than the target table,
       // so the referenced side only comes out by joining back through it.
-      return `SELECT ac.CONSTRAINT_NAME AS name, acc.COLUMN_NAME AS column_name,
+      return `SELECT ac.CONSTRAINT_NAME AS name, ac.TABLE_NAME AS table_name,
+       acc.COLUMN_NAME AS column_name,
        rcc.TABLE_NAME AS referenced_table, rcc.COLUMN_NAME AS referenced_column
 FROM ALL_CONSTRAINTS ac
 JOIN ALL_CONS_COLUMNS acc
   ON acc.CONSTRAINT_NAME = ac.CONSTRAINT_NAME AND acc.OWNER = ac.OWNER
 JOIN ALL_CONS_COLUMNS rcc
   ON rcc.CONSTRAINT_NAME = ac.R_CONSTRAINT_NAME AND rcc.POSITION = acc.POSITION
-WHERE ac.CONSTRAINT_TYPE = 'R' AND ac.TABLE_NAME = ${tbl}
+WHERE ac.CONSTRAINT_TYPE = 'R'
+  AND ac.OWNER NOT IN ('SYS', 'SYSTEM', 'XDB', 'OUTLN')${tbl ? `
+  AND ac.TABLE_NAME = ${tbl}` : ""}
 ORDER BY ac.CONSTRAINT_NAME, acc.POSITION`;
 
     default:

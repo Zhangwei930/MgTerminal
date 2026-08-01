@@ -695,6 +695,10 @@ export const zhCNCoreMessages: Messages = {
   'db.history.reuse': '载入编辑器',
   'db.history.clear': '清空历史（保留收藏）',
   'db.history.close': '关闭',
+  'db.er.title': '关系图',
+  'db.er.summary': '{tables} 张表 · {relations} 个外键',
+  'db.er.empty': '没有可绘制的表。',
+  'db.er.close': '关闭',
   'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',

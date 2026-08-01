@@ -866,6 +866,10 @@ export const ruCoreMessages: Messages = {
   'db.history.reuse': 'Загрузить в редактор',
   'db.history.clear': 'Очистить историю (сохранённые останутся)',
   'db.history.close': 'Закрыть',
+  'db.er.title': 'Связи',
+  'db.er.summary': 'Таблиц: {tables} · Внешних ключей: {relations}',
+  'db.er.empty': 'Нет таблиц для схемы.',
+  'db.er.close': 'Закрыть',
   'db.schema.openHint': 'Клик — столбцы, двойной клик — просмотр строк',
 
   'proxyProfiles.action.add': 'Добавить прокси',

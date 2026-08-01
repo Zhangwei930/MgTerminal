@@ -715,10 +715,10 @@ test("listForeignKeys reports the column and what it points at", async () => {
   const adapter = createSchemaAdapter({
     "FOREIGN KEY": {
       columns: [
-        { name: "name" }, { name: "column_name" },
+        { name: "name" }, { name: "table_name" }, { name: "column_name" },
         { name: "referenced_table" }, { name: "referenced_column" },
       ],
-      rows: [["fk_visit_patient", "patient_id", "patients", "id"]],
+      rows: [["fk_visit_patient", "visits", "patient_id", "patients", "id"]],
     },
   });
   setup({ adapter });
@@ -730,7 +730,7 @@ test("listForeignKeys reports the column and what it points at", async () => {
 
   assert.equal(result.success, true);
   assert.deepEqual(result.foreignKeys, [{
-    name: "fk_visit_patient", column: "patient_id",
+    name: "fk_visit_patient", table: "visits", column: "patient_id",
     referencedTable: "patients", referencedColumn: "id",
   }]);
 });
@@ -810,4 +810,33 @@ test("the DDL call is reachable over IPC", async () => {
   const handlers = new Map();
   dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
   assert.ok(handlers.has("magiesTerminal:db:getTableDdl"));
+});
+
+test("listForeignKeys without a table returns the whole schema, tagged by table", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "FOREIGN KEY": {
+      columns: [
+        { name: "name" }, { name: "table_name" }, { name: "column_name" },
+        { name: "referenced_table" }, { name: "referenced_column" },
+      ],
+      rows: [
+        ["fk_v", "visits", "patient_id", "patients", "id"],
+        ["fk_m", "meds", "visit_id", "visits", "id"],
+      ],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "er1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  // The ER diagram needs one query, not one per table.
+  const result = await dbBridge.listForeignKeys({ connectionId: "er1" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.foreignKeys, [
+    { name: "fk_v", table: "visits", column: "patient_id", referencedTable: "patients", referencedColumn: "id" },
+    { name: "fk_m", table: "meds", column: "visit_id", referencedTable: "visits", referencedColumn: "id" },
+  ]);
 });

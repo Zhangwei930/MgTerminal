@@ -105,7 +105,7 @@ declare global {
     listDbPrimaryKey?(connectionId: string, table: string): Promise<DbListPrimaryKeyResult>;
     getDbTableDdl?(connectionId: string, table: string): Promise<DbTableDdlResult>;
     listDbIndexes?(connectionId: string, table: string): Promise<DbListIndexesResult>;
-    listDbForeignKeys?(connectionId: string, table: string): Promise<DbListForeignKeysResult>;
+    listDbForeignKeys?(connectionId: string, table?: string): Promise<DbListForeignKeysResult>;
     listDbRoutines?(connectionId: string): Promise<DbListRoutinesResult>;
     listDbTriggers?(connectionId: string): Promise<DbListTriggersResult>;
     exportDbResult?(payload: DbExportPayload): Promise<DbExportResult>;

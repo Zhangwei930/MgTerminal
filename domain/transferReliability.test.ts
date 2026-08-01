@@ -141,16 +141,35 @@ test("non-string input is never cancellation", () => {
   assert.equal(isTransferCancellationMessage(null), false);
 });
 
-// The match is a plain substring test, which has two known soft spots. Both are
-// pinned as current behaviour rather than fixed, since loosening or tightening
-// the match changes which failures go silent.
-test("the match is case-sensitive, so a capitalised cancellation reads as failure", () => {
-  // A backend emitting "Cancelled by user" surfaces an error toast today.
-  assert.equal(isTransferCancellationMessage("Cancelled by user"), false);
+test("capitalisation does not change the verdict", () => {
+  assert.equal(isTransferCancellationMessage("Cancelled by user"), true);
+  assert.equal(isTransferCancellationMessage("CANCELLED"), true);
+  assert.equal(isTransferCancellationMessage("Transfer Canceled"), true);
 });
 
-test("the word anywhere in the text counts, including inside a path", () => {
-  // A real error mentioning such a path is reported as a cancellation and the
-  // message is discarded.
-  assert.equal(isTransferCancellationMessage("cannot write /var/cancelled-jobs/out"), true);
+// The word has to stand alone, which is what keeps a path from reading as a
+// cancellation. A real error mentioning /var/cancelled-jobs must keep its
+// message instead of being filed as something the user asked for.
+test("the word inside a path does not count as cancellation", () => {
+  assert.equal(isTransferCancellationMessage("cannot write /var/cancelled-jobs/out"), false);
+  assert.equal(isTransferCancellationMessage("ENOENT: /srv/canceled/report.csv"), false);
+});
+
+test("the word glued to other text does not count", () => {
+  assert.equal(isTransferCancellationMessage("cancelledjobs failed"), false);
+  assert.equal(isTransferCancellationMessage("precancelled"), false);
+});
+
+test("normal sentence punctuation still counts", () => {
+  assert.equal(isTransferCancellationMessage("The transfer was cancelled."), true);
+  assert.equal(isTransferCancellationMessage("cancelled: user request"), true);
+  assert.equal(isTransferCancellationMessage("Upload cancelled, nothing written"), true);
+});
+
+// Deliberate: these read as failures and cost the user a spurious toast. That
+// is the cheaper mistake — the opposite direction discards a real error's
+// message and the failure disappears entirely.
+test("unusual delimiters fall on the failure side by design", () => {
+  assert.equal(isTransferCancellationMessage("user-cancelled"), false);
+  assert.equal(isTransferCancellationMessage("(cancelled)"), false);
 });

@@ -33,6 +33,26 @@ export interface ConflictOpsDeps {
   deleteSftp?: (sftpId: string, path: string, encoding: SftpFilenameEncoding) => Promise<unknown>;
 }
 
+/**
+ * Whether a failed stat means the path is genuinely absent, as opposed to the
+ * probe itself failing.
+ *
+ * Only absence makes a candidate name safe to use, so recognition is a strict
+ * allowlist and anything unfamiliar reads as false. In particular "SFTP session
+ * not found" — which statSftp throws when the session is gone — must not count,
+ * or a dropped connection would hand back names that are in fact occupied.
+ *
+ * Matches the message as well as `code` because the error crosses IPC on its
+ * way to the renderer, and Electron's serialisation keeps the message while
+ * custom properties may not survive.
+ */
+export function isPathNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === "ENOENT") return true;
+  return /ENOENT/i.test(error.message) || /no such file/i.test(error.message);
+}
+
 export function splitNameForDuplicate(fileName: string, isDirectory: boolean) {
   if (isDirectory) return { baseName: fileName, ext: "" };
   const lastDot = fileName.lastIndexOf(".");
@@ -78,6 +98,11 @@ export async function getDuplicateTarget(
   const parentPath = getParentPath(task.targetPath);
   const { baseName, ext } = splitNameForDuplicate(task.fileName, task.isDirectory);
 
+  const timestampFallback = () => {
+    const fallbackName = `${baseName} (copy ${Date.now()})${ext}`;
+    return { fileName: fallbackName, targetPath: joinPath(parentPath, fallbackName) };
+  };
+
   for (let index = 1; index < MAX_DUPLICATE_ATTEMPTS; index++) {
     const suffix = index === 1 ? " (copy)" : ` (copy ${index})`;
     const fileName = `${baseName}${suffix}${ext}`;
@@ -85,16 +110,16 @@ export async function getDuplicateTarget(
     try {
       const existing = await statTargetPath(deps, targetPane, targetSftpId, targetPath, targetEncoding);
       if (!existing) return { fileName, targetPath };
-    } catch {
-      // A failed stat is taken as "nothing there". Note this cannot distinguish
-      // absence from a transport error, so a connection blip can hand back a
-      // name that is in fact occupied.
-      return { fileName, targetPath };
+    } catch (error) {
+      if (isPathNotFoundError(error)) return { fileName, targetPath };
+      // The probe failed for some other reason, which is not evidence that
+      // nothing is there. Using this candidate could overwrite a real file, so
+      // fall back to a name that is effectively certain to be unused.
+      return timestampFallback();
     }
   }
 
-  const fallbackName = `${baseName} (copy ${Date.now()})${ext}`;
-  return { fileName: fallbackName, targetPath: joinPath(parentPath, fallbackName) };
+  return timestampFallback();
 }
 
 export async function deleteTargetPath(

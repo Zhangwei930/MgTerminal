@@ -130,3 +130,21 @@ export const checksumsMatch = (
   return expected.replace(/^sha256:/i, "").toLowerCase() ===
     actual.replace(/^sha256:/i, "").toLowerCase();
 };
+
+/**
+ * Whether a transfer failure message describes a cancellation rather than a
+ * real error. Callers use it to choose between recording "cancelled" silently
+ * and recording "failed" with a toast, so both misreadings are visible to the
+ * user: a real error read as cancellation disappears, and a cancellation read
+ * as an error raises a toast for something they asked for.
+ *
+ * Plain substring matching, with two known soft spots kept as-is because
+ * changing either alters which failures go silent:
+ *   - case-sensitive, so "Cancelled by user" reads as a failure
+ *   - matches anywhere, so an error naming a path like /var/cancelled-jobs
+ *     reads as a cancellation
+ */
+export const isTransferCancellationMessage = (message: unknown): boolean => {
+  if (typeof message !== "string") return false;
+  return message.includes("cancelled") || message.includes("canceled");
+};

@@ -41,6 +41,98 @@ const loadPersistedTransfers = (): TransferTask[] => {
   }
 };
 
+/** Cancellation travels as a thrown Error carrying exactly this message. */
+const TRANSFER_CANCELLED_MESSAGE = "Transfer cancelled";
+
+/**
+ * True only for the cancellation sentinel. Anything else has to stay a genuine
+ * failure — treating a real error as cancellation would report a broken
+ * transfer as one the user stopped.
+ */
+export function isTransferCancelledError(error: unknown): boolean {
+  return error instanceof Error && error.message === TRANSFER_CANCELLED_MESSAGE;
+}
+
+/**
+ * Scopes a remembered "apply to all" choice. Conflicts sharing a key share the
+ * decision, so both the batch and the incoming/existing kind pair belong in it.
+ */
+export function conflictDefaultKey(
+  batchId: string | undefined,
+  isDirectory: boolean,
+  existingType?: "file" | "directory" | "symlink",
+): string {
+  return `${batchId ?? "global"}:${getSftpConflictTypeKey(isDirectory, existingType)}`;
+}
+
+export function buildReplaceTypeMismatchError(
+  isDirectory: boolean,
+  existingType: "file" | "directory" | "symlink" | undefined,
+  targetPath: string,
+): string {
+  return `Cannot replace existing ${describeSftpExistingKind(existingType)} with ${describeSftpIncomingKind(isDirectory)}: ${targetPath}`;
+}
+
+type ConnectionTab = { side: string; pane: SftpPane } | null | undefined;
+
+/** Both endpoints of a task, or null if either tab is gone or disconnected. */
+export function resolveTaskEndpoints(
+  getTabByConnectionId: (connectionId: string) => ConnectionTab,
+  task: TransferTask,
+) {
+  const sourceTab = getTabByConnectionId(task.sourceConnectionId);
+  const targetTab = getTabByConnectionId(task.targetConnectionId);
+  if (!sourceTab?.pane.connection || !targetTab?.pane.connection) {
+    return null;
+  }
+
+  return {
+    sourceSide: sourceTab.side,
+    targetSide: targetTab.side,
+    sourcePane: sourceTab.pane,
+    targetPane: targetTab.pane,
+  };
+}
+
+export interface PartialProbeDeps {
+  statLocal?: (path: string) => Promise<{ size?: number } | null | undefined>;
+  statSftp?: (
+    sftpId: string,
+    path: string,
+    encoding: string,
+  ) => Promise<{ size?: number } | null | undefined>;
+  getSftpId: (connectionId: string) => string | undefined;
+}
+
+/**
+ * How many bytes of the target already exist, i.e. the offset a resumed
+ * transfer restarts from. A wrong non-zero answer writes new data at the wrong
+ * position and corrupts the file, so anything uncertain — no session, a failed
+ * stat, a missing or non-positive size — returns 0 and starts over.
+ */
+export async function probePartialTargetBytes(
+  deps: PartialProbeDeps,
+  task: TransferTask,
+  targetPane: SftpPane,
+): Promise<number> {
+  const positiveSize = (size: unknown) =>
+    typeof size === "number" && Number.isFinite(size) && size > 0 ? size : 0;
+
+  try {
+    if (task.direction === "download" || task.targetConnectionId === "local" || targetPane.connection?.isLocal) {
+      const stat = await deps.statLocal?.(task.targetPath);
+      return positiveSize(stat?.size);
+    }
+    const sftpId = deps.getSftpId(task.targetConnectionId);
+    if (!sftpId) return 0;
+    const encoding = targetPane.filenameEncoding || "auto";
+    const stat = await deps.statSftp?.(sftpId, task.targetPath, encoding);
+    return positiveSize(stat?.size);
+  } catch {
+    return 0;
+  }
+}
+
 export const useSftpTransfers = ({
   getActivePane,
   getPaneByConnectionId,
@@ -84,37 +176,9 @@ export const useSftpTransfers = ({
     cancelledTasksRef.current.delete(taskId);
   }, []);
 
-  const resolveTaskEndpoints = useCallback((task: TransferTask) => {
-    const sourceTab = getTabByConnectionId(task.sourceConnectionId);
-    const targetTab = getTabByConnectionId(task.targetConnectionId);
-    if (!sourceTab?.pane.connection || !targetTab?.pane.connection) {
-      return null;
-    }
-
-    return {
-      sourceSide: sourceTab.side,
-      targetSide: targetTab.side,
-      sourcePane: sourceTab.pane,
-      targetPane: targetTab.pane,
-    };
-  }, [getTabByConnectionId]);
-
-  const isTransferCancelledError = useCallback(
-    (error: unknown): boolean =>
-      error instanceof Error && error.message === "Transfer cancelled",
-    [],
-  );
-
-  const conflictDefaultKey = useCallback(
-    (batchId: string | undefined, isDirectory: boolean, existingType?: "file" | "directory" | "symlink") =>
-      `${batchId ?? "global"}:${getSftpConflictTypeKey(isDirectory, existingType)}`,
-    [],
-  );
-
-  const buildReplaceTypeMismatchError = useCallback(
-    (isDirectory: boolean, existingType: "file" | "directory" | "symlink" | undefined, targetPath: string) =>
-      `Cannot replace existing ${describeSftpExistingKind(existingType)} with ${describeSftpIncomingKind(isDirectory)}: ${targetPath}`,
-    [],
+  const resolveTaskEndpointsCallback = useCallback(
+    (task: TransferTask) => resolveTaskEndpoints(getTabByConnectionId, task),
+    [getTabByConnectionId],
   );
 
   const { completeCancelledTask, cancelBackendTransfers, markBatchStopped } = useSftpTransferTaskOps({
@@ -128,22 +192,18 @@ export const useSftpTransfers = ({
 
   const { statTargetPath, getDuplicateTarget, deleteTargetPath } = useSftpTransferConflictOps();
 
-  const probePartialTargetBytes = useCallback(
-    async (task: TransferTask, targetPane: SftpPane): Promise<number> => {
-      try {
-        if (task.direction === "download" || task.targetConnectionId === "local" || targetPane.connection?.isLocal) {
-          const stat = await magiesTerminalBridge.get()?.statLocal?.(task.targetPath);
-          return typeof stat?.size === "number" && stat.size > 0 ? stat.size : 0;
-        }
-        const sftpId = sftpSessionsRef.current.get(task.targetConnectionId);
-        if (!sftpId) return 0;
-        const encoding = targetPane.filenameEncoding || "auto";
-        const stat = await magiesTerminalBridge.get()?.statSftp?.(sftpId, task.targetPath, encoding);
-        return typeof stat?.size === "number" && stat.size > 0 ? stat.size : 0;
-      } catch {
-        return 0;
-      }
-    },
+  const probePartialTargetBytesCallback = useCallback(
+    (task: TransferTask, targetPane: SftpPane): Promise<number> =>
+      probePartialTargetBytes(
+        {
+          statLocal: (path) => magiesTerminalBridge.get()?.statLocal?.(path) as Promise<{ size?: number } | null>,
+          statSftp: (sftpId, path, encoding) =>
+            magiesTerminalBridge.get()?.statSftp?.(sftpId, path, encoding as never) as Promise<{ size?: number } | null>,
+          getSftpId: (connectionId) => sftpSessionsRef.current.get(connectionId),
+        },
+        task,
+        targetPane,
+      ),
     [sftpSessionsRef],
   );
 
@@ -611,7 +671,7 @@ export const useSftpTransfers = ({
       });
 
       if (canRetry) {
-        const partialBytes = await probePartialTargetBytes(task, targetPane);
+        const partialBytes = await probePartialTargetBytesCallback(task, targetPane);
         const resumeOffset = resolveResumeOffset({
           partialTargetBytes: partialBytes,
           transferredBytes: task.transferredBytes,
@@ -798,11 +858,11 @@ export const useSftpTransfers = ({
       const task = transfersRef.current.find((t) => t.id === transferId);
       if (!task || task.retryable === false) return;
 
-      const endpoints = resolveTaskEndpoints(task);
+      const endpoints = resolveTaskEndpointsCallback(task);
       if (!endpoints) return;
       const { targetSide, sourcePane, targetPane } = endpoints;
 
-      const partialBytes = await probePartialTargetBytes(task, targetPane);
+      const partialBytes = await probePartialTargetBytesCallback(task, targetPane);
       const resumeOffset = resolveResumeOffset({
         partialTargetBytes: partialBytes,
         transferredBytes: task.transferredBytes,
@@ -840,7 +900,7 @@ export const useSftpTransfers = ({
       await processTransfer(retriedTask, sourcePane, targetPane, targetSide);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- processTransfer is defined inline
-    [probePartialTargetBytes, resolveTaskEndpoints],
+    [probePartialTargetBytesCallback, resolveTaskEndpointsCallback],
   );
 
   const clearCompletedTransfers = useCallback(() => {
@@ -957,7 +1017,7 @@ export const useSftpTransfers = ({
         const affectedConflict = affectedConflictById.get(affectedTask.id);
 
         if (action === "duplicate") {
-          const endpoints = resolveTaskEndpoints(affectedTask);
+          const endpoints = resolveTaskEndpointsCallback(affectedTask);
           if (!endpoints) continue;
           const targetSftpId = endpoints.targetPane.connection?.isLocal
             ? null
@@ -1065,7 +1125,7 @@ export const useSftpTransfers = ({
 
       for (const updatedTask of updatedTasks) {
         setTimeout(async () => {
-          const endpoints = resolveTaskEndpoints(updatedTask);
+          const endpoints = resolveTaskEndpointsCallback(updatedTask);
           if (!endpoints) return;
           await processTransfer(updatedTask, endpoints.sourcePane, endpoints.targetPane, endpoints.targetSide);
         }, 100);
@@ -1077,7 +1137,7 @@ export const useSftpTransfers = ({
       conflictDefaultKey,
       getDuplicateTarget,
       markBatchStopped,
-      resolveTaskEndpoints,
+      resolveTaskEndpointsCallback,
       sftpSessionsRef,
     ],
   );

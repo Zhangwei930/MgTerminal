@@ -264,6 +264,13 @@ declare global {
     error?: string;
   }
 
+  interface DbListPrimaryKeyResult {
+    success: boolean;
+    /** Key columns in key order; empty means the table has no primary key. */
+    columns?: string[];
+    error?: string;
+  }
+
   interface DbConnectResult {
     connectionId: string;
     success: boolean;

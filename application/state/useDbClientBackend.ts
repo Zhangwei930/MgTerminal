@@ -32,6 +32,16 @@ export const useDbClientBackend = () => {
     [],
   );
 
+  /** Key columns in key order; an empty list means the table has no key. */
+  const listPrimaryKey = useCallback(
+    async (connectionId: string, table: string): Promise<DbListPrimaryKeyResult> => {
+      const bridge = magiesTerminalBridge.get();
+      if (!bridge?.listDbPrimaryKey) return { success: false, error: "DB client bridge unavailable" };
+      return bridge.listDbPrimaryKey(connectionId, table);
+    },
+    [],
+  );
+
   const cancelQuery = useCallback(async (connectionId: string): Promise<void> => {
     await magiesTerminalBridge.get()?.cancelDbQuery?.(connectionId);
   }, []);
@@ -75,5 +85,5 @@ export const useDbClientBackend = () => {
     [],
   );
 
-  return { connect, close, cancelQuery, runQuery, listTables, listColumns };
+  return { connect, close, cancelQuery, runQuery, listTables, listColumns, listPrimaryKey };
 };

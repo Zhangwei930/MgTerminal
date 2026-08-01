@@ -1,7 +1,11 @@
 "use strict";
 
 const { getFreeLocalPort } = require("./freePortPicker.cjs");
-const { buildTableListQuery, buildColumnListQuery } = require("./dbClient/schemaQueries.cjs");
+const {
+  buildTableListQuery,
+  buildColumnListQuery,
+  buildPrimaryKeyQuery,
+} = require("./dbClient/schemaQueries.cjs");
 
 const DEFAULT_MAX_ROWS = 10_000;
 
@@ -284,6 +288,26 @@ async function listColumns({ connectionId, table } = {}) {
   };
 }
 
+/**
+ * The primary key columns of one table, in key order. An empty list means the
+ * table has no primary key — the grid uses that to decide whether a row can be
+ * edited at all, since without one there is no WHERE that hits exactly one row.
+ */
+async function listPrimaryKey({ connectionId, table } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+  if (!table) return { success: false, error: "table is required" };
+
+  const sql = buildPrimaryKeyQuery(entry.engine, entry.database ?? "", table);
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    columns: out.rows.map((r) => String(r.name ?? "")).filter(Boolean),
+  };
+}
+
 /** Live connections, described without any credential material. */
 function listConnections() {
   return Array.from(dbConnections.entries()).map(([connectionId, entry]) => ({
@@ -330,6 +354,7 @@ function registerHandlers(ipcMain, deps = {}) {
   // channel. Both take a payload only — the event is dropped deliberately.
   ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
   ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
+  ipcMain.handle("magiesTerminal:db:listPrimaryKey", (_event, payload) => listPrimaryKey(payload));
   ipcMain.handle("magiesTerminal:db:stopAll", () => stopAllDbConnections());
 }
 
@@ -346,6 +371,7 @@ module.exports = {
   // These two *are* registered — the schema tree lives in the renderer.
   listTables,
   listColumns,
+  listPrimaryKey,
   cancelQuery,
   stopAllDbConnections,
   QUERY_ONCE_DEFAULT_ROWS,

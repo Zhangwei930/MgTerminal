@@ -937,6 +937,9 @@ function createPreloadApi(ctx) {
   listDbColumns: async (connectionId, table) => {
     return ipcRenderer.invoke("magiesTerminal:db:listColumns", { connectionId, table });
   },
+  listDbPrimaryKey: async (connectionId, table) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listPrimaryKey", { connectionId, table });
+  },
   onDbQueryRows: (queryId, cb) => registerDbQueryListener(dbQueryRowListeners, queryId, cb),
   onDbQueryComplete: (queryId, cb) => registerDbQueryListener(dbQueryCompleteListeners, queryId, cb),
   onDbQueryError: (queryId, cb) => registerDbQueryListener(dbQueryErrorListeners, queryId, cb),

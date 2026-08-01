@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
 import { useDbClientBackend } from '../../application/state/useDbClientBackend';
+import { useDbSchema } from '../../application/state/useDbSchema';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
 import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
@@ -46,6 +47,8 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
 
   const connectionId = connectionProfile.id;
   const activeQueryIdRef = useRef<string | null>(null);
+  // One schema for the tab: the tree renders it, the editor completes against it.
+  const schema = useDbSchema(connectionId, status === 'connected');
 
   useEffect(() => {
     const request = buildDbConnectRequest({
@@ -162,9 +165,13 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
       <div className="flex min-h-0 flex-1">
         <div className="w-56 shrink-0">
           <DbSchemaTree
-            connectionId={connectionId}
             engine={connectionProfile.engine}
+            tables={schema.tables}
+            loading={schema.loading}
+            error={schema.error}
             ready={status === 'connected'}
+            onReload={() => void schema.reload()}
+            getColumns={schema.getColumns}
             onOpenTable={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
           />
         </div>
@@ -174,6 +181,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
               value={sqlDraft}
               onChange={(value) => dbWorkspaceTabStore.setSqlDraft(connectionId, value)}
               onRun={handleRun}
+              completionSource={{ tables: schema.tables, getColumns: schema.getColumns }}
             />
           </div>
           <div className="min-h-0 flex-1">

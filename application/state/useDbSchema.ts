@@ -12,7 +12,9 @@ import { useDbClientBackend } from "./useDbClientBackend";
  * thousands of them.
  */
 export const useDbSchema = (connectionId: string, ready: boolean) => {
-  const { listTables, listColumns, listRoutines, listTriggers } = useDbClientBackend();
+  const {
+    listTables, listColumns, listIndexes, listForeignKeys, listRoutines, listTriggers,
+  } = useDbClientBackend();
   const [tables, setTables] = useState<DbSchemaTable[] | null>(null);
   const [routines, setRoutines] = useState<DbSchemaRoutine[]>([]);
   const [triggers, setTriggers] = useState<DbSchemaTrigger[]>([]);
@@ -86,8 +88,36 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
     [connectionId, listColumns],
   );
 
+  /**
+   * Everything shown when a table is expanded, in one call. Indexes and foreign
+   * keys are fetched together with the columns so the expanded row does not
+   * grow in stages under the user's eye.
+   *
+   * Only the columns decide success: a server that will not report indexes —
+   * no privilege on the catalog — should still show the columns.
+   */
+  const getTableDetail = useCallback(
+    async (table: string) => {
+      const [columns, indexResult, fkResult] = await Promise.all([
+        getColumns(table),
+        listIndexes(connectionId, table),
+        listForeignKeys(connectionId, table),
+      ]);
+      if (!columns) return null;
+      return {
+        columns,
+        indexes: indexResult?.success ? indexResult.indexes ?? [] : [],
+        foreignKeys: fkResult?.success ? fkResult.foreignKeys ?? [] : [],
+      };
+    },
+    [connectionId, getColumns, listForeignKeys, listIndexes],
+  );
+
   /** Synchronous peek for callers that cannot await — returns null if unseen. */
   const peekColumns = useCallback((table: string) => columnCache.current.get(table) ?? null, []);
 
-  return { tables, routines, triggers, loading, error, reload, getColumns, peekColumns };
+  return {
+    tables, routines, triggers, loading, error, reload,
+    getColumns, getTableDetail, peekColumns,
+  };
 };

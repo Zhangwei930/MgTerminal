@@ -662,3 +662,82 @@ test("routine and trigger calls are reachable over IPC", async () => {
   assert.ok(handlers.has("magiesTerminal:db:listRoutines"));
   assert.ok(handlers.has("magiesTerminal:db:listTriggers"));
 });
+
+test("listIndexes groups the per-column rows into one entry per index", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "pg_index": {
+      columns: [{ name: "name" }, { name: "column_name" }, { name: "position" }, { name: "is_unique" }],
+      rows: [
+        ["idx_visit", "patient_id", 1, false],
+        ["idx_visit", "visited_at", 2, false],
+        ["patients_pkey", "id", 1, true],
+      ],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "i1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listIndexes({ connectionId: "i1", table: "visits" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.indexes, [
+    // Column order is part of the index: (patient_id, visited_at) is not the
+    // same index as (visited_at, patient_id).
+    { name: "idx_visit", unique: false, columns: ["patient_id", "visited_at"] },
+    { name: "patients_pkey", unique: true, columns: ["id"] },
+  ]);
+});
+
+test("index uniqueness survives the numeric form some engines return", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "pg_index": {
+      columns: [{ name: "name" }, { name: "column_name" }, { name: "position" }, { name: "is_unique" }],
+      // Oracle and SQL Server hand back 1/0 rather than a boolean.
+      rows: [["u_idx", "code", 1, 1], ["n_idx", "note", 1, 0]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "i2", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listIndexes({ connectionId: "i2", table: "t" });
+  assert.equal(result.indexes[0].unique, true);
+  assert.equal(result.indexes[1].unique, false);
+});
+
+test("listForeignKeys reports the column and what it points at", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "FOREIGN KEY": {
+      columns: [
+        { name: "name" }, { name: "column_name" },
+        { name: "referenced_table" }, { name: "referenced_column" },
+      ],
+      rows: [["fk_visit_patient", "patient_id", "patients", "id"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "f1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listForeignKeys({ connectionId: "f1", table: "visits" });
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.foreignKeys, [{
+    name: "fk_visit_patient", column: "patient_id",
+    referencedTable: "patients", referencedColumn: "id",
+  }]);
+});
+
+test("index and foreign key calls are reachable over IPC", async () => {
+  const handlers = new Map();
+  dbBridge.registerHandlers({ handle: (channel, fn) => handlers.set(channel, fn) }, {});
+  assert.ok(handlers.has("magiesTerminal:db:listIndexes"));
+  assert.ok(handlers.has("magiesTerminal:db:listForeignKeys"));
+});

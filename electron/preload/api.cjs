@@ -940,6 +940,12 @@ function createPreloadApi(ctx) {
   listDbPrimaryKey: async (connectionId, table) => {
     return ipcRenderer.invoke("magiesTerminal:db:listPrimaryKey", { connectionId, table });
   },
+  listDbIndexes: async (connectionId, table) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listIndexes", { connectionId, table });
+  },
+  listDbForeignKeys: async (connectionId, table) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listForeignKeys", { connectionId, table });
+  },
   listDbRoutines: async (connectionId) => {
     return ipcRenderer.invoke("magiesTerminal:db:listRoutines", { connectionId });
   },

@@ -259,7 +259,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             error={schema.error}
             ready={status === 'connected'}
             onReload={() => void schema.reload()}
-            getColumns={schema.getColumns}
+            getTableDetail={schema.getTableDetail}
             onOpenTable={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
           />
         </div>

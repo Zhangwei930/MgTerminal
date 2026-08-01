@@ -7,6 +7,8 @@ const {
   buildPrimaryKeyQuery,
   buildRoutineListQuery,
   buildTriggerListQuery,
+  buildIndexListQuery,
+  buildForeignKeyListQuery,
 } = require("./dbClient/schemaQueries.cjs");
 
 const DEFAULT_MAX_ROWS = 10_000;
@@ -312,6 +314,64 @@ async function listPrimaryKey({ connectionId, table } = {}) {
   };
 }
 
+/**
+ * Catalogs disagree on how to spell a boolean: Postgres returns true/false,
+ * Oracle and SQL Server return 1/0, and some drivers hand back '1'.
+ */
+function parseBoolean(value) {
+  if (typeof value === "boolean") return value;
+  const v = String(value ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "t" || v === "yes";
+}
+
+/**
+ * A table's indexes. The query returns one row per indexed column; this groups
+ * them, preserving column order — a composite index on (a, b) is a different
+ * index from one on (b, a).
+ */
+async function listIndexes({ connectionId, table } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+  if (!table) return { success: false, error: "table is required" };
+
+  const sql = buildIndexListQuery(entry.engine, entry.database ?? "", table);
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  const byName = new Map();
+  for (const row of out.rows) {
+    const name = String(row.name ?? "");
+    if (!name) continue;
+    if (!byName.has(name)) {
+      byName.set(name, { name, unique: parseBoolean(row.is_unique), columns: [] });
+    }
+    byName.get(name).columns.push(String(row.column_name ?? ""));
+  }
+
+  return { success: true, indexes: Array.from(byName.values()) };
+}
+
+/** A table's foreign keys, with the column and table each one points at. */
+async function listForeignKeys({ connectionId, table } = {}) {
+  const entry = dbConnections.get(connectionId);
+  if (!entry) return { success: false, error: "Connection not found" };
+  if (!table) return { success: false, error: "table is required" };
+
+  const sql = buildForeignKeyListQuery(entry.engine, entry.database ?? "", table);
+  const out = await runSchemaQuery(connectionId, sql);
+  if (!out.success) return out;
+
+  return {
+    success: true,
+    foreignKeys: out.rows.map((r) => ({
+      name: String(r.name ?? ""),
+      column: String(r.column_name ?? ""),
+      referencedTable: String(r.referenced_table ?? ""),
+      referencedColumn: String(r.referenced_column ?? ""),
+    })),
+  };
+}
+
 /** Stored procedures and functions, each tagged 'procedure' | 'function'. */
 async function listRoutines({ connectionId } = {}) {
   const entry = dbConnections.get(connectionId);
@@ -433,6 +493,8 @@ function registerHandlers(ipcMain, deps = {}) {
   ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
   ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
   ipcMain.handle("magiesTerminal:db:listPrimaryKey", (_event, payload) => listPrimaryKey(payload));
+  ipcMain.handle("magiesTerminal:db:listIndexes", (_event, payload) => listIndexes(payload));
+  ipcMain.handle("magiesTerminal:db:listForeignKeys", (_event, payload) => listForeignKeys(payload));
   ipcMain.handle("magiesTerminal:db:listRoutines", (_event, payload) => listRoutines(payload));
   ipcMain.handle("magiesTerminal:db:listTriggers", (_event, payload) => listTriggers(payload));
   ipcMain.handle("magiesTerminal:db:exportResult", exportResult);
@@ -455,6 +517,8 @@ module.exports = {
   listPrimaryKey,
   listRoutines,
   listTriggers,
+  listIndexes,
+  listForeignKeys,
   exportResult,
   cancelQuery,
   stopAllDbConnections,

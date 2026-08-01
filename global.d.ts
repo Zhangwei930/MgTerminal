@@ -271,6 +271,32 @@ declare global {
     error?: string;
   }
 
+  interface DbSchemaIndex {
+    name: string;
+    unique: boolean;
+    /** In index order — (a, b) is a different index from (b, a). */
+    columns: string[];
+  }
+
+  interface DbSchemaForeignKey {
+    name: string;
+    column: string;
+    referencedTable: string;
+    referencedColumn: string;
+  }
+
+  interface DbListIndexesResult {
+    success: boolean;
+    indexes?: DbSchemaIndex[];
+    error?: string;
+  }
+
+  interface DbListForeignKeysResult {
+    success: boolean;
+    foreignKeys?: DbSchemaForeignKey[];
+    error?: string;
+  }
+
   interface DbSchemaRoutine {
     name: string;
     kind: 'procedure' | 'function';

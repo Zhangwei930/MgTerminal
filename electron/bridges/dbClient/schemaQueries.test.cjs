@@ -343,3 +343,38 @@ test("an unknown engine is rejected", () => {
   const { buildNativeDdlQuery } = require("./schemaQueries.cjs");
   assert.throws(() => buildNativeDdlQuery("cassandra", "db", "t"), /unsupported|unknown/i);
 });
+
+// ── whole-schema foreign keys (for the ER diagram) ──────────────────────────
+
+test("omitting the table lists every foreign key in the database", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildForeignKeyListQuery(engine, "appdb", null);
+    assert.match(sql, /select/i, `${engine} is not a SELECT`);
+    // The per-table filter must be gone, or the diagram shows one table's keys.
+    assert.ok(!sql.includes("'patients'"), engine);
+  }
+});
+
+test("the foreign key query always reports the owning table", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    // Without it a whole-schema result cannot say which table each key is on,
+    // and the diagram has no source node to draw from.
+    assert.match(
+      buildForeignKeyListQuery(engine, "appdb", null).toLowerCase(),
+      /as table_name/,
+      engine,
+    );
+  }
+});
+
+test("passing a table still narrows the result", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    assert.ok(
+      buildForeignKeyListQuery(engine, "appdb", "patients").includes("'patients'"),
+      engine,
+    );
+  }
+});

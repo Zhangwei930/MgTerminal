@@ -19,6 +19,8 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
   const [tables, setTables] = useState<DbSchemaTable[] | null>(null);
   const [routines, setRoutines] = useState<DbSchemaRoutine[]>([]);
   const [triggers, setTriggers] = useState<DbSchemaTrigger[]>([]);
+  const [relations, setRelations] = useState<DbSchemaForeignKey[] | null>(null);
+  const [relationsLoading, setRelationsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +116,20 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
     [connectionId, getColumns, listForeignKeys, listIndexes],
   );
 
+  /**
+   * Every foreign key in the database, for the ER diagram. Loaded on demand —
+   * it is one more query, and most sessions never open the diagram.
+   */
+  const loadRelations = useCallback(async () => {
+    setRelationsLoading(true);
+    try {
+      const result = await listForeignKeys(connectionId, undefined);
+      setRelations(result?.success ? result.foreignKeys ?? [] : []);
+    } finally {
+      setRelationsLoading(false);
+    }
+  }, [connectionId, listForeignKeys]);
+
   /** The CREATE TABLE for one table, or its error as a comment the editor can hold. */
   const loadTableDdl = useCallback(
     async (table: string): Promise<string> => {
@@ -130,5 +146,6 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
   return {
     tables, routines, triggers, loading, error, reload,
     getColumns, getTableDetail, loadTableDdl, peekColumns,
+    relations, relationsLoading, loadRelations,
   };
 };

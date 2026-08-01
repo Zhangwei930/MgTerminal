@@ -288,6 +288,8 @@ declare global {
 
   interface DbSchemaForeignKey {
     name: string;
+    /** The table the key is on — needed when reading the whole schema at once. */
+    table: string;
     column: string;
     referencedTable: string;
     referencedColumn: string;

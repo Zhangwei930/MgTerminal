@@ -222,11 +222,17 @@ declare global {
 
   type PortForwardStatusCallback = (status: 'inactive' | 'connecting' | 'active' | 'error', error?: string) => void;
 
-  // Lightweight DB client (SSH-tunneled MySQL/PostgreSQL)
+  // Lightweight DB client (MySQL/PostgreSQL/SQL Server/Oracle, optionally SSH-tunneled)
   interface DbConnectOptions {
     connectionId: string;
     engine: import("./domain/models").DbEngine;
-    sshOptions: MagiesTerminalSSHOptions;
+    /**
+     * Saved SSH host to tunnel through. dbBridge keys `useTunnel` off this
+     * field: absent means dial the database directly from this machine.
+     */
+    hostId?: string;
+    /** Only present when tunnelling — a direct connection has no SSH leg. */
+    sshOptions?: MagiesTerminalSSHOptions;
     remoteHost: string;
     remotePort: number;
     database?: string;

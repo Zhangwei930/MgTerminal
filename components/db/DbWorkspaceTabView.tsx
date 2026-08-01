@@ -9,6 +9,7 @@ import type { DbConnectionProfile, DbResultColumn } from '../../domain/models';
 import type { Host, Identity, KnownHost, SSHKey } from '../../types';
 import { Button } from '../ui/button';
 import { attemptDbConnection } from './dbConnectAttempt';
+import { buildDbConnectRequest } from './dbConnectRequest';
 import { DbResultsGrid } from './DbResultsGrid';
 import { SqlCodeEditor } from './SqlCodeEditor';
 
@@ -46,24 +47,20 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   const activeQueryIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!host) {
+    const request = buildDbConnectRequest({
+      connectionProfile,
+      host,
+      buildSshOptions: () =>
+        buildConnectionDiagnosticsRequest({ host: host as Host, keys, identities, knownHosts }),
+    });
+    if (request.status === 'error') {
       setStatus('error');
-      setConnectError('Host not found');
+      setConnectError(request.error);
       return;
     }
     let cancelled = false;
-    const sshOptions = buildConnectionDiagnosticsRequest({ host, keys, identities, knownHosts });
 
-    void attemptDbConnection(connect, {
-      connectionId,
-      engine: connectionProfile.engine,
-      sshOptions,
-      remoteHost: connectionProfile.remoteHost,
-      remotePort: connectionProfile.remotePort,
-      database: connectionProfile.database,
-      dbUsername: connectionProfile.dbUsername,
-      dbPassword: connectionProfile.dbPassword,
-    }).then((outcome) => {
+    void attemptDbConnection(connect, request.params).then((outcome) => {
       if (cancelled) return;
       setStatus(outcome.status);
       setConnectError(outcome.status === 'error' ? outcome.error : null);

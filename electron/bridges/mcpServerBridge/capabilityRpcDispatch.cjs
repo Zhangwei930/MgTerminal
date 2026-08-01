@@ -6,6 +6,7 @@ const { getMcpToolNameForRpcMethod } = require("../../capabilities/adapters/mcpA
 const { createVaultService } = require("../../capabilities/services/vaultService.cjs");
 const { createPortForwardService } = require("../../capabilities/services/portforwardService.cjs");
 const { createKubernetesService } = require("../../capabilities/services/kubernetesService.cjs");
+const { createDbService } = require("../../capabilities/services/dbService.cjs");
 
 const UNROUTED = Symbol("capability-rpc-unrouted");
 
@@ -22,6 +23,9 @@ const SERVICE_BINDINGS = Object.freeze({
   "kubernetes.deployments.rollout.status": { domain: "kubernetes", method: "getDeploymentRolloutStatus" },
   "kubernetes.deployments.rollout.history": { domain: "kubernetes", method: "getDeploymentRolloutHistory" },
   "kubernetes.deployments.rollout.restart": { domain: "kubernetes", method: "restartDeploymentRollout" },
+  "db.connections.list": { domain: "db", method: "listConnections" },
+  "db.query.readonly": { domain: "db", method: "queryReadonly" },
+  "db.query.write": { domain: "db", method: "queryWrite" },
   "vault.host.get": { domain: "vault", method: "getHost" },
   "vault.host.list": { domain: "vault", method: "listHosts" },
   "vault.host.open": { domain: "vault", method: "openHost" },
@@ -95,10 +99,12 @@ function createCapabilityRpcDispatcher(deps) {
     execOnEtSession,
     ensureMoshStatsConnection,
   });
+  const dbService = createDbService({ dbBridge: deps.dbBridge });
   const services = {
     vault: vaultService,
     portforward: portforwardService,
     kubernetes: kubernetesService,
+    db: dbService,
   };
 
   return async function dispatchCapabilityRpc(rpcMethod, params = {}) {

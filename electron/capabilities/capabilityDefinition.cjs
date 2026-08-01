@@ -14,6 +14,7 @@ const FIRST_PARTY_DOMAINS = Object.freeze([
   "attachment",
   "kubernetes",
   "system",
+  "db",
 ]);
 
 /**

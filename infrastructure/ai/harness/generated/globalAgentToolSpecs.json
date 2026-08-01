@@ -2059,5 +2059,91 @@
       "bypassesChatCancel": false
     },
     "agentKind": "global"
+  },
+  {
+    "capabilityId": "db.connections.list",
+    "toolName": "db_connections_list",
+    "rpcMethod": "db/connections/list",
+    "localExecution": false,
+    "description": "List open database connections (engine, database, host, port). Returns no credentials. Connections are opened by the user in the app; this cannot open one.",
+    "inputShape": {},
+    "policy": {
+      "write": false,
+      "sensitiveRead": false,
+      "longRunning": false,
+      "requiresChatSession": false,
+      "bypassesObserverBlock": false,
+      "bypassesApproval": true,
+      "bypassesChatCancel": true
+    },
+    "agentKind": "global"
+  },
+  {
+    "capabilityId": "db.query.readonly",
+    "toolName": "db_query_readonly",
+    "rpcMethod": "db/query/readonly",
+    "localExecution": false,
+    "description": "Run a read-only SQL statement (SELECT/SHOW/EXPLAIN/DESCRIBE) on an open connection. Statements that modify data or schema are refused — use db_query_write for those. Results are capped and may be truncated.",
+    "inputShape": {
+      "connectionId": {
+        "type": "string",
+        "optional": false,
+        "description": "Open database connection ID (from db_connections_list)."
+      },
+      "sql": {
+        "type": "string",
+        "optional": false,
+        "description": "Read-only statement: SELECT, SHOW, EXPLAIN or DESCRIBE. Anything that modifies data or schema is refused."
+      },
+      "maxRows": {
+        "type": "number",
+        "optional": true,
+        "description": "Row cap (default 200, hard maximum 1000)."
+      }
+    },
+    "policy": {
+      "write": false,
+      "sensitiveRead": true,
+      "longRunning": false,
+      "requiresChatSession": false,
+      "bypassesObserverBlock": false,
+      "bypassesApproval": true,
+      "bypassesChatCancel": false
+    },
+    "agentKind": "global"
+  },
+  {
+    "capabilityId": "db.query.write",
+    "toolName": "db_query_write",
+    "rpcMethod": "db/query/write",
+    "localExecution": false,
+    "description": "Run a data- or schema-modifying SQL statement (INSERT/UPDATE/DELETE/DDL) on an open connection. Always requires user approval, which shows the full statement.",
+    "inputShape": {
+      "connectionId": {
+        "type": "string",
+        "optional": false,
+        "description": "Open database connection ID (from db_connections_list)."
+      },
+      "sql": {
+        "type": "string",
+        "optional": false,
+        "description": "Statement that modifies data or schema: INSERT, UPDATE, DELETE or DDL. The user is shown the full statement and must approve it."
+      },
+      "maxRows": {
+        "type": "number",
+        "optional": true,
+        "description": "Row cap for statements that return rows (default 200, hard maximum 1000)."
+      }
+    },
+    "policy": {
+      "write": true,
+      "sensitiveRead": false,
+      "longRunning": false,
+      "requiresChatSession": true,
+      "bypassesObserverBlock": false,
+      "bypassesApproval": false,
+      "bypassesChatCancel": false
+    },
+    "agentKind": "global"
   }
 ]

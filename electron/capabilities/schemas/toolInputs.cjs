@@ -312,6 +312,17 @@ const TOOL_INPUT_FIELDS = Object.freeze({
     hostId: { type: "string", description: "Vault host ID." },
     scriptIds: { type: "string", description: "JSON array of onConnect script IDs in run order." },
   },
+  "db.connections.list": {},
+  "db.query.readonly": {
+    connectionId: { type: "string", description: "Open database connection ID (from db_connections_list)." },
+    sql: { type: "string", description: "Read-only statement: SELECT, SHOW, EXPLAIN or DESCRIBE. Anything that modifies data or schema is refused." },
+    maxRows: { type: "number", optional: true, description: "Row cap (default 200, hard maximum 1000)." },
+  },
+  "db.query.write": {
+    connectionId: { type: "string", description: "Open database connection ID (from db_connections_list)." },
+    sql: { type: "string", description: "Statement that modifies data or schema: INSERT, UPDATE, DELETE or DDL. The user is shown the full statement and must approve it." },
+    maxRows: { type: "number", optional: true, description: "Row cap for statements that return rows (default 200, hard maximum 1000)." },
+  },
   "portforward.rules.list": {},
   "portforward.tunnels.list": {},
   "portforward.start": {

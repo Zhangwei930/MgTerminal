@@ -1,6 +1,15 @@
 # Registro de cambios
 
 
+## [0.6.1] - 2026-08-01
+
+### Correcciones
+- **Guardar una conexión de base de datos ya no sobrescribe las que había**: la carga descifra cada contraseña mediante una ida y vuelta al proceso principal, y guardar antes de que terminara añadía a una lista vacía y reemplazaba el conjunto almacenado, mientras la carga en curso se descartaba por considerarse obsoleta — las conexiones guardadas desaparecían. Ya no se escribe nada hasta que la carga termina
+- **Una conexión de base de datos fallida ya no se queda en «conectando» indefinidamente**: la excepción lanzada cuando no se puede establecer el túnel SSH nunca se capturaba, así que la vista esperaba sin mostrar nada. Los fallos de autenticación, los túneles imposibles y los puertos cerrados ahora indican la causa
+
+### Mejoras
+- **La tarjeta de aprobación de la IA muestra la sentencia SQL completa**: en una sentencia de escritura, el SQL solo aparecía dentro del JSON de argumentos plegado. Ahora está en la línea de título de la tarjeta como un comando de shell, con su propio icono de base de datos y sin el engañoso prompt `$`
+
 ## [0.6.0] - 2026-07-31
 
 ### Seguridad

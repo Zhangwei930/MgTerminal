@@ -1,6 +1,15 @@
 # Änderungsprotokoll
 
 
+## [0.6.1] - 2026-08-01
+
+### Fehlerbehebungen
+- **Das Speichern einer Datenbankverbindung überschreibt die bereits gespeicherten nicht mehr**: Beim Laden wird jedes Passwort über den Hauptprozess entschlüsselt; ein Speichern davor hängte an eine leere Liste an und ersetzte den gespeicherten Bestand, während der laufende Ladevorgang sich selbst als veraltet verwarf — die gespeicherten Verbindungen waren weg. Vor Abschluss des Ladens wird nichts mehr zurückgeschrieben
+- **Eine fehlgeschlagene Datenbankverbindung bleibt nicht mehr ewig auf „verbinde…“**: Die Ausnahme beim Scheitern des SSH-Tunnels wurde nie abgefangen, sodass die Ansicht ohne jede Meldung endlos wartete. Authentifizierungsfehler, nicht aufbaubare Tunnel und geschlossene Ports nennen nun den Grund
+
+### Verbesserungen
+- **Die KI-Bestätigungskarte zeigt die vollständige SQL-Anweisung**: Bei einer schreibenden Anweisung stand das SQL bisher nur im eingeklappten Argumente-JSON. Es steht nun wie ein Shell-Befehl in der Titelzeile der Karte, mit eigenem Datenbanksymbol und ohne den irreführenden `$`-Prompt
+
 ## [0.6.0] - 2026-07-31
 
 ### Sicherheit

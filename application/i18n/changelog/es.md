@@ -1,6 +1,24 @@
 # Registro de cambios
 
 
+## [0.6.2] - 2026-08-01
+
+### Novedades
+- **Árbol de estructura de la base de datos**: tablas, vistas, procedimientos, funciones y disparadores. Al expandir una tabla se ven sus columnas, índices y claves foráneas, y su CREATE TABLE está a un clic. MySQL y Oracle devuelven el DDL del propio servidor; PostgreSQL y SQL Server no, así que el suyo se reconstruye desde el catálogo e indica al principio qué omite
+- **Autocompletado SQL**: el editor completa los nombres de tablas y columnas de la conexión. Tras `p.` ofrece solo las columnas de esa tabla, resolviendo los alias de FROM y JOIN
+- **Editar resultados directamente**: haz doble clic en una celda y el cambio se convierte en un UPDATE sobre la tabla de origen. Solo se permite si la consulta lee exactamente una tabla, esa tabla tiene clave primaria y el resultado la incluye; si no, la cuadrícula queda en solo lectura e indica cuál de los tres falta
+- **Control de transacciones**: desactiva el autocommit y confirma o revierte a mano, de modo que un DELETE se pueda revisar antes de ser definitivo. Volver a activarlo revierte primero los cambios sin confirmar, y el control lo indica
+- **Planes de ejecución**: un botón junto a Ejecutar muestra el plan de la consulta. Solo se ofrece para SELECT: SQL Server produce el plan ejecutando el lote y el EXPLAIN ANALYZE de PostgreSQL ejecuta la sentencia de verdad, así que pedir un plan nunca puede convertirse en una escritura
+- **Historial de consultas y favoritas**: las sentencias se registran por conexión, se pueden buscar y volver al editor con un clic — también las fallidas. Una consulta guardada nunca la desplaza el límite ni la borra «Limpiar historial»
+- **Diagrama de relaciones y comparación de estructura**: el diagrama ER coloca las tablas por profundidad de dependencia y maneja autorreferencias y claves foráneas circulares. La comparación lee otra conexión guardada y escribe un script de alineación en el que solo las sentencias que añaden son ejecutables; borrados, cambios de tipo y endurecer la nulabilidad salen comentados
+- **Exportar resultados**: como CSV, JSON o sentencias INSERT. El CSV sigue el RFC 4180 y lleva BOM UTF-8 para que Excel lea bien los caracteres no ASCII, y los valores que empiezan por `=`, `+`, `-` o `@` se neutralizan para que Excel no los ejecute como fórmulas
+
+### Correcciones
+- **Las conexiones directas ahora conectan, y las tunelizadas sí tunelizan**: una conexión sin túnel SSH fallaba al instante con «host no encontrado» sin enviar un solo paquete, y ese mismo código nunca pasaba el id del host al backend, así que una conexión con bastión marcaba directamente a la base de datos: un fallo desconcertante si la base solo es accesible desde el bastión, y peor si lo es por ambas vías, porque la conexión se establece en silencio fuera del túnel
+- **Las contraseñas guardadas ya no se vuelven ilegibles**: que el cifrado tuviera éxito se tomaba como prueba de que funcionaba, sin comprobar nunca que el texto cifrado pudiera descifrarse. El llavero de macOS se niega a descifrar y sigue cifrando cuando cambia la identidad de firma de la app, así que las contraseñas se escribían de una forma que ya no podía leerse, y luego aparecía como contraseña incorrecta en una conexión que estabas seguro de haber escrito bien. Ahora lo cifrado se vuelve a leer y comparar, y si no coincide se usa el almacén local
+- **Las transacciones en SQL Server no funcionaban**: su conexión es un pool al que nunca se le fijó tamaño, así que quedaba en diez. BEGIN TRANSACTION y las sentencias siguientes caían en conexiones distintas, el trabajo nunca entraba en la transacción y COMMIT no tenía nada que confirmar. Ahora está fijado a una sola conexión
+- **El valor de una columna JSON ya no se escribe como `[object Object]`**: las columnas json/jsonb llegan analizadas, y devolverlas como cadena producía un valor que la columna acepta encantada mientras destruye los datos. Ahora se serializa como JSON
+
 ## [0.6.1] - 2026-08-01
 
 ### Correcciones

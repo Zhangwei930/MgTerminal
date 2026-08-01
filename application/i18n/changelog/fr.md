@@ -1,6 +1,24 @@
 # Journal des modifications
 
 
+## [0.6.2] - 2026-08-01
+
+### Nouveautés
+- **Arborescence de la structure**: tables, vues, procédures, fonctions et déclencheurs. Déplier une table affiche ses colonnes, index et clés étrangères, et son CREATE TABLE est à un clic. MySQL et Oracle renvoient le DDL du serveur ; PostgreSQL et SQL Server non, le leur est donc reconstruit depuis le catalogue et indique en tête ce qu'il omet
+- **Complétion SQL**: l'éditeur complète les noms de tables et de colonnes de la connexion. Après `p.`, seules les colonnes de cette table sont proposées, les alias de FROM et JOIN étant résolus
+- **Édition directe des résultats**: un double-clic sur une cellule devient un UPDATE sur la table source. L'édition n'est proposée que si la requête lit exactement une table, que celle-ci a une clé primaire et que le résultat la contient ; sinon la grille reste en lecture seule et indique ce qui manque
+- **Contrôle des transactions**: désactivez la validation automatique et validez ou annulez à la main — un DELETE peut être vérifié avant d'être définitif. Réactiver la validation automatique annule d'abord les changements non validés, et le contrôle le précise
+- **Plans d'exécution**: un bouton à côté d'Exécuter affiche le plan d'une requête. Proposé uniquement pour SELECT — SQL Server produit le plan en exécutant le lot et EXPLAIN ANALYZE de PostgreSQL exécute réellement l'instruction ; demander un plan ne peut donc jamais devenir une écriture
+- **Historique des requêtes et favoris**: les instructions sont enregistrées par connexion, cherchables et rechargeables d'un clic — y compris celles en échec. Une requête enregistrée n'est jamais évincée par la limite ni supprimée par l'effacement de l'historique
+- **Diagramme de relations et comparaison de structure**: le diagramme ER dispose les tables par profondeur de dépendance et gère les auto-références et les clés étrangères circulaires. La comparaison lit une autre connexion enregistrée et écrit un script d'alignement où seules les instructions d'ajout sont exécutables ; suppressions, changements de type et resserrement de nullabilité sortent en commentaire
+- **Exporter les résultats**: en CSV, JSON ou instructions INSERT. Le CSV suit la RFC 4180 et porte une BOM UTF-8 pour qu'Excel lise correctement le non-ASCII ; les valeurs commençant par `=`, `+`, `-` ou `@` sont neutralisées afin qu'Excel ne les exécute pas comme des formules
+
+### Corrections
+- **Les connexions directes fonctionnent enfin, et celles par tunnel passent réellement par le tunnel**: une connexion sans tunnel SSH échouait immédiatement sur « hôte introuvable » sans envoyer un seul paquet, et le même code ne transmettait jamais l'identifiant d'hôte au backend, si bien qu'une connexion désignant un rebond composait directement la base — un échec déroutant quand la base n'est joignable que depuis le rebond, et pire quand elle l'est des deux façons : la connexion réussit silencieusement hors du tunnel
+- **Les mots de passe enregistrés ne deviennent plus illisibles**: la réussite du chiffrement tenait lieu de preuve, sans jamais vérifier que le chiffré pouvait être déchiffré. Le trousseau macOS refuse de déchiffrer tout en continuant à chiffrer dès que l'identité de signature change : les mots de passe étaient écrits sous une forme jamais relisible, ce qui apparaissait plus tard comme un mot de passe erroné sur une connexion que vous étiez sûr d'avoir bien saisie. Le chiffré est désormais relu et comparé aussitôt, avec repli sur le coffre local
+- **Les transactions sur SQL Server ne fonctionnaient pas**: sa connexion est un pool dont la taille n'était jamais définie, donc dix par défaut. BEGIN TRANSACTION et les instructions suivantes tombaient sur des connexions différentes, le travail n'entrait jamais dans la transaction et COMMIT n'avait rien à valider. Le pool est désormais fixé à une seule connexion
+- **La valeur d'une colonne JSON n'est plus écrite comme `[object Object]`**: les colonnes json/jsonb arrivent analysées, et les réécrire converties en chaîne donnait une valeur que la colonne accepte volontiers tout en détruisant les données. Elle est désormais sérialisée en JSON
+
 ## [0.6.1] - 2026-08-01
 
 ### Corrections

@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronRight, Eye, FunctionSquare, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Eye, FunctionSquare, Key, Link2, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import type { DbEngine } from '../../domain/models';
@@ -14,16 +14,22 @@ interface DbSchemaTreeProps {
   /** Only true once the connection is live — the catalog queries need it. */
   ready: boolean;
   onReload: () => void;
-  getColumns: (table: string) => Promise<DbSchemaColumn[] | null>;
+  getTableDetail: (table: string) => Promise<TableDetail | null>;
   /** Double-clicking a table hands its preview SQL to the editor. */
   onOpenTable: (sql: string) => void;
 }
 
-/** Columns are fetched per table on first expand, then kept. */
+interface TableDetail {
+  columns: DbSchemaColumn[];
+  indexes: DbSchemaIndex[];
+  foreignKeys: DbSchemaForeignKey[];
+}
+
+/** Fetched per table on first expand, then kept. */
 type ColumnState =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'loaded'; columns: DbSchemaColumn[] };
+  | { status: 'loaded'; detail: TableDetail };
 
 /** A labelled divider for the non-table node types. */
 const Section: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -44,7 +50,7 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
   error,
   ready,
   onReload,
-  getColumns,
+  getTableDetail,
   onOpenTable,
 }) => {
   const { t } = useI18n();
@@ -58,13 +64,13 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
         return;
       }
       setExpanded((prev) => ({ ...prev, [name]: { status: 'loading' } }));
-      const columns = await getColumns(name);
+      const detail = await getTableDetail(name);
       setExpanded((prev) => ({
         ...prev,
-        [name]: columns ? { status: 'loaded', columns } : { status: 'error' },
+        [name]: detail ? { status: 'loaded', detail } : { status: 'error' },
       }));
     },
-    [expanded, getColumns],
+    [expanded, getTableDetail],
   );
 
   const handleRefresh = useCallback(() => {
@@ -146,17 +152,46 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
               {state?.status === 'error' && (
                 <div className="py-0.5 pl-7 text-xs text-destructive">{t('db.schema.columnsFailed')}</div>
               )}
-              {state?.status === 'loaded' && state.columns.map((column) => (
-                <div
-                  key={column.name}
-                  className="flex items-center gap-1.5 py-0.5 pl-7 pr-2 text-xs text-muted-foreground"
-                >
-                  <span className="truncate text-foreground/80">{column.name}</span>
-                  <span className="ml-auto shrink-0 text-[10px] opacity-70">
-                    {column.dataType}{column.nullable ? '' : ' ·'}
-                  </span>
-                </div>
-              ))}
+              {state?.status === 'loaded' && (
+                <>
+                  {state.detail.columns.map((column) => (
+                    <div
+                      key={column.name}
+                      className="flex items-center gap-1.5 py-0.5 pl-7 pr-2 text-xs text-muted-foreground"
+                    >
+                      <span className="truncate text-foreground/80">{column.name}</span>
+                      <span className="ml-auto shrink-0 text-[10px] opacity-70">
+                        {column.dataType}{column.nullable ? '' : ' ·'}
+                      </span>
+                    </div>
+                  ))}
+                  {state.detail.indexes.map((index) => (
+                    <div
+                      key={`ix:${index.name}`}
+                      title={index.columns.join(', ')}
+                      className="flex items-center gap-1.5 py-0.5 pl-7 pr-2 text-xs text-muted-foreground"
+                    >
+                      <Key size={10} className="shrink-0 opacity-60" />
+                      <span className="truncate">{index.name}</span>
+                      <span className="ml-auto shrink-0 text-[10px] opacity-70">
+                        {index.unique ? t('db.schema.unique') : ''} {index.columns.join(', ')}
+                      </span>
+                    </div>
+                  ))}
+                  {state.detail.foreignKeys.map((fk) => (
+                    <div
+                      key={`fk:${fk.name}:${fk.column}`}
+                      className="flex items-center gap-1.5 py-0.5 pl-7 pr-2 text-xs text-muted-foreground"
+                    >
+                      <Link2 size={10} className="shrink-0 opacity-60" />
+                      <span className="truncate">{fk.column}</span>
+                      <span className="ml-auto shrink-0 text-[10px] opacity-70">
+                        → {fk.referencedTable}.{fk.referencedColumn}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           );
         })}

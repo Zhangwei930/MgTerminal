@@ -254,6 +254,121 @@ ORDER BY TABLE_NAME, TRIGGER_NAME`;
   }
 }
 
+
+/**
+ * Lists a table's indexes, one row per indexed column.
+ *
+ * The caller groups them by index name — a composite index on (a, b) is a
+ * different index from one on (b, a), so column order is significant and every
+ * engine is asked to preserve it.
+ */
+function buildIndexListQuery(engine, database, table) {
+  assertEngine(engine);
+  const db = quoteSqlLiteral(database ?? "");
+  const tbl = quoteSqlLiteral(table ?? "");
+
+  switch (engine) {
+    case "mysql":
+      // STATISTICS reports NON_UNIQUE; invert it so every engine says "unique".
+      return `SELECT INDEX_NAME AS name, COLUMN_NAME AS column_name,
+       SEQ_IN_INDEX AS position, (NON_UNIQUE = 0) AS is_unique
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = ${db} AND TABLE_NAME = ${tbl}
+ORDER BY INDEX_NAME, SEQ_IN_INDEX`;
+
+    case "postgres":
+      return `SELECT i.relname AS name, a.attname AS column_name,
+       k.ordinality AS position, ix.indisunique AS is_unique
+FROM pg_index ix
+JOIN pg_class i ON i.oid = ix.indexrelid
+JOIN pg_class t ON t.oid = ix.indrelid
+JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ordinality) ON TRUE
+JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+WHERE t.relname = ${tbl}
+ORDER BY i.relname, k.ordinality`;
+
+    case "mssql":
+      return `SELECT i.name AS name, c.name AS column_name,
+       ic.key_ordinal AS position, i.is_unique AS is_unique
+FROM sys.indexes i
+JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+WHERE OBJECT_NAME(i.object_id) = ${tbl} AND i.name IS NOT NULL
+ORDER BY i.name, ic.key_ordinal`;
+
+    case "oracle":
+      return `SELECT ai.INDEX_NAME AS name, aic.COLUMN_NAME AS column_name,
+       aic.COLUMN_POSITION AS position,
+       CASE WHEN ai.UNIQUENESS = 'UNIQUE' THEN 1 ELSE 0 END AS is_unique
+FROM ALL_INDEXES ai
+JOIN ALL_IND_COLUMNS aic
+  ON aic.INDEX_NAME = ai.INDEX_NAME AND aic.INDEX_OWNER = ai.OWNER
+WHERE ai.TABLE_NAME = ${tbl}
+ORDER BY ai.INDEX_NAME, aic.COLUMN_POSITION`;
+
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
+/** Lists a table's foreign keys, with the column and table each one points at. */
+function buildForeignKeyListQuery(engine, database, table) {
+  assertEngine(engine);
+  const db = quoteSqlLiteral(database ?? "");
+  const tbl = quoteSqlLiteral(table ?? "");
+
+  switch (engine) {
+    case "mysql":
+      // KEY_COLUMN_USAGE holds primary and unique keys too; without the
+      // REFERENCED_TABLE_NAME filter every primary key looks like a foreign key.
+      return `SELECT CONSTRAINT_NAME AS name, COLUMN_NAME AS column_name,
+       REFERENCED_TABLE_NAME AS referenced_table,
+       REFERENCED_COLUMN_NAME AS referenced_column
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = ${db} AND TABLE_NAME = ${tbl}
+  AND REFERENCED_TABLE_NAME IS NOT NULL
+ORDER BY CONSTRAINT_NAME, ORDINAL_POSITION`;
+
+    case "postgres":
+      return `SELECT tc.constraint_name AS name, kcu.column_name AS column_name,
+       ccu.table_name AS referenced_table, ccu.column_name AS referenced_column
+FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage kcu
+  ON kcu.constraint_name = tc.constraint_name AND kcu.table_schema = tc.table_schema
+JOIN information_schema.constraint_column_usage ccu
+  ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = ${tbl}
+ORDER BY tc.constraint_name, kcu.ordinal_position`;
+
+    case "mssql":
+      return `SELECT fk.name AS name, pc.name AS column_name,
+       OBJECT_NAME(fkc.referenced_object_id) AS referenced_table,
+       rc.name AS referenced_column
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id AND pc.column_id = fkc.parent_column_id
+JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id
+WHERE OBJECT_NAME(fk.parent_object_id) = ${tbl}
+ORDER BY fk.name, fkc.constraint_column_id`;
+
+    case "oracle":
+      // ALL_CONSTRAINTS records R_CONSTRAINT_NAME rather than the target table,
+      // so the referenced side only comes out by joining back through it.
+      return `SELECT ac.CONSTRAINT_NAME AS name, acc.COLUMN_NAME AS column_name,
+       rcc.TABLE_NAME AS referenced_table, rcc.COLUMN_NAME AS referenced_column
+FROM ALL_CONSTRAINTS ac
+JOIN ALL_CONS_COLUMNS acc
+  ON acc.CONSTRAINT_NAME = ac.CONSTRAINT_NAME AND acc.OWNER = ac.OWNER
+JOIN ALL_CONS_COLUMNS rcc
+  ON rcc.CONSTRAINT_NAME = ac.R_CONSTRAINT_NAME AND rcc.POSITION = acc.POSITION
+WHERE ac.CONSTRAINT_TYPE = 'R' AND ac.TABLE_NAME = ${tbl}
+ORDER BY ac.CONSTRAINT_NAME, acc.POSITION`;
+
+    default:
+      throw new Error(`Unsupported engine: ${engine}`);
+  }
+}
+
 module.exports = {
   ENGINES_WITH_SCHEMA_SUPPORT,
   quoteSqlLiteral,
@@ -262,4 +377,6 @@ module.exports = {
   buildPrimaryKeyQuery,
   buildRoutineListQuery,
   buildTriggerListQuery,
+  buildIndexListQuery,
+  buildForeignKeyListQuery,
 };

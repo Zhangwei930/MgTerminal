@@ -973,6 +973,7 @@ export const enCoreMessages: Messages = {
   'db.schema.columnsFailed': 'Could not read columns.',
   'db.schema.procedures': 'Procedures & functions',
   'db.schema.triggers': 'Triggers',
+  'db.schema.unique': 'unique',
   'db.tx.autoCommit': 'Auto-commit',
   'db.tx.autoCommitHint': 'Off opens a transaction. Turning it back on rolls back any uncommitted changes.',
   'db.tx.commit': 'Commit',

@@ -844,6 +844,7 @@ export const ruCoreMessages: Messages = {
   'db.schema.columnsFailed': 'Не удалось прочитать столбцы.',
   'db.schema.procedures': 'Процедуры и функции',
   'db.schema.triggers': 'Триггеры',
+  'db.schema.unique': 'уник.',
   'db.tx.autoCommit': 'Автофиксация',
   'db.tx.autoCommitHint': 'Выключение открывает транзакцию. Включение обратно откатывает незафиксированные изменения.',
   'db.tx.commit': 'Зафиксировать',

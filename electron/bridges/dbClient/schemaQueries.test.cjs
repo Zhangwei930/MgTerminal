@@ -238,3 +238,72 @@ test("an unknown engine is rejected by both", () => {
   assert.throws(() => buildRoutineListQuery("cassandra", "db"), /unsupported|unknown/i);
   assert.throws(() => buildTriggerListQuery("cassandra", "db"), /unsupported|unknown/i);
 });
+
+// ── indexes and foreign keys ────────────────────────────────────────────────
+//
+// Per-table, like columns: shown when a table is expanded.
+
+test("every engine can list a table's indexes with their columns", () => {
+  const { buildIndexListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildIndexListQuery(engine, "appdb", "patients");
+    assert.match(sql, /select/i, `${engine} is not a SELECT`);
+    assert.ok(sql.includes("'patients'"), `${engine} does not filter by table`);
+    assert.match(sql.toLowerCase(), /uniq/, `${engine} does not report uniqueness`);
+  }
+});
+
+test("index columns come back in index order", () => {
+  const { buildIndexListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    // A composite index on (a, b) is a different index from one on (b, a).
+    assert.match(buildIndexListQuery(engine, "db", "t").toLowerCase(), /order by/, engine);
+  }
+});
+
+test("every engine can list a table's foreign keys with their target", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    const sql = buildForeignKeyListQuery(engine, "appdb", "visits").toLowerCase();
+    assert.match(sql, /select/, `${engine} is not a SELECT`);
+    // Without the referenced side a foreign key tells the user nothing.
+    assert.ok(
+      sql.includes("referenced") || sql.includes("ref_") || sql.includes("foreign"),
+      `${engine} loses the referenced table`,
+    );
+  }
+});
+
+test("mysql excludes plain keys from the foreign key list", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  // KEY_COLUMN_USAGE holds primary and unique keys too; without this filter
+  // every primary key would be reported as a foreign key.
+  assert.match(buildForeignKeyListQuery("mysql", "db", "t"), /REFERENCED_TABLE_NAME IS NOT NULL/i);
+});
+
+test("oracle finds the referenced table through the parent constraint", () => {
+  const { buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  // ALL_CONSTRAINTS records R_CONSTRAINT_NAME, not the table — the target only
+  // comes out by joining back through it.
+  const sql = buildForeignKeyListQuery("oracle", "db", "t");
+  assert.match(sql, /R_CONSTRAINT_NAME/i);
+  assert.match(sql, /'R'/);
+});
+
+test("a table name with a quote cannot break either query", () => {
+  const { buildIndexListQuery, buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+    for (const sql of [
+      buildIndexListQuery(engine, "db", "t'; DROP TABLE x; --"),
+      buildForeignKeyListQuery(engine, "db", "t'; DROP TABLE x; --"),
+    ]) {
+      assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+    }
+  }
+});
+
+test("an unknown engine is rejected by both", () => {
+  const { buildIndexListQuery, buildForeignKeyListQuery } = require("./schemaQueries.cjs");
+  assert.throws(() => buildIndexListQuery("cassandra", "db", "t"), /unsupported|unknown/i);
+  assert.throws(() => buildForeignKeyListQuery("cassandra", "db", "t"), /unsupported|unknown/i);
+});

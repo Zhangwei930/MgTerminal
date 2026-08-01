@@ -665,6 +665,12 @@ export const zhCNCoreMessages: Messages = {
   'db.workspace.rowsAffected': '影响 {count} 行',
   'db.workspace.rowCount': '{count} 行',
   'db.workspace.truncated': '结果已截断，仅显示前 {count} 行。',
+  'db.schema.title': '结构',
+  'db.schema.refresh': '重新读取结构',
+  'db.schema.filter': '筛选表…',
+  'db.schema.empty': '没有表或视图。',
+  'db.schema.loading': '正在读取字段…',
+  'db.schema.openHint': '单击展开字段，双击预览数据',
 
   'proxyProfiles.action.add': '添加代理',
   'proxyProfiles.search.placeholder': '搜索代理…',

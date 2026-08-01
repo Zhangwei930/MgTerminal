@@ -240,6 +240,30 @@ declare global {
     dbPassword?: string;
   }
 
+  interface DbSchemaTable {
+    name: string;
+    kind: 'table' | 'view';
+  }
+
+  interface DbSchemaColumn {
+    name: string;
+    dataType: string;
+    nullable: boolean;
+    position: number;
+  }
+
+  interface DbListTablesResult {
+    success: boolean;
+    tables?: DbSchemaTable[];
+    error?: string;
+  }
+
+  interface DbListColumnsResult {
+    success: boolean;
+    columns?: DbSchemaColumn[];
+    error?: string;
+  }
+
   interface DbConnectResult {
     connectionId: string;
     success: boolean;

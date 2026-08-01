@@ -965,6 +965,12 @@ export const enCoreMessages: Messages = {
   'db.workspace.rowsAffected': '{count} rows affected',
   'db.workspace.rowCount': '{count} rows',
   'db.workspace.truncated': 'Results truncated to the first {count} rows.',
+  'db.schema.title': 'Schema',
+  'db.schema.refresh': 'Reload schema',
+  'db.schema.filter': 'Filter tables…',
+  'db.schema.empty': 'No tables or views.',
+  'db.schema.loading': 'Loading columns…',
+  'db.schema.openHint': 'Click to show columns, double-click to preview rows',
 
   'proxyProfiles.action.add': 'Add Proxy',
   'proxyProfiles.search.placeholder': 'Search proxies…',

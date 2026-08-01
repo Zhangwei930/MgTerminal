@@ -326,6 +326,10 @@ function registerHandlers(ipcMain, deps = {}) {
   ipcMain.handle("magiesTerminal:db:close", closeConnection);
   ipcMain.handle("magiesTerminal:db:query", query);
   ipcMain.handle("magiesTerminal:db:cancel", cancelQuery);
+  // Unlike queryOnce, these are for the renderer's schema tree, so they need a
+  // channel. Both take a payload only — the event is dropped deliberately.
+  ipcMain.handle("magiesTerminal:db:listTables", (_event, payload) => listTables(payload));
+  ipcMain.handle("magiesTerminal:db:listColumns", (_event, payload) => listColumns(payload));
   ipcMain.handle("magiesTerminal:db:stopAll", () => stopAllDbConnections());
 }
 
@@ -339,6 +343,7 @@ module.exports = {
   // over IPC would only widen the surface.
   queryOnce,
   listConnections,
+  // These two *are* registered — the schema tree lives in the renderer.
   listTables,
   listColumns,
   cancelQuery,

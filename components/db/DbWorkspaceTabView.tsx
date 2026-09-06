@@ -20,7 +20,7 @@ import { DbTableDesigner } from './DbTableDesigner';
 import { DbImportPanel } from './DbImportPanel';
 import { DbQueryBuilderPanel } from './DbQueryBuilderPanel';
 import { UTF8_BOM, toCsv, toHtml, toJson, toMarkdown, toXml } from '../../domain/db/resultExport';
-import { buildInsertStatements } from '../../domain/db/sqlDump';
+import { buildInsertStatementList, buildInsertStatements } from '../../domain/db/sqlDump';
 import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
 import { buildConnectionDiagnosticsRequest } from '../../domain/connectionDiagnostics';
@@ -290,12 +290,12 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           ddl: ddl.trim().startsWith('--') ? null : ddl,
           error: ddl.trim().startsWith('--') ? ddl.replace(/^--\s*/, '') : undefined,
           inserts: rows.success && rows.rows.length
-            ? buildInsertStatements({
+            ? buildInsertStatementList({
                 engine: connectionProfile.engine,
                 table: target,
                 columns: rows.columns,
                 rows: rows.rows,
-              }).split('\n\n')
+              })
             : [],
         });
       }
@@ -707,6 +707,12 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
         {designer && (
           <div className="w-96 shrink-0">
             <DbTableDesigner
+              // Keyed on the target: the panel seeds its editable rows from
+              // the columns it is given once, at mount. Switching to another
+              // table while it is open would otherwise leave the first
+              // table's columns under the second one's name — and Apply would
+              // diff one against the other.
+              key={designer.table ? formatQualifiedTable(designer.table) : '__new__'}
               engine={connectionProfile.engine}
               table={designer.table}
               columns={designer.columns}

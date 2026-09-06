@@ -1,12 +1,46 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { resolveEditableTable } from "../../domain/db/editableResult";
-import { buildUpdateStatement, type RowKey } from "../../domain/db/rowEditSql";
+import { type QualifiedTable, parseQualifiedTable } from "../../domain/db/identifiers";
+import { buildDeleteStatement, buildUpdateStatement, type RowKey } from "../../domain/db/rowEditSql";
 import type { DbEngine } from "../../domain/models";
 import { useDbClientBackend } from "./useDbClientBackend";
 
 /**
+ * Turns the affected-row count of a committed edit into a failure message.
+ *
+ * An UPDATE keyed on the primary key that matches nothing is not a database
+ * error — it completes normally — so without this the grid overlays the typed
+ * value and shows an edit the row never took. The usual cause is a result set
+ * that has gone stale: the row was deleted or its key changed since the query
+ * ran.
+ *
+ * Only zero is a failure. A count above one should be unreachable through a
+ * primary key, and those rows are written by the time we see the count —
+ * reporting a failed write would state the opposite of what happened. An
+ * adapter that reports no count at all (mssql can) says nothing either way.
+ */
+export function rowUpdateFailure(affectedRows: number | undefined): string | null {
+  if (affectedRows === 0) {
+    return "No row matched — it may have been deleted or its key changed since these results loaded. Nothing was updated.";
+  }
+  return null;
+}
+
+/**
+ * The table a result set writes back to, schema and all.
+ *
+ * The schema half matters twice over: the primary-key lookup has to be asked
+ * about one table rather than every table of that name on the server, and the
+ * UPDATE has to name the same one rather than whatever search_path resolves.
+ */
+export function resolveEditTarget(sql: string | null): QualifiedTable | null {
+  const resolved = sql ? resolveEditableTable(sql) : null;
+  return resolved ? parseQualifiedTable(resolved) : null;
+}
+
+/**
  * Decides whether the current result set can be edited in place, and turns a
- * cell edit into an UPDATE.
+ * cell edit into an UPDATE or a row into a DELETE.
  *
  * Three things all have to hold, and each is checked before the grid offers an
  * editable cell rather than after the user has typed:
@@ -30,12 +64,12 @@ export const useDbRowEditing = ({
   columns: { name: string }[];
 }) => {
   const { listPrimaryKey, runQuery } = useDbClientBackend();
-  const [table, setTable] = useState<string | null>(null);
+  const [table, setTable] = useState<QualifiedTable | null>(null);
   const [keyColumns, setKeyColumns] = useState<string[] | null>(null);
   const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const resolved = sql ? resolveEditableTable(sql) : null;
+    const resolved = resolveEditTarget(sql);
     setTable(resolved);
     setKeyColumns(null);
     if (!resolved) {
@@ -44,7 +78,7 @@ export const useDbRowEditing = ({
     }
 
     let cancelled = false;
-    void listPrimaryKey(connectionId, resolved).then((result) => {
+    void listPrimaryKey(connectionId, resolved.name, resolved.schema).then((result) => {
       if (cancelled) return;
       const key = result?.success ? result.columns ?? [] : [];
       setKeyColumns(key);
@@ -53,50 +87,81 @@ export const useDbRowEditing = ({
     return () => { cancelled = true; };
   }, [connectionId, listPrimaryKey, sql]);
 
-  const columnIndex = (name: string) =>
-    columns.findIndex((column) => column.name.toLowerCase() === name.toLowerCase());
+  const columnIndex = useCallback(
+    (name: string) => columns.findIndex((column) => column.name.toLowerCase() === name.toLowerCase()),
+    [columns],
+  );
 
   const keysPresent = Boolean(keyColumns?.length) && keyColumns!.every((name) => columnIndex(name) >= 0);
   const editable = Boolean(table) && keysPresent;
 
-  const commitEdit = useCallback(
-    async ({ column, value, row }: { column: string; value: string; row: unknown[] }): Promise<string | null> => {
-      if (!table || !keyColumns?.length) return "This result cannot be edited.";
-
-      const keys: RowKey[] = keyColumns.map((name) => ({
-        column: name,
-        value: row[columnIndex(name)],
-      }));
-
-      let statement: string;
-      try {
-        statement = buildUpdateStatement({ engine, table, column, value, keys });
-      } catch (err) {
-        return err instanceof Error ? err.message : String(err);
-      }
-
-      return new Promise<string | null>((resolve) => {
+  /** Runs one statement and resolves with a failure message, or null. */
+  const runStatement = useCallback(
+    (statement: string, checkAffected: boolean): Promise<string | null> =>
+      new Promise<string | null>((resolve) => {
         const queryId = crypto.randomUUID();
         void runQuery(
           { connectionId, queryId, sql: statement },
           {
-            onComplete: () => resolve(null),
-            onError: (payload) => resolve(payload.error || "Update failed"),
+            onComplete: (payload) => resolve(checkAffected ? rowUpdateFailure(payload.affectedRows) : null),
+            onError: (payload) => resolve(payload.error || "Statement failed"),
           },
         ).then((started) => {
           if (!started) resolve("DB client bridge unavailable");
         });
-      });
-      // columnIndex closes over `columns`, which is in the dependency list.
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [columns, connectionId, engine, keyColumns, runQuery, table],
+      }),
+    [connectionId, runQuery],
   );
 
-  return {
-    editable,
-    /** One of 'notSingleTable' | 'noPrimaryKey' | 'keyNotSelected', or null. */
-    reason: editable ? null : (reason ?? (table && keyColumns?.length ? "keyNotSelected" : null)),
-    commitEdit,
-  };
+  const keysForRow = useCallback(
+    (row: unknown[]): RowKey[] =>
+      (keyColumns ?? []).map((name) => ({ column: name, value: row[columnIndex(name)] })),
+    [columnIndex, keyColumns],
+  );
+
+  const commitEdit = useCallback(
+    async ({ column, value, row }: {
+      column: string;
+      /** null is SQL NULL — the grid's "set null" action, not the text "NULL". */
+      value: string | null;
+      row: unknown[];
+    }): Promise<string | null> => {
+      if (!table || !keyColumns?.length) return "This result cannot be edited.";
+
+      let statement: string;
+      try {
+        statement = buildUpdateStatement({ engine, table, column, value, keys: keysForRow(row) });
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+      return runStatement(statement, true);
+    },
+    [engine, keyColumns, keysForRow, runStatement, table],
+  );
+
+  const deleteRow = useCallback(
+    async ({ row }: { row: unknown[] }): Promise<string | null> => {
+      if (!table || !keyColumns?.length) return "This result cannot be edited.";
+
+      let statement: string;
+      try {
+        statement = buildDeleteStatement({ engine, table, keys: keysForRow(row) });
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+      return runStatement(statement, true);
+    },
+    [engine, keyColumns, keysForRow, runStatement, table],
+  );
+
+  return useMemo(
+    () => ({
+      editable,
+      /** One of 'notSingleTable' | 'noPrimaryKey' | 'keyNotSelected', or null. */
+      reason: editable ? null : (reason ?? (table && keyColumns?.length ? "keyNotSelected" : null)),
+      commitEdit,
+      deleteRow,
+    }),
+    [commitEdit, deleteRow, editable, keyColumns, reason, table],
+  );
 };

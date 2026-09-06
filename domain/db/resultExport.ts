@@ -61,3 +61,71 @@ export function toJson(columns: ExportColumn[], rows: unknown[][]): string {
   });
   return JSON.stringify(objects, null, 2);
 }
+
+/**
+ * The remaining formats: Markdown for pasting into a ticket or a README, XML
+ * and HTML for the tools that want structure.
+ *
+ * All three are text, which is what keeps them dependency-free. A real .xlsx
+ * is a zip of XML parts and needs a library; CSV with the BOM above is what
+ * Excel opens correctly, and is the export to reach for instead.
+ */
+
+/** Escapes the three characters that would otherwise be markup. */
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export function toMarkdown(columns: ExportColumn[], rows: unknown[][]): string {
+  // A pipe would start a new cell and a newline a new row, so both are
+  // neutralised rather than allowed to reshape the table.
+  const cell = (value: unknown) => {
+    const text = stringify(value);
+    if (text === null) return '';
+    return text.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  };
+
+  const header = `| ${columns.map((column) => cell(column.name)).join(' | ')} |`;
+  const rule = `| ${columns.map(() => '---').join(' | ')} |`;
+  const body = rows.map((row) => `| ${row.map(cell).join(' | ')} |`);
+  return [header, rule, ...body].join('\n');
+}
+
+/**
+ * A column name becomes an element name, and most of what a query can produce
+ * is not a legal one — `count(*)`, `2024 total`, `a.b`. Illegal characters
+ * become underscores and a leading digit gains one.
+ */
+function toElementName(name: string): string {
+  const cleaned = (name || 'column').replace(/[^A-Za-z0-9_.-]/g, '_');
+  return /^[A-Za-z_]/.test(cleaned) ? cleaned : `_${cleaned}`;
+}
+
+export function toXml(columns: ExportColumn[], rows: unknown[][]): string {
+  const names = columns.map((column) => toElementName(column.name));
+  const body = rows.map((row) => {
+    const fields = names.map((name, i) => {
+      const text = stringify(row[i]);
+      // An absent element is how XML spells a null; an empty one would read
+      // back as an empty string.
+      return text === null ? `    <${name}/>` : `    <${name}>${escapeXmlText(text)}</${name}>`;
+    });
+    return `  <row>\n${fields.join('\n')}\n  </row>`;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<rows>\n${body.join('\n')}\n</rows>`;
+}
+
+export function toHtml(columns: ExportColumn[], rows: unknown[][]): string {
+  const escape = (value: unknown) => {
+    const text = stringify(value);
+    return text === null ? '' : escapeXmlText(text).replace(/"/g, '&quot;');
+  };
+  const head = `  <thead><tr>${columns.map((c) => `<th>${escape(c.name)}</th>`).join('')}</tr></thead>`;
+  const body = rows
+    .map((row) => `    <tr>${row.map((cell) => `<td>${escape(cell)}</td>`).join('')}</tr>`)
+    .join('\n');
+  return `<table>\n${head}\n  <tbody>\n${body}\n  </tbody>\n</table>`;
+}

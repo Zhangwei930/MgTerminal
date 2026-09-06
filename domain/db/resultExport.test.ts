@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { UTF8_BOM, toCsv, toJson } from './resultExport';
+import { UTF8_BOM, toCsv, toHtml, toJson, toMarkdown, toXml } from './resultExport';
 
 const columns = [{ name: 'id' }, { name: 'name' }];
 
@@ -86,4 +86,56 @@ test('json writes dates as ISO strings', () => {
 
 test('json export of no rows is an empty array', () => {
   assert.equal(toJson(columns, []).trim(), '[]');
+});
+
+// ── markdown ────────────────────────────────────────────────────────────────
+
+test('markdown writes a header, a rule and the rows', () => {
+  const md = toMarkdown([{ name: 'id' }, { name: 'name' }], [[1, 'Ada']]);
+  assert.equal(md, '| id | name |\n| --- | --- |\n| 1 | Ada |');
+});
+
+test('a pipe in a value is escaped so it does not start a column', () => {
+  const md = toMarkdown([{ name: 'a' }], [['x|y']]);
+  assert.match(md, /\| x\\\|y \|/);
+});
+
+test('a newline in a value becomes a break rather than ending the row', () => {
+  const md = toMarkdown([{ name: 'a' }], [['x\ny']]);
+  assert.ok(!md.split('\n')[2].includes('\n'));
+  assert.match(md, /x<br>y/);
+});
+
+test('null renders as an empty markdown cell', () => {
+  assert.match(toMarkdown([{ name: 'a' }], [[null]]), /\|\s*\|/);
+});
+
+// ── xml ─────────────────────────────────────────────────────────────────────
+
+test('xml wraps rows in a document with one element per column', () => {
+  const xml = toXml([{ name: 'id' }], [[1]]);
+  assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+  assert.match(xml, /<rows>[\s\S]*<row>[\s\S]*<id>1<\/id>/);
+});
+
+test('markup in a value is escaped, not emitted as elements', () => {
+  const xml = toXml([{ name: 'a' }], [['<b>&"']]);
+  assert.match(xml, /&lt;b&gt;&amp;/);
+  assert.ok(!xml.includes('<b>'));
+});
+
+// A column name is an element name, and most of what a query can produce is
+// not a legal one — a leading digit, a space, a dot.
+test('a column name that is not a legal element name is made into one', () => {
+  const xml = toXml([{ name: '2 total (x)' }], [[1]]);
+  assert.match(xml, /<_2_total__x_>1<\/_2_total__x_>/);
+});
+
+// ── html ────────────────────────────────────────────────────────────────────
+
+test('html produces a table with escaped cells', () => {
+  const html = toHtml([{ name: 'a' }], [['<script>']]);
+  assert.match(html, /<table>/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.ok(!html.includes('<script>'));
 });

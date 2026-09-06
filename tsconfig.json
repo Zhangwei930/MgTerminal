@@ -32,5 +32,11 @@
     "global.d.ts",
     "**/*.ts",
     "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release",
+    "mobile"
   ]
 }

@@ -1048,7 +1048,7 @@ export function applyVaultHostImport(
   ) as string[];
 
   return {
-    hosts: [...existingHosts, ...newHosts].map(sanitizeHost),
+    hosts: [...existingHosts, ...newHosts].map((host) => sanitizeHost(host)),
     customGroups,
     addedCount: newHosts.length,
     skippedExistingCount,

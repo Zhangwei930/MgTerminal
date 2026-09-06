@@ -1,0 +1,32 @@
+{
+  "//": "Null-safety gate. `npm run typecheck:strict` fails on a new violation.",
+  "//1": "Scope is the pure layers: domain/ is logic with no side effects and",
+  "//2": "lib/ is shared helpers, so both hold strictNullChecks today.",
+  "//3": "application/, infrastructure/ and components/ carry ~580 violations",
+  "//4": "between them; turning the flag on globally would mean fixing all of",
+  "//5": "those or silencing them with `!`, and a non-null assertion is the bug",
+  "//6": "this flag exists to catch. Widen the scope as those layers are fixed.",
+  "//7": "The three files below hold pre-existing errors that are not about null",
+  "//8": "safety and need a decision rather than a fix — see docs/strict-null.md.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strictNullChecks": true
+  },
+  "include": [
+    "global.d.ts",
+    "domain/**/*.ts",
+    "domain/**/*.tsx",
+    "lib/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "release",
+    "mobile",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "domain/hostDataSource.ts",
+    "domain/systemManager/systemTarget.ts",
+    "domain/terminalOutputTriggerFilter.ts"
+  ]
+}

@@ -87,7 +87,11 @@ export async function uploadFoldersCompressed(
       }
     }
 
-    let taskId: string | null = null; // Declare taskId outside try block for error handling
+    // Null until the task is created: the catch below can be reached before
+    // that, and has to know whether there is a task to clean up. Inside the
+    // progress callbacks the value is always compressionId, which is a const —
+    // a closure cannot narrow a mutable binding, and should not have to.
+    let taskId: string | null = null;
 
     try {
       // Check if compressed upload is supported
@@ -152,7 +156,7 @@ export async function uploadFoldersCompressed(
             const progressPercent = total > 0 ? (transferred / total) * 100 : 0;
             const mappedTransferred = Math.floor((progressPercent / 100) * totalBytes);
 
-            callbacks.onTaskProgress(taskId, {
+            callbacks.onTaskProgress(compressionId, {
               transferred: mappedTransferred,
               total: totalBytes,
               speed: 0, // Speed is handled by the compression service
@@ -168,7 +172,7 @@ export async function uploadFoldersCompressed(
               : phase === 'extracting' ? 'extracting'
               : phase === 'uploading' ? 'uploading'
               : 'compressed';
-            callbacks.onTaskNameUpdate(taskId, `${folderName}|${phaseKey}`);
+            callbacks.onTaskNameUpdate(compressionId, `${folderName}|${phaseKey}`);
           }
         },
         () => {
@@ -176,14 +180,14 @@ export async function uploadFoldersCompressed(
           controller?.removeActiveCompression(compressionId);
           // Mark task as completed immediately
           if (callbacks?.onTaskCompleted) {
-            callbacks.onTaskCompleted(taskId, totalBytes);
+            callbacks.onTaskCompleted(compressionId, totalBytes);
           }
         },
         (error) => {
           // Remove compression ID from controller on error
           controller?.removeActiveCompression(compressionId);
           if (callbacks?.onTaskFailed) {
-            callbacks.onTaskFailed(taskId, error);
+            callbacks.onTaskFailed(compressionId, error);
           }
         }
       );

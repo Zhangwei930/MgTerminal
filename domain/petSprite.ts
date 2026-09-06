@@ -52,9 +52,12 @@ export type PetFrameRangesByStatus = Partial<Record<PetStatus, FrameRange>>;
  */
 export function clampFrameRange(range: Partial<FrameRange> | undefined, frameCount: number): FrameRange {
   const maxIndex = Math.max(0, frameCount - 1);
-  const rawStart = Number.isFinite(range?.start) ? Math.trunc(range!.start) : 0;
+  // Number.isFinite() does not narrow the type, so the guard has to say what
+  // it is checking for the non-null assertions to go away.
+  const finite = (value: number | undefined): value is number => Number.isFinite(value);
+  const rawStart = finite(range?.start) ? Math.trunc(range.start) : 0;
   const start = Math.min(Math.max(rawStart, 0), maxIndex);
-  const rawEnd = Number.isFinite(range?.end) ? Math.trunc(range!.end) : maxIndex;
+  const rawEnd = finite(range?.end) ? Math.trunc(range.end) : maxIndex;
   const end = Math.min(Math.max(rawEnd, start), maxIndex);
   return { start, end };
 }

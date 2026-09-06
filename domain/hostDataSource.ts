@@ -685,9 +685,17 @@ export function isHttpInventoryUrl(value: string): boolean {
  * Returns null for hosts that cannot be represented (e.g. serial).
  */
 export function hostToInventoryItem(host: Host): HostInventoryItem | null {
-  const protocol = host.protocol === "telnet"
+  // Compared as a string, not against Host["protocol"].
+  //
+  // That field is typed 'ssh' | 'telnet' | 'local' | 'serial', but hosts are
+  // read back from disk and imported from other installs, so a value the
+  // current type does not list can still arrive — 'mosh' and 'et' among them.
+  // Narrowing to the declared union would make those comparisons dead and drop
+  // such hosts from the inventory instead of exporting them as ssh.
+  const rawProtocol = String(host.protocol ?? "");
+  const protocol: "ssh" | "telnet" | null = rawProtocol === "telnet"
     ? "telnet"
-    : (!host.protocol || host.protocol === "ssh" || host.protocol === "mosh" || host.protocol === "et")
+    : (!rawProtocol || rawProtocol === "ssh" || rawProtocol === "mosh" || rawProtocol === "et")
       ? "ssh"
       : null;
   if (!protocol) return null;

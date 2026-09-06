@@ -715,7 +715,9 @@ async function uploadEntries(
               targetPath: entryTargetPath,
               sourceType: 'local',
               targetType: isLocal ? 'local' : 'sftp',
-              targetSftpId: isLocal ? undefined : sftpId,
+              // The guard above already requires an sftpId when the target is
+              // not local; `?? undefined` says so in a way the checker follows.
+              targetSftpId: isLocal ? undefined : sftpId ?? undefined,
               totalBytes: fileTotalBytes,
               ...(startOffset > 0 ? { startOffset } : {}),
             },

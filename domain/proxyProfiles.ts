@@ -177,7 +177,12 @@ export const hasUnreadableProxyCredential = (
     !sanitizeCredentialValue(rawPassword);
 };
 
-export const hasUsableProxyConfig = (config: ProxyConfig | undefined): boolean => {
+/**
+ * A type predicate rather than a plain boolean: every caller follows the check
+ * by passing the same config on to something that requires one, and without
+ * the predicate that call is only sound by inspection.
+ */
+export const hasUsableProxyConfig = (config: ProxyConfig | undefined): config is ProxyConfig => {
   return isCompleteProxyConfig(config);
 };
 

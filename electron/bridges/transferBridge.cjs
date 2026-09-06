@@ -5,10 +5,10 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const os = require("node:os");
 const crypto = require("node:crypto");
 const { encodePathForSession, ensureRemoteDirForSession, requireSftpChannel, resolveEncodingForRequest } = require("./sftpBridge.cjs");
 const { TRANSFER_CHUNK_SIZE, TRANSFER_CONCURRENCY } = require("./transferLimits.cjs");
+const tempDirBridge = require("./tempDirBridge.cjs");
 
 /**
  * Stream a local file through SHA-256. Used for optional post-transfer verify.
@@ -873,7 +873,12 @@ async function startTransfer(event, payload, onProgress) {
       }
 
       if (!sameHostDone) {
-        const tempPath = path.join(os.tmpdir(), `magiesTerminal-transfer-${transferId}`);
+        // The managed temp dir, not os.tmpdir(): this file is the full plaintext
+        // contents of whatever is being moved between hosts, and the shared
+        // system temp root is world-readable and pre-creatable by anyone on the
+        // machine. getTempFilePath() hands back a path inside a 0700 directory
+        // this process owns, and "clear temp files" can find it afterwards.
+        const tempPath = tempDirBridge.getTempFilePath(`transfer-${transferId}`);
 
         const sourceClient = sftpClients.get(sourceSftpId);
         const targetClient = sftpClients.get(targetSftpId);
@@ -898,9 +903,13 @@ async function startTransfer(event, payload, onProgress) {
         const uploadProgress = (transferred) => {
           sendProgress(Math.floor(fileSize / 2) + Math.floor(transferred / 2), fileSize);
         };
-        await uploadFile(tempPath, encodedTargetPath, targetClient, fileSize, transfer, uploadProgress);
-
-        try { await fs.promises.unlink(tempPath); } catch { }
+        try {
+          await uploadFile(tempPath, encodedTargetPath, targetClient, fileSize, transfer, uploadProgress);
+        } finally {
+          // Also on the failure path: a dropped connection or a full disk used
+          // to leave the whole file sitting in temp indefinitely.
+          try { await fs.promises.unlink(tempPath); } catch { }
+        }
       }
 
     } else {

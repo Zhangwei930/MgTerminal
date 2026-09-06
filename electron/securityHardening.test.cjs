@@ -98,10 +98,40 @@ test('packaged tray panel and preload ignore VITE_DEV_SERVER_URL', () => {
   assert.match(preload, /app\.asar/);
 });
 
-test('dependency overrides pin reachable XSS and undici DoS fixes', () => {
+/** True when `version` is at or above `floor`, comparing numerically. */
+function atLeast(version, floor) {
+  const parts = (v) => String(v).split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const [a, b] = [parts(version), parts(floor)];
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return true;
+}
+
+test('dependency overrides hold the floor for reachable advisories', () => {
+  // Floors, not exact versions. Pinning the exact string made this test fail
+  // on the next security bump — the opposite of what it is for. Each floor is
+  // the first release carrying the fix; raise one only when a new advisory
+  // moves it.
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.equal(pkg.overrides.dompurify, '3.4.12');
-  assert.equal(pkg.overrides.undici, '6.27.0');
+  const floors = {
+    // DOMPurify: detached subtree stays executable after IN_PLACE hook removal
+    dompurify: '3.4.13',
+    // undici: response desync, CRLF injection, cookie attribute injection
+    undici: '6.28.0',
+    // hono: CORS ReDoS, memo() cross-request disclosure, proxy header leak
+    hono: '4.12.34',
+    // js-yaml: quadratic CPU via merge keys and !!omap
+    'js-yaml': '4.3.1',
+  };
+  for (const [name, floor] of Object.entries(floors)) {
+    const pinned = pkg.overrides[name];
+    assert.ok(pinned, `no override pinned for ${name}`);
+    assert.ok(
+      atLeast(pinned, floor),
+      `${name} is pinned at ${pinned}, below the ${floor} that carries the fix`,
+    );
+  }
 });
 
 test('afterPack repairs ASAR integrity before macOS signing', () => {

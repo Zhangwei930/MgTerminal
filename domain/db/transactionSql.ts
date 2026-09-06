@@ -10,7 +10,7 @@ import type { DbEngine } from '../models';
  * transaction.
  */
 
-const SUPPORTED: DbEngine[] = ['mysql', 'postgres', 'mssql', 'oracle'];
+const SUPPORTED: DbEngine[] = ['mysql', 'mariadb', 'postgres', 'mssql', 'oracle', 'sqlite'];
 
 function assertEngine(engine: DbEngine): void {
   if (!SUPPORTED.includes(engine)) throw new Error(`Unsupported engine: ${engine}`);

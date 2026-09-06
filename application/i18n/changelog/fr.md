@@ -1,6 +1,17 @@
 # Journal des modifications
 
 
+## [0.6.4] - 2026-09-06
+
+### Corrigé
+- **Une ligne vide dans une valeur ne coupe plus l'instruction en deux** — l'import et l'export complet de la base assemblaient leurs INSERT avec une ligne vide et récupéraient les instructions en découpant dessus. Une colonne de notes ou de description contenant une ligne vide porte ce séparateur, la coupure tombait donc au milieu d'un littéral et les deux moitiés étaient des erreurs de syntaxe. Les instructions circulent désormais sous forme de liste
+- **La grille de résultats n'affiche plus les données de la requête précédente** — elle n'est pas reconstruite entre deux requêtes tout en conservant la surcouche des modifications validées, l'ensemble des lignes supprimées et l'éditeur ouvert. Après une seconde requête, l'ancienne surcouche était peinte sur la ligne désormais à cette position, montrant une valeur absente du nouveau résultat. La pagination le déclenchait sans cesse, chaque page étant un nouveau résultat. Le filtre est conservé, le tri se réinitialise avec les colonnes
+- **L'éditeur de structure recharge quand la cible change** — il lit les colonnes une fois, à l'ouverture. Choisir une autre table dans l'arbre alors qu'il était ouvert laissait le nom de la seconde au-dessus des colonnes de la première, et appliquer aurait supprimé toutes les colonnes de la table réellement choisie pour ajouter celles affichées. Le SQL était visible avant, mais présenté comme une modification ordinaire
+- **La pagination ne lit plus un nom de colonne entre guillemets comme un mot-clé** — déterminer si une instruction trie déjà passe par une recherche de mots-clés, laquelle masquait les chaînes et les commentaires mais pas les identifiants entre guillemets. Une colonne nommée `offset` se voyait refuser la pagination, une colonne `order by` faisait recevoir à SQL Server un OFFSET sans tri auquel se rattacher, et une parenthèse dans un nom décalait la profondeur d'imbrication
+- **Le constructeur de requêtes met des guillemets selon le type de la colonne, pas selon l'allure de la valeur** — toute suite de chiffres était écrite nue. Filtrer une colonne texte par `123` donnait `"code" = 123`, que PostgreSQL refuse et que MySQL traite par conversion, et `007` ne trouvait jamais la ligne contenant "007"
+- **La largeur déduite à l'import ne déborde plus de la ligne** — MySQL et MariaDB limitent une ligne à 65535 octets toutes colonnes confondues et utf8mb4 compte quatre octets par caractère : le varchar(4000) produit jusqu'ici signifiait que quelques colonnes larges ne tenaient pas dans une même table. Au-delà d'une largeur raisonnable, le type sans limite est utilisé
+- **Quatre dépendances porteuses d'avis de sécurité relevées** — dompurify, undici et hono étaient figées sur des versions depuis visées par des avis, et js-yaml ne l'était pas du tout. Elles passent en 3.4.15, 6.28.1, 4.13.7 et 4.3.2, chacune dans sa version majeure et sans rupture. Tout avis atteignable depuis une dépendance de production est désormais levé
+
 ## [0.6.3] - 2026-09-06
 
 ### Ajouté

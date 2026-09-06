@@ -1,6 +1,17 @@
 # Änderungsprotokoll
 
 
+## [0.6.4] - 2026-09-06
+
+### Behoben
+- **Eine Leerzeile in einem Wert zerteilt die Anweisung nicht mehr** — Import und der Dump der gesamten Datenbank verbanden ihre INSERTs mit einer Leerzeile und gewannen die einzelnen Anweisungen daraus zurück, indem sie daran trennten. Eine Notiz- oder Beschreibungsspalte mit einer Leerzeile enthält genau dieses Trennzeichen, der Schnitt lief also mitten durch ein Stringliteral und beide Hälften waren Syntaxfehler. Die Anweisungen werden jetzt als Liste weitergegeben
+- **Das Ergebnisraster zeigt keine Daten der vorherigen Abfrage mehr** — es wird zwischen Abfragen nicht neu aufgebaut, hält aber die Überlagerung bestätigter Zellenänderungen, die gelöschten Zeilen und den offenen Editor. Nach einer zweiten Abfrage wurde die alte Überlagerung über die Zeile gezeichnet, die nun an dieser Stelle stand, und zeigte einen Wert, den das neue Ergebnis nicht enthält. Beim Blättern trat das ständig auf, denn jede Seite ist ein neues Ergebnis. Der Filter bleibt, die Sortierung wird mit den Spalten zurückgesetzt
+- **Der Tabellen-Designer lädt beim Wechsel des Ziels neu** — er liest die Spalten einmal, beim Öffnen. Wählte man bei geöffnetem Designer eine andere Tabelle im Baum, stand der Name der zweiten über den Spalten der ersten, und Anwenden hätte jede Spalte der tatsächlich gewählten Tabelle gelöscht und jede der angezeigten hinzugefügt. Das SQL war vorher zu sehen, wurde aber als gewöhnliche Änderung angeboten
+- **Das Blättern liest einen in Anführungszeichen gesetzten Spaltennamen nicht mehr als Schlüsselwort** — ob eine Anweisung selbst sortiert, wird über eine Schlüsselwortsuche entschieden, und diese verdeckte Strings und Kommentare, nicht aber gequotete Bezeichner. Einer Spalte namens `offset` wurde das Blättern verweigert, eine Spalte `order by` bescherte SQL Server ein OFFSET ohne zugehörige Sortierung, und eine Klammer im Namen verschob die Verschachtelungstiefe
+- **Der Abfrage-Baukasten setzt Anführungszeichen nach dem Spaltentyp, nicht nach dem Aussehen des Werts** — jede Ziffernfolge wurde bloß geschrieben. Ein Filter `123` auf einer Textspalte ergab `"code" = 123`, was PostgreSQL ablehnt und MySQL durch Typumwandlung beantwortet, und `007` fand die Zeile mit "007" nie
+- **Die beim Import ermittelte Spaltenbreite sprengt die Zeile nicht mehr** — MySQL und MariaDB begrenzen eine Zeile über alle Spalten auf 65535 Bytes und utf8mb4 zählt vier je Zeichen, das bisherige varchar(4000) hieß also, dass einige breite Spalten nicht in dieselbe Tabelle passen. Über eine maßvolle Breite hinaus wird der unbegrenzte Typ verwendet
+- **Vier Abhängigkeiten mit bekannten Sicherheitshinweisen angehoben** — dompurify, undici und hono waren auf Versionen festgelegt, für die inzwischen selbst Hinweise veröffentlicht wurden, js-yaml war gar nicht festgelegt. Sie gehen auf 3.4.15, 6.28.1, 4.13.7 und 4.3.2, jeweils innerhalb ihrer Hauptversion und ohne brechende Änderung. Damit ist jeder aus einer Produktionsabhängigkeit erreichbare Hinweis erledigt
+
 ## [0.6.3] - 2026-09-06
 
 ### Neu

@@ -1,6 +1,17 @@
 # Registro de alterações
 
 
+## [0.6.4] - 2026-09-06
+
+### Corrigido
+- **Uma linha em branco dentro de um valor não parte mais a instrução em duas** — a importação e o dump completo do banco uniam seus INSERT com uma linha em branco e recuperavam as instruções dividindo por ela. Uma coluna de notas ou descrição que contenha uma linha em branco carrega esse mesmo separador, então o corte caía no meio de um literal e as duas metades eram erros de sintaxe. As instruções agora circulam como lista
+- **A grade de resultados não mostra mais dados da consulta anterior** — ela não é reconstruída entre consultas e ainda assim guarda a camada de edições confirmadas, o conjunto de linhas removidas e o editor aberto. Depois de uma segunda consulta, a camada antiga era pintada sobre a linha que passou a ocupar aquele índice, exibindo um valor que o novo resultado não contém. Com paginação acontecia sempre, pois cada página é um resultado novo. O filtro é mantido; a ordenação reinicia junto com as colunas
+- **O editor de estrutura recarrega quando o alvo muda** — ele lê as colunas uma vez, ao abrir. Escolher outra tabela na árvore com ele aberto deixava o nome da segunda sobre as colunas da primeira, e aplicar teria removido todas as colunas da tabela realmente escolhida para adicionar as que continuavam na tela. O SQL aparecia antes, mas era oferecido como uma edição comum
+- **A paginação não lê mais um nome de coluna entre aspas como palavra-chave** — decidir se uma instrução já ordena passa por uma varredura de palavras-chave, que ocultava cadeias e comentários mas não identificadores entre aspas. Uma coluna chamada `offset` tinha a paginação recusada, uma chamada `order by` fazia o SQL Server receber um OFFSET sem ordenação à qual se prender, e um parêntese num nome desalinhava a profundidade de aninhamento
+- **O construtor de consultas usa aspas conforme o tipo da coluna, não conforme a aparência do valor** — qualquer sequência de dígitos era escrita sem aspas. Filtrar uma coluna de texto por `123` produzia `"code" = 123`, que o PostgreSQL recusa e o MySQL responde convertendo, e `007` nunca encontrava a linha com "007"
+- **A largura deduzida na importação não estoura mais a linha** — MySQL e MariaDB limitam uma linha a 65535 bytes somando todas as colunas e o utf8mb4 conta quatro por caractere, de modo que o varchar(4000) gerado significava que algumas colunas largas não cabiam na mesma tabela. Acima de uma largura moderada passa a usar o tipo sem limite
+- **Quatro dependências com avisos conhecidos elevadas** — dompurify, undici e hono estavam fixadas em versões para as quais desde então foram publicados avisos, e js-yaml não estava fixada. Passam para 3.4.15, 6.28.1, 4.13.7 e 4.3.2, cada uma dentro de sua versão maior e sem mudança quebradora. Com isso, todo aviso alcançável a partir de uma dependência de produção está resolvido
+
 ## [0.6.3] - 2026-09-06
 
 ### Adicionado

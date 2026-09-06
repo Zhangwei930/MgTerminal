@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { DbEngine } from '../models';
-import { buildInsertStatements } from './sqlDump';
+import { buildInsertStatementList, buildInsertStatements } from './sqlDump';
 
 const columns = [{ name: 'id' }, { name: 'name' }];
 const build = (rows: unknown[][], engine: DbEngine = 'postgres', batchSize?: number) =>
@@ -104,5 +104,42 @@ test('a table with no columns is refused', () => {
   assert.throws(
     () => buildInsertStatements({ engine: 'postgres', table: 't', columns: [], rows: [[1]] }),
     /column/i,
+  );
+});
+
+// ── statements as a list ────────────────────────────────────────────────────
+//
+// Callers that run the statements one at a time used to recover them by
+// splitting the joined string on the blank line between them. A cell holding a
+// blank line — a notes or description column, routinely — contains that exact
+// delimiter, so the split cut through the middle of a string literal and both
+// halves were syntax errors.
+
+test('a value containing a blank line does not split a statement in two', () => {
+  const rows = [[1, 'first paragraph\n\nsecond paragraph']];
+  const list = buildInsertStatementList({
+    engine: 'postgres', table: 'notes', columns, rows,
+  });
+
+  assert.equal(list.length, 1, 'one row is one statement, whatever is in it');
+  assert.match(list[0], /first paragraph\n\nsecond paragraph/);
+  assert.equal((list[0].match(/'/g) || []).length % 2, 0, 'quotes stay balanced');
+});
+
+test('the list and the joined form hold the same statements', () => {
+  const rows = Array.from({ length: 5 }, (_, i) => [i, `n${i}`]);
+  const list = buildInsertStatementList({
+    engine: 'postgres', table: 'patients', columns, rows, batchSize: 2,
+  });
+  assert.equal(list.length, 3, '2 + 2 + 1');
+  assert.equal(list.join('\n\n'), buildInsertStatements({
+    engine: 'postgres', table: 'patients', columns, rows, batchSize: 2,
+  }));
+});
+
+test('no rows yields no statements rather than one empty string', () => {
+  assert.deepEqual(
+    buildInsertStatementList({ engine: 'postgres', table: 't', columns, rows: [] }),
+    [],
   );
 });

@@ -19,7 +19,16 @@ interface DumpColumn {
   name: string;
 }
 
-export function buildInsertStatements({
+/**
+ * The statements as a list, for callers that run them one at a time.
+ *
+ * The joined form below is for writing a file. Recovering the individual
+ * statements from it by splitting on the blank line between them does not
+ * work: a cell holding a blank line — a notes or description column,
+ * routinely — contains that exact delimiter, and the split then cuts through
+ * the middle of a string literal.
+ */
+export function buildInsertStatementList({
   engine,
   table,
   columns,
@@ -31,13 +40,13 @@ export function buildInsertStatements({
   columns: DumpColumn[];
   rows: unknown[][];
   batchSize?: number;
-}): string {
+}): string[] {
   if (!columns?.length) {
     throw new Error('Cannot build INSERT statements without column names.');
   }
   // An INSERT with an empty VALUES list is a syntax error, so no rows means no
   // statements rather than an empty one.
-  if (!rows?.length) return '';
+  if (!rows?.length) return [];
 
   const q = (name: string) => quoteSqlIdentifier(engine, name);
   const target = `INSERT INTO ${quoteQualifiedTable(engine, table)}`
@@ -59,5 +68,10 @@ export function buildInsertStatements({
   for (let i = 0; i < tuples.length; i += size) {
     statements.push(`${target}\n${tuples.slice(i, i + size).join(',\n')};`);
   }
-  return statements.join('\n\n');
+  return statements;
+}
+
+/** The same statements as one document, for writing to a file. */
+export function buildInsertStatements(args: Parameters<typeof buildInsertStatementList>[0]): string {
+  return buildInsertStatementList(args).join('\n\n');
 }

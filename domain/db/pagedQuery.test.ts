@@ -111,3 +111,40 @@ test('the limit and offset must be non-negative integers', () => {
     );
   }
 });
+
+// ── quoted identifiers are not keywords ─────────────────────────────────────
+//
+// The scan masked string literals and comments but not quoted identifiers, so
+// a column whose name happens to contain a paging keyword was read as one.
+
+test('a column named "offset" does not look like a query that pages itself', () => {
+  assert.doesNotThrow(
+    () => buildPagedQuery('mssql', 'SELECT "offset" FROM t', { limit: 10, offset: 0 }),
+    'a legitimate query was refused',
+  );
+  assert.doesNotThrow(
+    () => buildPagedQuery('mssql', 'SELECT `offset` FROM t', { limit: 10, offset: 0 }),
+  );
+  assert.doesNotThrow(
+    () => buildPagedQuery('mssql', 'SELECT [offset] FROM t', { limit: 10, offset: 0 }),
+  );
+});
+
+test('a column named "order by" does not count as the statement ordering', () => {
+  // Without an ORDER BY of its own, SQL Server needs one supplied — otherwise
+  // the OFFSET clause is a syntax error.
+  const sql = buildPagedQuery('mssql', 'SELECT "order by" FROM t', { limit: 10, offset: 0 });
+  assert.match(sql, /ORDER BY \(SELECT NULL\) OFFSET/);
+});
+
+test('a parenthesis inside a quoted name does not shift the nesting depth', () => {
+  // Depth is what tells an outer ORDER BY from a subquery's.
+  const sql = buildPagedQuery('mssql', 'SELECT "a(b" FROM t ORDER BY id', { limit: 5, offset: 10 });
+  assert.match(sql, /ORDER BY id OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY$/);
+  assert.ok(!sql.includes('SELECT NULL'), 'the real ORDER BY was found');
+});
+
+test('a quoted name still does not hide a real keyword after it', () => {
+  const sql = buildPagedQuery('mssql', 'SELECT "col" FROM t ORDER BY "col"', { limit: 5, offset: 0 });
+  assert.match(sql, /ORDER BY "col" OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY$/);
+});

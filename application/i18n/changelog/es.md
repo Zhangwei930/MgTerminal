@@ -1,6 +1,17 @@
 # Registro de cambios
 
 
+## [0.6.4] - 2026-09-06
+
+### Corregido
+- **Una línea en blanco dentro de un valor ya no parte la sentencia en dos** — la importación y el volcado completo de la base unían sus INSERT con una línea en blanco y recuperaban las sentencias dividiendo por ella. Una columna de notas o descripción que contenga una línea en blanco lleva ese mismo separador, así que el corte caía en mitad de un literal y ambas mitades eran errores de sintaxis. Las sentencias ahora viajan como lista
+- **La cuadrícula de resultados ya no muestra datos de la consulta anterior** — no se reconstruye entre consultas y, sin embargo, guarda la capa de ediciones confirmadas, el conjunto de filas eliminadas y el editor abierto. Tras una segunda consulta, la capa antigua se pintaba sobre la fila que ahora ocupaba ese índice, mostrando un valor que el nuevo resultado no contiene. Con la paginación ocurría siempre, porque cada página es un resultado nuevo. El filtro se mantiene; la ordenación se reinicia con las columnas
+- **El diseñador de tablas recarga al cambiar de objetivo** — lee las columnas una sola vez, al abrirse. Elegir otra tabla en el árbol con el diseñador abierto dejaba el nombre de la segunda sobre las columnas de la primera, y aplicar habría eliminado todas las columnas de la tabla realmente elegida para añadir las que seguían en pantalla. El SQL se veía antes, pero se ofrecía como una edición corriente
+- **La paginación ya no lee como palabra clave un nombre de columna entrecomillado** — decidir si una sentencia ya ordena implica buscar palabras clave, y esa búsqueda ocultaba cadenas y comentarios pero no los identificadores entrecomillados. A una columna llamada `offset` se le negaba la paginación, una llamada `order by` hacía que SQL Server recibiera un OFFSET sin orden al que asociarse, y un paréntesis en un nombre descuadraba la profundidad de anidamiento
+- **El constructor de consultas entrecomilla según el tipo de la columna, no según el aspecto del valor** — cualquier cadena de dígitos se escribía sin comillas. Filtrar una columna de texto por `123` producía `"code" = 123`, que PostgreSQL rechaza y MySQL resuelve convirtiendo, y `007` nunca encontraba la fila con "007"
+- **El ancho deducido al importar ya no desborda la fila** — MySQL y MariaDB limitan una fila a 65535 bytes entre todas sus columnas y utf8mb4 cuenta cuatro por carácter, de modo que el varchar(4000) que se generaba implicaba que unas pocas columnas anchas no cabían en la misma tabla. Pasado un ancho moderado se usa el tipo sin límite
+- **Cuatro dependencias con avisos conocidos elevadas** — dompurify, undici y hono estaban fijadas en versiones para las que desde entonces se han publicado avisos, y js-yaml no estaba fijada. Pasan a 3.4.15, 6.28.1, 4.13.7 y 4.3.2, cada una dentro de su versión mayor y sin cambios rompedores. Con esto queda resuelto todo aviso alcanzable desde una dependencia de producción
+
 ## [0.6.3] - 2026-09-06
 
 ### Añadido

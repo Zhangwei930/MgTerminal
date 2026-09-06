@@ -1,6 +1,17 @@
 # Changelog
 
 
+## [0.6.4] - 2026-09-06
+
+### Fixed
+- **A blank line inside a value no longer splits the statement in two** — import and the whole-database dump both joined their INSERTs with a blank line and recovered the individual statements by splitting on it. A notes or description column holding a blank line contains that delimiter, so the split cut through the middle of a string literal and both halves were syntax errors. The statements are passed as a list now, so nothing has to reconstruct the boundaries
+- **The results grid no longer shows the previous query's data** — it is not rebuilt between queries, yet it holds the overlay of committed cell edits, the set of deleted rows and the open editor. After a second query the old overlay was painted over whatever row now sat at that index, showing a value the new result does not contain. Paging hit this constantly, since every page is a new result. The filter is kept; sort resets with the columns
+- **The table designer reloads when the target changes** — it reads the columns once, when it opens. Choosing another table from the tree while it was still open left the second table's name above the first table's columns, and applying would then drop every column of the table actually selected and add every column of the one on screen. The SQL was visible first, but it was offered as an ordinary edit
+- **Paging no longer reads a quoted column name as a keyword** — deciding whether a statement already orders itself means scanning for keywords, and the scan masked strings and comments but not quoted identifiers. A column named `offset` had paging refused; one named `order by` made SQL Server receive an OFFSET with no ordering to attach it to; a parenthesis in a name shifted the nesting depth
+- **The query builder quotes by column type rather than by how a value looks** — any digit string was written bare. Filtering a text column by `123` produced `"code" = 123`, which PostgreSQL refuses and MySQL answers by coercing, and `007` never matched the row holding "007"
+- **An imported column's inferred width no longer overruns the row** — MySQL and MariaDB cap a row at 65535 bytes across every column and utf8mb4 counts four per character, so the varchar(4000) this produced meant a few wide columns could not share a table. Past a modest width it now uses the unbounded type
+- **Four dependencies with known advisories raised** — dompurify, undici and hono were pinned at versions that have since been disclosed, and js-yaml was not pinned at all. They move to 3.4.15, 6.28.1, 4.13.7 and 4.3.2, each within its own major and none a breaking change. Every advisory reachable from a production dependency is now cleared
+
 ## [0.6.3] - 2026-09-06
 
 ### Added

@@ -52,10 +52,12 @@ function withTrustedSender(event) {
 async function connect(event, payload) {
   const {
     connectionId, engine, sshOptions = {}, remoteHost, remotePort, database, dbUsername, dbPassword,
-    hostId,
+    hostId, ssl,
   } = payload;
 
-  const useTunnel = Boolean(hostId);
+  // SQLite is a file on this machine; there is nothing to forward a port to,
+  // and a profile that somehow carries a hostId must not open a tunnel for it.
+  const useTunnel = Boolean(hostId) && engine !== "sqlite";
   let tunnelId = null;
   let dialHost = remoteHost;
   let dialPort = remotePort;
@@ -90,6 +92,9 @@ async function connect(event, payload) {
       database,
       username: dbUsername,
       password: dbPassword,
+      // Only meaningful on the direct path; inside the tunnel the driver is
+      // dialing 127.0.0.1 and the transport is already encrypted.
+      ssl: useTunnel ? undefined : ssl,
     });
     // Descriptive fields only — never dbUsername/dbPassword/sshOptions, since
     // listConnections() exposes this record to capability callers.
@@ -270,18 +275,23 @@ async function listTables({ connectionId } = {}) {
     success: true,
     tables: out.rows.map((r) => ({
       name: String(r.name ?? ""),
+      // Two schemas can hold the same table name. Without this the tree shows
+      // them as one entry and every follow-up lookup answers for both. Omitted
+      // rather than undefined when the catalog reports none, so the payload
+      // stays the shape it had.
+      ...(r.schema_name ? { schema: String(r.schema_name) } : {}),
       kind: String(r.kind ?? "table").toLowerCase() === "view" ? "view" : "table",
     })),
   };
 }
 
 /** Columns of one table, in declaration order. */
-async function listColumns({ connectionId, table } = {}) {
+async function listColumns({ connectionId, table, schema } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
   if (!table) return { success: false, error: "table is required" };
 
-  const sql = buildColumnListQuery(entry.engine, entry.database ?? "", table);
+  const sql = buildColumnListQuery(entry.engine, entry.database ?? "", table, schema);
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -301,12 +311,12 @@ async function listColumns({ connectionId, table } = {}) {
  * table has no primary key — the grid uses that to decide whether a row can be
  * edited at all, since without one there is no WHERE that hits exactly one row.
  */
-async function listPrimaryKey({ connectionId, table } = {}) {
+async function listPrimaryKey({ connectionId, table, schema } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
   if (!table) return { success: false, error: "table is required" };
 
-  const sql = buildPrimaryKeyQuery(entry.engine, entry.database ?? "", table);
+  const sql = buildPrimaryKeyQuery(entry.engine, entry.database ?? "", table, schema);
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -331,12 +341,12 @@ function parseBoolean(value) {
  * them, preserving column order — a composite index on (a, b) is a different
  * index from one on (b, a).
  */
-async function listIndexes({ connectionId, table } = {}) {
+async function listIndexes({ connectionId, table, schema } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
   if (!table) return { success: false, error: "table is required" };
 
-  const sql = buildIndexListQuery(entry.engine, entry.database ?? "", table);
+  const sql = buildIndexListQuery(entry.engine, entry.database ?? "", table, schema);
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -359,11 +369,11 @@ async function listIndexes({ connectionId, table } = {}) {
  * `table` is optional: without it every foreign key in the database comes back,
  * which is what the ER diagram needs — one query rather than one per table.
  */
-async function listForeignKeys({ connectionId, table } = {}) {
+async function listForeignKeys({ connectionId, table, schema } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
 
-  const sql = buildForeignKeyListQuery(entry.engine, entry.database ?? "", table ?? null);
+  const sql = buildForeignKeyListQuery(entry.engine, entry.database ?? "", table ?? null, schema);
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -385,6 +395,7 @@ async function listRoutines({ connectionId } = {}) {
   if (!entry) return { success: false, error: "Connection not found" };
 
   const sql = buildRoutineListQuery(entry.engine, entry.database ?? "");
+
   const out = await runSchemaQuery(connectionId, sql);
   if (!out.success) return out;
 
@@ -392,6 +403,7 @@ async function listRoutines({ connectionId } = {}) {
     success: true,
     routines: out.rows.map((r) => ({
       name: String(r.name ?? ""),
+      ...(r.schema_name ? { schema: String(r.schema_name) } : {}),
       // Anything callable that is not a procedure is shown as a function —
       // catalogs carry kinds like 'aggregate' that the tree has no node for.
       kind: String(r.kind ?? "").toLowerCase() === "procedure" ? "procedure" : "function",
@@ -413,6 +425,7 @@ async function listTriggers({ connectionId } = {}) {
     triggers: out.rows.map((r) => ({
       name: String(r.name ?? ""),
       table: String(r.table_name ?? ""),
+      ...(r.schema_name ? { schema: String(r.schema_name) } : {}),
     })),
   };
 }
@@ -426,12 +439,12 @@ async function listTriggers({ connectionId } = {}) {
  * SQL Server have no such call, so their statement is reconstructed and flagged
  * as such; `native` tells the caller which of the two it received.
  */
-async function getTableDdl({ connectionId, table } = {}) {
+async function getTableDdl({ connectionId, table, schema } = {}) {
   const entry = dbConnections.get(connectionId);
   if (!entry) return { success: false, error: "Connection not found" };
   if (!table) return { success: false, error: "table is required" };
 
-  const nativeSql = buildNativeDdlQuery(entry.engine, entry.database ?? "", table);
+  const nativeSql = buildNativeDdlQuery(entry.engine, entry.database ?? "", table, schema);
   if (nativeSql) {
     const result = await queryOnce({ connectionId, sql: nativeSql, maxRows: 1 });
     if (!result.success) return { success: false, error: result.error };
@@ -443,9 +456,9 @@ async function getTableDdl({ connectionId, table } = {}) {
   }
 
   const [columns, primaryKey, foreignKeys] = await Promise.all([
-    listColumns({ connectionId, table }),
-    listPrimaryKey({ connectionId, table }),
-    listForeignKeys({ connectionId, table }),
+    listColumns({ connectionId, table, schema }),
+    listPrimaryKey({ connectionId, table, schema }),
+    listForeignKeys({ connectionId, table, schema }),
   ]);
   if (!columns.success) return { success: false, error: columns.error };
   if (!columns.columns.length) {
@@ -460,7 +473,7 @@ async function getTableDdl({ connectionId, table } = {}) {
       native: false,
       ddl: buildCreateTableDdl({
         engine: entry.engine,
-        table,
+        table: schema ? { schema, name: table } : table,
         columns: columns.columns,
         primaryKey: primaryKey.success ? primaryKey.columns : [],
         foreignKeys: foreignKeys.success ? foreignKeys.foreignKeys : [],
@@ -475,6 +488,9 @@ const EXPORT_FILTERS = {
   csv: [{ name: "CSV", extensions: ["csv"] }],
   json: [{ name: "JSON", extensions: ["json"] }],
   sql: [{ name: "SQL", extensions: ["sql"] }],
+  md: [{ name: "Markdown", extensions: ["md"] }],
+  xml: [{ name: "XML", extensions: ["xml"] }],
+  html: [{ name: "HTML", extensions: ["html", "htm"] }],
 };
 
 /**

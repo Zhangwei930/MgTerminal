@@ -236,12 +236,20 @@ declare global {
     remoteHost: string;
     remotePort: number;
     database?: string;
+    /** TLS for a direct connection; ignored when tunnelling. */
+    ssl?: { mode: 'disable' | 'require' | 'verify'; ca?: string };
     dbUsername?: string;
     dbPassword?: string;
   }
 
   interface DbSchemaTable {
     name: string;
+    /**
+     * Owning schema (Postgres, SQL Server), owner (Oracle) or database
+     * (MySQL). Absent only when the catalog did not report one — two schemas
+     * can hold the same table name, so every lookup that follows carries this.
+     */
+    schema?: string;
     kind: 'table' | 'view';
   }
 
@@ -309,6 +317,7 @@ declare global {
 
   interface DbSchemaRoutine {
     name: string;
+    schema?: string;
     kind: 'procedure' | 'function';
   }
 
@@ -316,6 +325,7 @@ declare global {
     name: string;
     /** The table the trigger is attached to. */
     table: string;
+    schema?: string;
   }
 
   interface DbListRoutinesResult {

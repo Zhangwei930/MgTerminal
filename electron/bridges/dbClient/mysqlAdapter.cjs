@@ -2,6 +2,7 @@
 
 const mysql = require("mysql2/promise");
 const { emitRowBatches } = require("./rowBatching.cjs");
+const { resolveSslOptions } = require("./sslOptions.cjs");
 
 /** MySQL's numeric column-type codes, mapped to this app's DbColumnType union. */
 function mapColumnType(fieldType) {
@@ -43,7 +44,7 @@ function createMysqlAdapter() {
   let connection = null;
 
   return {
-    async connect({ host, port, database, username, password }) {
+    async connect({ host, port, database, username, password, ssl }) {
       connection = await mysql.createConnection({
         host,
         port,
@@ -51,6 +52,7 @@ function createMysqlAdapter() {
         user: username,
         password,
         connectTimeout: 15000,
+        ...resolveSslOptions("mysql", ssl),
       });
       const [rows] = await connection.query("SELECT VERSION() AS version");
       return { serverVersion: rows?.[0]?.version };

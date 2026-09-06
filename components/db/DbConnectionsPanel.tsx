@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { activeTabStore, toDbWorkspaceTabId } from '../../application/state/activeTabStore';
 import { dbWorkspaceTabStore } from '../../application/state/dbWorkspaceTabStore';
-import { type DbConnectionProfile, type DbEngine } from '../../domain/models';
+import { type DbConnectionProfile, type DbEngine, isFileEngine } from '../../domain/models';
 import {
   applyEngineToDraft,
   buildDbConnectionPayload,
@@ -30,9 +30,11 @@ interface DbConnectionsPanelProps {
 
 const ENGINE_LABELS: Record<DbEngine, string> = {
   mysql: 'MySQL',
+  mariadb: 'MariaDB',
   postgres: 'PostgreSQL',
   mssql: 'SQL Server',
   oracle: 'Oracle',
+  sqlite: 'SQLite',
 };
 
 const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
@@ -121,7 +123,9 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{conn.label}</div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {ENGINE_LABELS[conn.engine]} · {host?.label ?? conn.hostId} · {conn.remoteHost}:{conn.remotePort}
+                      {isFileEngine(conn.engine)
+                        ? `${ENGINE_LABELS[conn.engine]} · ${conn.remoteHost || '—'}`
+                        : `${ENGINE_LABELS[conn.engine]} · ${host?.label ?? conn.hostId} · ${conn.remoteHost}:${conn.remotePort}`}
                     </div>
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => openWorkspace(conn.id)}>
@@ -177,13 +181,27 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="mysql">MySQL</SelectItem>
+                    <SelectItem value="mariadb">MariaDB</SelectItem>
                     <SelectItem value="postgres">PostgreSQL</SelectItem>
                     <SelectItem value="mssql">SQL Server</SelectItem>
                     <SelectItem value="oracle">Oracle</SelectItem>
+                    <SelectItem value="sqlite">SQLite</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {isFileEngine(draft.engine) ? (
+                <div className="space-y-1.5">
+                  <Label>{t('db.connections.filePath')}</Label>
+                  <Input
+                    value={draft.remoteHost}
+                    onChange={(e) => setDraft({ ...draft, remoteHost: e.target.value })}
+                    placeholder="/path/to/database.db"
+                  />
+                  <p className="text-[11px] text-muted-foreground/70">{t('db.connections.filePathHint')}</p>
+                </div>
+              ) : (
+                <>
               <div className="space-y-1.5 rounded-lg border border-border/50 p-2.5">
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                   <input
@@ -233,6 +251,27 @@ const DbConnectionsPanel: React.FC<DbConnectionsPanelProps> = ({
                   />
                 </div>
               </div>
+
+              {/* TLS only matters on the direct path; the tunnel already
+                  encrypts the transport, and dbBridge ignores it there. */}
+              {!draft.hostId && (
+                <div className="space-y-1.5">
+                  <Label>{t('db.connections.tls')}</Label>
+                  <select
+                    value={draft.sslMode}
+                    onChange={(e) => setDraft({ ...draft, sslMode: e.target.value as typeof draft.sslMode })}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="disable">{t('db.connections.tlsDisable')}</option>
+                    <option value="require">{t('db.connections.tlsRequire')}</option>
+                    <option value="verify">{t('db.connections.tlsVerify')}</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground/70">{t('db.connections.tlsHint')}</p>
+                </div>
+              )}
+
+                </>
+              )}
 
               <div className="space-y-1.5">
                 <Label>{t('db.connections.database')}</Label>

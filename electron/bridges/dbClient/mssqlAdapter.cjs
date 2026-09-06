@@ -2,6 +2,7 @@
 
 const sql = require("mssql");
 const { emitRowBatches } = require("./rowBatching.cjs");
+const { resolveSslOptions } = require("./sslOptions.cjs");
 
 /** mssql's column type is a constructor (sql.Int, sql.VarChar, ...); .name gives the type name. */
 function mapColumnType(columnType) {
@@ -41,7 +42,7 @@ function createMssqlAdapter() {
   let activeRequest = null;
 
   return {
-    async connect({ host, port, database, username, password }) {
+    async connect({ host, port, database, username, password, ssl }) {
       pool = new sql.ConnectionPool({
         server: host,
         port,
@@ -58,10 +59,13 @@ function createMssqlAdapter() {
         // while the user is still typing the next statement.
         pool: { max: 1, min: 1 },
         options: {
-          // Traffic already runs inside the SSH tunnel — skip TLS entirely
-          // rather than fight a self-signed/absent cert on a plain IP target.
+          // Default off: inside an SSH tunnel the transport is already
+          // encrypted. A direct connection has no such tunnel, so the profile
+          // can ask for TLS and resolveSslOptions overrides both settings —
+          // hard-coding encrypt:false is what made a direct dial clear text.
           encrypt: false,
           trustServerCertificate: true,
+          ...(resolveSslOptions("mssql", ssl).options ?? {}),
         },
       });
       await pool.connect();

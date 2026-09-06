@@ -1,6 +1,23 @@
 # Registro de alterações
 
 
+## [0.6.3] - 2026-09-06
+
+### Adicionado
+- **Editor visual de estrutura** — criar e alterar tabelas, adicionar, mudar e remover colunas, criar e remover índices, renomear e remover tabelas, tudo a partir de uma grade de colunas. O SQL gerado é exibido antes de qualquer execução. O SQLite não consegue mudar o tipo de uma coluna (isso exige reconstruir a tabela), então ele avisa em vez de enviar uma instrução que o servidor recusaria
+- **Importação e exportação** — ler CSV, TSV e JSON com o tipo deduzido por coluna, criando a tabela se desejado; a exportação ganha Markdown, XML e HTML ao lado de CSV, JSON e INSERT; um dump completo do banco grava a definição e as linhas de cada tabela e pode ser reexecutado a partir do arquivo para restaurar
+- **SQLite e MariaDB** — o SQLite usa o driver embutido no Node, não há nada a instalar. É um arquivo desta máquina e não um servidor: sem host, porta ou credenciais, e sem túnel. O MariaDB compartilha o protocolo e o dialeto do MySQL
+- **Paginação, filtro, scripts e construtor de consultas** — os resultados chegam por página em vez de parar num número fixo de linhas; a grade filtra linhas no lugar; o editor executa um script inteiro e não apenas a primeira instrução; o construtor monta um SELECT de uma tabela a partir de seletores e o entrega ao editor
+
+### Corrigido
+- **Os nomes de tabela agora carregam o seu esquema** — a árvore lista tabelas de todos os esquemas do servidor, mas devolvia apenas o nome, e as consultas de colunas, chave primária, índices e chaves estrangeiras filtravam só por ele. Dois esquemas com a mesma tabela apareciam como uma entrada cujos metadados eram a mistura das duas, e a edição de uma linha montava o seu WHERE a partir disso — possivelmente sobre uma coluna que a tabela em tela não tem
+- **Valores binários, de data e booleanos são gravados de forma que o servidor releia** — uma coluna BLOB era serializada como objeto JSON: a coluna aceita, o dado é destruído e o mesmo valor num WHERE não encontra linha alguma. Datas eram deslocadas para UTC com um sufixo que o DATETIME do MySQL recusa. Booleanos usavam TRUE/FALSE em toda parte, sendo que o SQL Server não tem essa palavra-chave e o Oracle não tinha tipo booleano antes do 23c. Agora cada um é escrito conforme o seu motor
+- **Uma edição que não mudou nada deixa de ser reportada como bem-sucedida** — um UPDATE cuja chave primária não casa com nenhuma linha termina normalmente, e a grade exibia o valor digitado como se tivesse sido gravado. A contagem de linhas afetadas já vinha na resposta e apenas não era lida. A causa habitual é um resultado desatualizado: a linha foi apagada ou a sua chave mudou
+- **Uma célula pode ser posta em NULL e uma linha pode ser removida** — esvaziar uma célula gravava uma string vazia, de modo que uma coluna que aceita nulos nunca mais podia ser esvaziada depois de preenchida. NULL passa a ser gravado pelo menu de contexto ou por Ctrl/Cmd+0, e a linha é removida pelo mesmo menu
+- **Conexões diretas ao banco podem ser cifradas** — uma conexão que não passa por túnel SSH enviava a senha e todas as linhas em texto claro: nenhum motor oferecia opção de TLS e o do SQL Server tinha a cifragem fixada em desligada. Há agora três modos, ainda desligado por padrão, então as conexões salvas se comportam como antes
+- **Transferências entre hosts não usam mais o diretório temporário compartilhado** — copiar entre hosts baixa primeiro o arquivo inteiro localmente, e essa cópia intermediária era escrita num caminho previsível do diretório temporário do sistema, legível por qualquer usuário local, e ficava lá quando o envio falhava. Agora usa o diretório próprio do aplicativo com permissão 0700 e é removida também em caso de falha
+- **Hosts com uma chave anexada diretamente entram na verificação de credenciais** — a verificação lia um campo que não existe num host, de modo que esses hosts nunca eram examinados e, quando uma chave não podia ser decifrada, exibiam "todos os métodos de autenticação falharam" — exatamente a mensagem enganosa que essa verificação existe para evitar
+
 ## [0.6.2] - 2026-08-01
 
 ### Novidades

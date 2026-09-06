@@ -1,6 +1,23 @@
 # Journal des modifications
 
 
+## [0.6.3] - 2026-09-06
+
+### Ajouté
+- **Éditeur visuel de structure** — créer et modifier des tables, ajouter, changer et supprimer des colonnes, créer et supprimer des index, renommer et supprimer des tables, le tout depuis une grille de colonnes. Le SQL produit est affiché avant toute exécution. SQLite ne sait pas changer le type d'une colonne (il faut reconstruire la table) : il le dit plutôt que d'envoyer une instruction que le serveur refusera
+- **Import et export** — lire du CSV, du TSV et du JSON avec un type déduit par colonne, en créant la table si besoin ; l'export gagne Markdown, XML et HTML en plus de CSV, JSON et INSERT ; un export complet de la base écrit la définition et les lignes de chaque table, et peut être rejoué depuis le fichier pour restaurer
+- **SQLite et MariaDB** — SQLite s'appuie sur le pilote intégré à Node : rien à installer. C'est un fichier sur cette machine et non un serveur : ni hôte, ni port, ni identifiants, et aucun tunnel. MariaDB partage le protocole et le dialecte de MySQL
+- **Pagination, filtre, scripts et constructeur de requêtes** — les résultats arrivent page par page au lieu de s'arrêter à un nombre de lignes fixe ; la grille filtre les lignes sur place ; l'éditeur exécute tout un script et non sa seule première instruction ; le constructeur assemble un SELECT sur une table à partir de listes et le remet à l'éditeur
+
+### Corrigé
+- **Les noms de tables portent désormais leur schéma** — l'arbre liste les tables de tous les schémas du serveur mais ne renvoyait que le nom seul, et les requêtes de colonnes, de clé primaire, d'index et de clés étrangères ne filtraient que sur lui. Deux schémas contenant la même table n'apparaissaient qu'une fois, avec des métadonnées mélangées ; une modification de ligne construisait son WHERE à partir de là, éventuellement sur une colonne absente de la table affichée
+- **Les valeurs binaires, temporelles et booléennes sont écrites sous une forme que le serveur relit** — une colonne BLOB était sérialisée en objet JSON : la colonne l'accepte, la donnée est détruite, et la même valeur dans un WHERE ne trouve aucune ligne. Les dates étaient ramenées en UTC avec un suffixe que le DATETIME de MySQL refuse. Les booléens s'écrivaient TRUE/FALSE partout, alors que SQL Server n'a pas ce mot-clé et qu'Oracle n'avait pas de type booléen avant 23c. Chacun s'écrit maintenant selon son moteur
+- **Une modification qui n'a rien changé ne se déclare plus réussie** — un UPDATE dont la clé primaire ne correspond à aucune ligne se termine normalement, et la grille affichait la valeur saisie comme si elle avait été enregistrée. Le nombre de lignes affectées était déjà dans la réponse, simplement pas lu. La cause habituelle est un résultat périmé : la ligne a été supprimée, ou sa clé a changé
+- **Une cellule peut être mise à NULL, et une ligne supprimée** — vider une cellule enregistrait une chaîne vide, si bien qu'une colonne nullable ne pouvait plus jamais être vidée une fois remplie. NULL s'écrit désormais depuis le menu contextuel ou par Ctrl/Cmd+0, et la ligne se supprime depuis le même menu
+- **Les connexions directes à la base peuvent être chiffrées** — une connexion qui ne passe pas par un tunnel SSH envoyait son mot de passe et chaque ligne en clair : aucun moteur ne proposait d'option TLS, et celui de SQL Server avait le chiffrement figé à l'arrêt. Trois modes sont disponibles, toujours désactivés par défaut, donc les connexions enregistrées se comportent comme avant
+- **Les transferts entre hôtes n'utilisent plus le répertoire temporaire partagé** — la copie entre hôtes télécharge d'abord le fichier entier en local, et cette copie intermédiaire était écrite à un chemin prévisible du répertoire temporaire système, lisible par tout utilisateur local, et y restait quand l'envoi échouait. Elle passe désormais par le répertoire propre à l'application, en 0700, et est supprimée y compris en cas d'échec
+- **Les hôtes dotés d'une clé directe entrent dans le contrôle des identifiants** — ce contrôle lisait un champ qui n'existe pas sur un hôte ; ces hôtes n'étaient donc jamais examinés et affichaient, quand une clé ne pouvait être déchiffrée, « toutes les méthodes d'authentification ont échoué » — précisément le message trompeur que ce contrôle doit éviter
+
 ## [0.6.2] - 2026-08-01
 
 ### Nouveautés

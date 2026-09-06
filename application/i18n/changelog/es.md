@@ -1,6 +1,23 @@
 # Registro de cambios
 
 
+## [0.6.3] - 2026-09-06
+
+### Añadido
+- **Diseñador visual de tablas** — crear y modificar tablas, añadir, cambiar y eliminar columnas, crear y eliminar índices, renombrar y eliminar tablas, todo desde una misma cuadrícula. El SQL generado se muestra antes de ejecutarse. SQLite no puede cambiar el tipo de una columna (eso exige reconstruir la tabla), así que lo indica en lugar de enviar una sentencia que el servidor rechazaría
+- **Importación y exportación** — leer CSV, TSV y JSON con un tipo deducido por columna, creando la tabla si se desea; la exportación añade Markdown, XML y HTML junto a CSV, JSON e INSERT; un volcado completo escribe la definición y las filas de cada tabla, y puede reproducirse desde el archivo para restaurar
+- **SQLite y MariaDB** — SQLite usa el controlador incluido en Node, no hay nada que instalar. Es un archivo de esta máquina y no un servidor: sin host, puerto ni credenciales, y sin túnel. MariaDB comparte protocolo y dialecto con MySQL
+- **Paginación, filtro, scripts y constructor de consultas** — los resultados llegan por páginas en vez de detenerse en un número fijo de filas; la cuadrícula filtra filas en el sitio; el editor ejecuta un script completo y no solo su primera sentencia; el constructor arma un SELECT sobre una tabla con selectores y lo entrega al editor
+
+### Corregido
+- **Los nombres de tabla llevan ahora su esquema** — el árbol lista tablas de todos los esquemas del servidor, pero devolvía solo el nombre, y las consultas de columnas, clave primaria, índices y claves foráneas filtraban únicamente por él. Dos esquemas con la misma tabla aparecían como una sola entrada cuyos metadatos eran la mezcla de ambas, y la edición de una fila construía su WHERE a partir de eso, quizá sobre una columna que la tabla en pantalla no tiene
+- **Los valores binarios, de fecha y booleanos se escriben de forma que el servidor los relea** — una columna BLOB se serializaba como objeto JSON: la columna lo acepta, el dato queda destruido y ese mismo valor en un WHERE no encuentra ninguna fila. Las fechas se desplazaban a UTC con un sufijo que el DATETIME de MySQL rechaza. Los booleanos usaban TRUE/FALSE en todas partes, cuando SQL Server no tiene esa palabra clave y Oracle no tuvo tipo booleano hasta 23c. Ahora cada uno se escribe según su motor
+- **Una edición que no cambió nada ya no se informa como correcta** — un UPDATE cuya clave primaria no coincide con ninguna fila termina con normalidad, y la cuadrícula mostraba el valor escrito como si se hubiera guardado. El número de filas afectadas ya venía en la respuesta y simplemente no se leía. La causa habitual es un resultado caducado: la fila se borró o cambió su clave
+- **Una celda puede ponerse a NULL y una fila puede eliminarse** — vaciar una celda guardaba una cadena vacía, de modo que una columna que admite nulos no podía volver a vaciarse una vez tenía valor. NULL se escribe ahora desde el menú contextual o con Ctrl/Cmd+0, y desde ese mismo menú se elimina la fila
+- **Las conexiones directas a la base pueden cifrarse** — una conexión que no pasa por un túnel SSH enviaba su contraseña y cada fila en claro: ningún motor ofrecía opción de TLS y el de SQL Server tenía el cifrado fijado en desactivado. Ahora hay tres modos, todavía desactivado por omisión, así que las conexiones guardadas se comportan igual
+- **Las transferencias entre hosts ya no pasan por el directorio temporal compartido** — copiar entre hosts descarga primero el archivo completo en local, y esa copia intermedia se escribía en una ruta previsible del directorio temporal del sistema, legible por cualquier usuario local, y quedaba allí si la subida fallaba. Ahora usa el directorio propio de la aplicación con permisos 0700 y se borra también al fallar
+- **Los hosts con una clave asignada directamente entran en la comprobación de credenciales** — la comprobación leía un campo que no existe en un host, así que esos hosts nunca se revisaban y, cuando una clave no podía descifrarse, mostraban «todos los métodos de autenticación han fallado»: justo el mensaje engañoso que esta comprobación existe para evitar
+
 ## [0.6.2] - 2026-08-01
 
 ### Novedades

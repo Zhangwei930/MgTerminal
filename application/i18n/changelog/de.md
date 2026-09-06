@@ -1,6 +1,23 @@
 # Änderungsprotokoll
 
 
+## [0.6.3] - 2026-09-06
+
+### Neu
+- **Visueller Tabellen-Designer** — Tabellen anlegen und ändern, Spalten hinzufügen, ändern und löschen, Indizes anlegen und löschen, Tabellen umbenennen und löschen — alles in einem Spaltenraster. Das erzeugte SQL wird vor der Ausführung angezeigt. SQLite kann den Typ einer Spalte nicht ändern (dafür muss die Tabelle neu aufgebaut werden) und sagt das, statt eine Anweisung zu schicken, die der Server ablehnt
+- **Import und Export** — CSV, TSV und JSON einlesen, mit je Spalte ermitteltem Typ und wahlweise dem Anlegen der Tabelle; Export nun auch als Markdown, XML und HTML neben CSV, JSON und INSERTs; ein Dump der gesamten Datenbank schreibt Definition und Zeilen jeder Tabelle und lässt sich aus der Datei wieder einspielen
+- **SQLite und MariaDB** — SQLite läuft über den in Node enthaltenen Treiber, es ist nichts zu installieren. Es ist eine Datei auf diesem Rechner und kein Server: kein Host, kein Port, keine Zugangsdaten und kein Tunnel. MariaDB teilt Protokoll und Dialekt mit MySQL
+- **Blättern, Filtern, Skripte und ein Abfrage-Baukasten** — Ergebnisse kommen seitenweise, statt bei einer festen Zeilenzahl zu enden; das Raster filtert Zeilen an Ort und Stelle; der Editor führt ein ganzes Skript aus und nicht nur dessen erste Anweisung; der Baukasten setzt ein SELECT über eine Tabelle aus Auswahlfeldern zusammen und übergibt es dem Editor
+
+### Behoben
+- **Tabellennamen führen jetzt ihr Schema mit** — der Baum listet Tabellen aus jedem Schema des Servers, meldete aber nur den bloßen Namen, und die Abfragen für Spalten, Primärschlüssel, Indizes und Fremdschlüssel filterten allein danach. Lag dieselbe Tabelle in zwei Schemata, erschien sie als ein Eintrag, dessen Metadaten aus beiden vermischt waren; eine Zeilenbearbeitung baute ihr WHERE daraus — womöglich über eine Spalte, die es in der angezeigten Tabelle gar nicht gibt
+- **Binär-, Datums- und Wahrheitswerte werden so geschrieben, wie der Server sie zurücklesen kann** — eine BLOB-Spalte wurde als JSON-Objekt serialisiert: die Spalte nimmt das an, die Daten sind damit zerstört, und derselbe Wert in einem WHERE trifft keine Zeile. Daten wurden nach UTC verschoben und bekamen ein Suffix, das MySQLs DATETIME rundheraus ablehnt. Wahrheitswerte wurden überall als TRUE/FALSE geschrieben — SQL Server kennt dieses Schlüsselwort nicht, Oracle vor 23c hatte gar keinen Wahrheitstyp. Jetzt schreibt jede Engine ihre eigene Form
+- **Eine Bearbeitung, die nichts geändert hat, meldet keinen Erfolg mehr** — ein UPDATE, dessen Primärschlüssel keine Zeile trifft, läuft regulär durch, und das Raster zeigte den eingetippten Wert, als wäre er gespeichert. Die Zahl der betroffenen Zeilen lag längst in der Antwort und wurde nur nicht gelesen. Der übliche Grund ist ein veraltetes Ergebnis: die Zeile wurde gelöscht oder ihr Schlüssel geändert
+- **Eine Zelle lässt sich auf NULL setzen, eine Zeile löschen** — das Leeren einer Zelle speicherte eine leere Zeichenkette, eine nullable Spalte ließ sich also nie wieder leeren, sobald sie einen Wert hatte. NULL wird nun über das Kontextmenü oder Strg/Cmd+0 geschrieben, und aus demselben Menü lässt sich die Zeile löschen
+- **Direkte Datenbankverbindungen können verschlüsselt werden** — eine Verbindung ohne SSH-Tunnel schickte Passwort und jede Zeile im Klartext: keine Engine bot eine TLS-Option, und die für SQL Server hatte Verschlüsselung fest ausgeschaltet. Es gibt jetzt drei Stufen, weiterhin standardmäßig aus, gespeicherte Verbindungen verhalten sich also unverändert
+- **Übertragungen zwischen Hosts nutzen nicht mehr das gemeinsame Temp-Verzeichnis** — beim Kopieren zwischen Hosts wird die Datei zuerst vollständig lokal geholt, und diese Zwischenkopie landete unter einem vorhersagbaren Pfad im System-Temp-Verzeichnis, lesbar für jeden lokalen Benutzer, und blieb dort liegen, wenn der Upload scheiterte. Jetzt wird das eigene Verzeichnis der Anwendung mit Rechten 0700 verwendet und auch im Fehlerfall aufgeräumt
+- **Hosts mit direkt hinterlegtem Schlüssel gehören zur Zugangsdaten-Prüfung** — die Prüfung las ein Feld, das es an einem Host nicht gibt, solche Hosts wurden also nie geprüft und zeigten bei nicht entschlüsselbarem Schlüssel „alle Authentifizierungsmethoden fehlgeschlagen" — genau die irreführende Meldung, gegen die diese Prüfung geschrieben wurde
+
 ## [0.6.2] - 2026-08-01
 
 ### Neu

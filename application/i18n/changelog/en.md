@@ -1,6 +1,23 @@
 # Changelog
 
 
+## [0.6.3] - 2026-09-06
+
+### Added
+- **Visual table designer** — create and alter tables, add, change and drop columns, create and drop indexes, rename and drop tables, all from one column grid. The generated SQL is shown before anything runs. SQLite cannot change a column's type (that needs a table rebuild), so it says so rather than emitting a statement the server would reject
+- **Import and export** — read CSV, TSV and JSON with a type inferred per column, optionally creating the table; export gains Markdown, XML and HTML alongside CSV, JSON and INSERTs; a whole-database dump writes every table's definition and rows, and can be replayed from the file to restore
+- **SQLite and MariaDB** — SQLite runs on Node's built-in driver, so there is nothing to install. It is a file on this machine rather than a server: no host, port or credentials, and nothing to tunnel. MariaDB shares MySQL's protocol and dialect
+- **Paging, filtering, scripts and a query builder** — results arrive a page at a time instead of stopping at a fixed row count, the grid filters rows in place, the editor runs a whole script rather than only its first statement, and a builder assembles a single-table SELECT from pickers and hands it to the editor
+
+### Fixed
+- **Table names now carry their schema** — the tree lists tables from every schema on the server but reported only the bare name, and the column, primary-key, index and foreign-key lookups filtered on that alone. Two schemas holding the same table appeared as one entry whose metadata was the two merged together, and a row edit built its WHERE from that — possibly keyed on a column the table on screen does not have
+- **Binary, date and boolean values are written in a form the server reads back** — a BLOB column was serialised as a JSON object, which the column accepts and which destroys the data, and which matches no row when the same value lands in a WHERE; dates were shifted to UTC and given a suffix MySQL's DATETIME rejects outright; booleans used TRUE/FALSE on SQL Server, which has no such keyword, and on Oracle before 23c, which had no boolean type. Each is now spelled for its engine
+- **An edit that changed nothing no longer reports success** — an UPDATE whose primary key matches no row completes normally, and the grid displayed the typed value as though it had been stored. The affected-row count was already on the completion payload and simply not read. The usual cause is a stale result: the row was deleted, or its key changed
+- **A cell can be set to NULL, and a row can be deleted** — clearing a cell stored an empty string, so a nullable column could never be cleared again once it held anything. NULL is now written from the context menu or Ctrl/Cmd+0, and a row can be deleted from the same menu
+- **Direct database connections can be encrypted** — a connection that does not tunnel through SSH sent its password and every row in clear text: no engine offered a TLS option, and the SQL Server one hard-coded encryption off. Three modes are available now, still defaulting to off, so saved connections behave as before
+- **Cross-host transfers no longer stage in the shared temp directory** — copying between hosts downloads the whole file locally first, and that staging copy was written to a predictable path in the system temp directory, readable by any local user, and left there when the upload failed. It now uses the app's own 0700 directory and is removed on failure too
+- **Hosts with a key attached directly are included in the credential health check** — the check read a field that does not exist on a host, so those hosts were never examined and, when a key could not be decrypted, showed "all authentication methods failed" — the misleading message this check exists to prevent
+
 ## [0.6.2] - 2026-08-01
 
 ### Features

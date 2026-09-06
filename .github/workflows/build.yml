@@ -699,15 +699,60 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          apt-get update
-          # Step 1: curl must be installed first (minimal Bullseye has none).
-          apt-get install -y curl gnupg ca-certificates
+          # bullseye-security is gone from the live mirrors. Debian 11 is out
+          # of LTS and the suite is mid-move: its index still resolves on
+          # deb.debian.org and security.debian.org, but the pool objects behind
+          # it 404 from every edge a runner reaches, and ftp.debian.org,
+          # mirrors.kernel.org, leaseweb and ftp.us.debian.org have dropped it
+          # outright. archive.debian.org does not carry it yet.
+          #
+          # It cannot be dropped from sources either: this image ships with
+          # -security versions already installed (libc6 2.31-13+deb11u14,
+          # perl-base 5.32.1-4+deb11u5) and bullseye main only offers u11 and
+          # u3, so libc6-dev and perl go unsatisfiable.
+          #
+          # snapshot.debian.org keeps every Debian archive state permanently,
+          # which is exactly this situation. Pointing at a timestamp also makes
+          # the dependency set reproducible rather than whatever the mirrors
+          # held that day — worth keeping even after the suite is archived.
+          #
+          # Check-Valid-Until is off because a snapshot's Release file is as old
+          # as the snapshot, and apt would otherwise refuse it.
+          SNAPSHOT=20260801T000000Z
+          cat > /etc/apt/sources.list <<EOF
+          deb http://snapshot.debian.org/archive/debian/${SNAPSHOT}/ bullseye main
+          deb http://snapshot.debian.org/archive/debian-security/${SNAPSHOT}/ bullseye-security main
+          deb http://snapshot.debian.org/archive/debian/${SNAPSHOT}/ bullseye-updates main
+          EOF
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+          # snapshot.debian.org is a single host rather than a CDN, so it is
+          # slower and rate-limits; give apt room before it gives up.
+          echo 'Acquire::http::Timeout "120";' > /etc/apt/apt.conf.d/99timeouts
+          cat /etc/apt/sources.list
+          apt_install() {
+            for attempt in 1 2 3 4 5 6; do
+              if apt-get update && apt-get install -y "$@"; then
+                return 0
+              fi
+              echo "::warning::apt attempt ${attempt} failed for: $*"
+              sleep 20
+            done
+            echo "::error::apt could not install after 6 attempts: $*"
+            return 1
+          }
+          # Step 1: curl and ca-certificates — minimal Bullseye has neither.
+          #
+          # gnupg is deliberately absent. Its only use here was dearmoring the
+          # LLVM key, and apt has accepted an ASCII-armored key in signed-by
+          # since 1.4 (Bullseye ships 2.2), so the .asc is used directly. That
+          # does not fix the mirror above — it just stops this step pulling in
+          # gnupg-l10n and gpgconf, which it never needed.
+          apt_install curl ca-certificates
           # Step 2: add LLVM apt repo — clang-14 not in Bullseye default repos.
-          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key             | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main"             > /etc/apt/sources.list.d/llvm.list
-          apt-get update
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key             -o /usr/share/keyrings/llvm-archive-keyring.asc
+          echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.asc] https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-14 main"             > /etc/apt/sources.list.d/llvm.list
           # Step 3: install clang-14 (now available) + runtime deps.
-          apt-get install -y clang-14 python3 git libfuse2 file rpm             libarchive-tools build-essential             libglib2.0-0 libgtk-3-0 libnss3 libxss1 libxtst6 libasound2             libatk-bridge2.0-0 libdrm2 libgbm1 libx11-xcb1 libxcb-dri3-0
+          apt_install clang-14 python3 git libfuse2 file rpm             libarchive-tools build-essential             libglib2.0-0 libgtk-3-0 libnss3 libxss1 libxtst6 libasound2             libatk-bridge2.0-0 libdrm2 libgbm1 libx11-xcb1 libxcb-dri3-0
           # Step 4: set clang-14 as CC/CXX; keep system ld (binutils).
           export CC=clang-14
           export CXX=clang++-14
@@ -716,7 +761,9 @@ jobs:
           echo "clang version: $(clang-14 --version | head -n1)"
           # Step 5: install Node 22.
           curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-          apt-get install -y nodejs
+          # nodejs itself comes from nodesource, but its dependencies still
+          # resolve through the Debian mirrors, so it retries like the rest.
+          apt_install nodejs
 
       - name: Checkout
         uses: actions/checkout@v5

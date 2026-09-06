@@ -197,3 +197,22 @@ test('large imports are split into batches rather than one giant INSERT', () => 
   });
   assert.equal(statements.length, 3, '100 + 100 + 50');
 });
+
+// MySQL caps a row at 65535 bytes across all its columns, and utf8mb4 counts
+// four per character — so a handful of varchar(4000) columns cannot coexist.
+// A wide file was producing a CREATE TABLE the server refuses.
+test('a wide text column becomes TEXT rather than a varchar too wide to share a row', () => {
+  const long = 'x'.repeat(600);
+  assert.match(inferColumnType([long], 'mysql'), /^text$/i);
+  assert.match(inferColumnType([long], 'mariadb'), /^text$/i);
+});
+
+test('a narrow text column still gets a sized varchar', () => {
+  assert.match(inferColumnType(['ada'], 'mysql'), /^varchar\(\d+\)$/i);
+});
+
+test('the varchar it does give stays inside what a row can hold', () => {
+  const type = inferColumnType(['y'.repeat(200)], 'mysql');
+  const width = Number(/varchar\((\d+)\)/i.exec(type)?.[1] ?? 0);
+  assert.ok(width > 0 && width <= 1000, `varchar(${width}) is too wide to share a row`);
+});

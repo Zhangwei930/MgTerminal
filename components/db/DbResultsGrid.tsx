@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { FixedSizeVirtualList } from '../ui/FixedSizeVirtualList';
 import {
@@ -188,6 +188,32 @@ export const DbResultsGrid: React.FC<DbResultsGridProps> = ({
     },
     [onDeleteRow, rows],
   );
+
+  /**
+   * Drops everything tied to the rows that were on screen when a new result
+   * arrives.
+   *
+   * This component is not remounted between queries, so without this the
+   * overlay from a committed edit stayed and was painted over whatever row now
+   * sat at that index — showing a value the new result does not contain. Rows
+   * hidden by a delete stayed hidden, and an open editor pointed at a row that
+   * had been replaced. Paging hits this too: every page is a new result.
+   *
+   * Sort and filter are deliberately kept: they are the user's view of the
+   * data rather than a claim about a particular row, and losing the filter on
+   * every page turn would be its own bug.
+   */
+  useEffect(() => {
+    setOverrides({});
+    setDeleted(new Set());
+    setEditing(null);
+    setFailure(null);
+  }, [rows]);
+
+  // A different shape means the sort column no longer refers to what it did.
+  useEffect(() => {
+    setSort(null);
+  }, [columns]);
 
   const cellValue = (rowIndex: number, columnIndex: number, raw: unknown) => {
     const key = `${rowIndex}:${columnIndex}`;

@@ -18,12 +18,41 @@ import { splitSqlStatements } from './splitStatements';
 /** Distinctive enough not to collide with a table the query already names. */
 const PAGE_ALIAS = 'magies_page';
 
-/** Strips comments and string literals so keywords can be found by position. */
+/** Closing delimiter for each identifier-quoting style. */
+const IDENTIFIER_QUOTES: Record<string, string> = { '"': '"', '`': '`', '[': ']' };
+
+/**
+ * Blanks out everything a keyword must not be found inside: string literals,
+ * comments, and quoted identifiers.
+ *
+ * The identifiers matter as much as the literals. A column named "offset" or
+ * "order by" would otherwise be read as the clause it is named after, and a
+ * parenthesis inside a quoted name would shift the nesting depth that tells an
+ * outer ORDER BY from a subquery's.
+ */
 function maskLiteralsAndComments(sql: string): string {
   let out = '';
   let i = 0;
   while (i < sql.length) {
     const char = sql[i];
+
+    const close = IDENTIFIER_QUOTES[char];
+    if (close) {
+      const start = i;
+      i += 1;
+      while (i < sql.length) {
+        if (sql[i] === close) {
+          // A doubled delimiter is an escaped one, not the end.
+          if (sql[i + 1] === close) { i += 2; continue; }
+          break;
+        }
+        i += 1;
+      }
+      i += 1;
+      out += ' '.repeat(Math.min(i, sql.length) - start);
+      continue;
+    }
+
     if (char === "'") {
       const start = i;
       i += 1;

@@ -1,6 +1,6 @@
 import type { DbEngine } from '../models';
 import type { QualifiedTable } from './identifiers';
-import { buildInsertStatements } from './sqlDump';
+import { buildInsertStatementList } from './sqlDump';
 import { buildCreateTable, type DesignerColumn } from './tableDesignerSql';
 
 /**
@@ -143,8 +143,14 @@ const DECIMAL = /^-?\d*\.\d+$/;
 export function inferColumnType(values: string[], engine: DbEngine): string {
   const present = values.map((value) => value?.trim() ?? '').filter(Boolean);
   const textType = (length: number) => {
-    const width = Math.min(Math.max(length * 2, 32), 4000);
-    return engine === 'postgres' ? 'text' : `varchar(${width})`;
+    // MySQL and MariaDB cap a row at 65535 bytes across every column, and
+    // utf8mb4 counts four per character — so a few varchar(4000) columns
+    // cannot share a table at all. Past a modest width the unbounded type is
+    // the only one that composes, and it costs nothing here.
+    const width = Math.min(Math.max(length * 2, 32), 1000);
+    if (engine === 'postgres') return 'text';
+    if (length * 2 > 1000) return engine === 'oracle' ? 'CLOB' : 'text';
+    return `varchar(${width})`;
   };
 
   if (!present.length) return textType(32);
@@ -206,13 +212,12 @@ export function buildImportStatements({
   // NULL is the reading a numeric or date column will actually accept.
   const values = rows.map((row) => row.map((cell) => (cell === '' ? null : cell)));
 
-  const inserts = buildInsertStatements({
+  statements.push(...buildInsertStatementList({
     engine,
     table,
     columns: headers.map((name) => ({ name })),
     rows: values,
     batchSize,
-  });
-  if (inserts) statements.push(...inserts.split('\n\n'));
+  }));
   return statements;
 }

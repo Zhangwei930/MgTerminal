@@ -239,3 +239,29 @@ test("a direct draft defaults its address to loopback", () => {
   const payload = buildDbConnectionPayload({ ...emptyDbConnectionDraft(), label: "local", hostId: "", remoteHost: "" });
   assert.equal(payload.remoteHost, "127.0.0.1");
 });
+
+// ── TLS ─────────────────────────────────────────────────────────────────────
+
+test('a new draft has TLS off, which is what a tunnelled connection wants', () => {
+  assert.equal(emptyDbConnectionDraft().sslMode, 'disable');
+});
+
+test('disable stores no ssl field, so old connections keep behaving as they did', () => {
+  const payload = buildDbConnectionPayload({ ...emptyDbConnectionDraft(), label: 'x' });
+  assert.equal(payload.ssl, undefined);
+});
+
+test('a chosen TLS mode is stored', () => {
+  const payload = buildDbConnectionPayload({
+    ...emptyDbConnectionDraft(), label: 'x', sslMode: 'verify',
+  });
+  assert.deepEqual(payload.ssl, { mode: 'verify' });
+});
+
+test('editing a connection round-trips its TLS mode', () => {
+  const draft = draftFromDbConnection({
+    id: 'c1', label: 'x', engine: 'postgres', hostId: '',
+    remoteHost: 'db', remotePort: 5432, ssl: { mode: 'require' }, order: 1, createdAt: 1,
+  } as never);
+  assert.equal(draft.sslMode, 'require');
+});

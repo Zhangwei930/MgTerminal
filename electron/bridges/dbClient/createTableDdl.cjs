@@ -1,6 +1,6 @@
 "use strict";
 
-const { quoteSqlIdentifier } = require("./schemaQueries.cjs");
+const { quoteSqlIdentifier, quoteQualifiedName } = require("./schemaQueries.cjs");
 
 /**
  * Rebuilds a CREATE TABLE statement from catalog information.
@@ -60,7 +60,7 @@ function buildCreateTableDdl({ engine, table, columns, primaryKey, foreignKeys }
     );
   }
 
-  return `${DDL_IS_RECONSTRUCTED}\nCREATE TABLE ${q(table)} (\n${lines.join(",\n")}\n);`;
+  return `${DDL_IS_RECONSTRUCTED}\nCREATE TABLE ${quoteQualifiedName(engine, table)} (\n${lines.join(",\n")}\n);`;
 }
 
 module.exports = { DDL_IS_RECONSTRUCTED, buildCreateTableDdl };

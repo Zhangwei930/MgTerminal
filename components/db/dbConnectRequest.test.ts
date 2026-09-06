@@ -109,3 +109,22 @@ test('database credentials are carried through unchanged', () => {
   assert.equal(result.params.engine, 'postgres');
   assert.equal(result.params.connectionId, 'conn-1');
 });
+
+// TLS on a direct connection: without it the database password and every row
+// crossed the network in clear text, since no adapter had the option at all.
+
+test('the profile\'s TLS setting reaches the connect params', () => {
+  const request = buildDbConnectRequest({
+    connectionProfile: {
+      id: 'c1', label: 'direct', engine: 'postgres', hostId: '',
+      remoteHost: 'db.example.com', remotePort: 5432,
+      ssl: { mode: 'verify' },
+      order: 1, createdAt: 1,
+    } as never,
+    host: undefined,
+    buildSshOptions: () => ({}),
+  });
+
+  assert.equal(request.status, 'ready');
+  assert.deepEqual(request.status === 'ready' ? request.params.ssl : null, { mode: 'verify' });
+});

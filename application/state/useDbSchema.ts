@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  formatQualifiedTable,
+  parseQualifiedTable,
+  type QualifiedTable,
+} from "../../domain/db/identifiers";
 import { useDbClientBackend } from "./useDbClientBackend";
 
 /**
@@ -62,30 +67,40 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
     void reload();
   }, [ready, reload]);
 
+  /**
+   * Columns of one table, cached.
+   *
+   * Keyed by the qualified name throughout: two schemas can hold the same
+   * table, and a cache keyed on the bare name serves one of them the other's
+   * columns. A plain string is accepted for the SQL completion provider, which
+   * only ever has whatever the user typed.
+   */
   const getColumns = useCallback(
-    async (table: string): Promise<DbSchemaColumn[] | null> => {
-      const cached = columnCache.current.get(table);
+    async (table: DbSchemaTable | QualifiedTable | string): Promise<DbSchemaColumn[] | null> => {
+      const target = typeof table === 'string' ? parseQualifiedTable(table) : table;
+      const key = formatQualifiedTable(target);
+      const cached = columnCache.current.get(key);
       if (cached) return cached;
-      const inFlight = pending.current.get(table);
+      const inFlight = pending.current.get(key);
       if (inFlight) return inFlight;
 
       const request = (async () => {
         try {
-          const result = await listColumns(connectionId, table);
+          const result = await listColumns(connectionId, target.name, target.schema);
           if (!result?.success) return null;
           const columns = result.columns ?? [];
-          columnCache.current.set(table, columns);
+          columnCache.current.set(key, columns);
           return columns;
         } catch {
           // The completion provider has nowhere to show this; the tree reports
           // its own failures from the resolved shape instead.
           return null;
         } finally {
-          pending.current.delete(table);
+          pending.current.delete(key);
         }
       })();
 
-      pending.current.set(table, request);
+      pending.current.set(key, request);
       return request;
     },
     [connectionId, listColumns],
@@ -100,11 +115,11 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
    * no privilege on the catalog — should still show the columns.
    */
   const getTableDetail = useCallback(
-    async (table: string) => {
+    async (table: DbSchemaTable | QualifiedTable) => {
       const [columns, indexResult, fkResult] = await Promise.all([
         getColumns(table),
-        listIndexes(connectionId, table),
-        listForeignKeys(connectionId, table),
+        listIndexes(connectionId, table.name, table.schema),
+        listForeignKeys(connectionId, table.name, table.schema),
       ]);
       if (!columns) return null;
       return {
@@ -132,8 +147,8 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
 
   /** The CREATE TABLE for one table, or its error as a comment the editor can hold. */
   const loadTableDdl = useCallback(
-    async (table: string): Promise<string> => {
-      const result = await getTableDdl(connectionId, table);
+    async (table: DbSchemaTable | QualifiedTable): Promise<string> => {
+      const result = await getTableDdl(connectionId, table.name, table.schema);
       if (result?.success && result.ddl) return result.ddl;
       return `-- ${result?.error ?? 'Could not read the DDL for this table.'}`;
     },
@@ -151,14 +166,33 @@ export const useDbSchema = (connectionId: string, ready: boolean) => {
 
     const snapshot = { tables: [] as { name: string; columns: DbSchemaColumn[] }[] };
     for (const table of onlyTables) {
-      const columns = await getColumns(table.name);
-      snapshot.tables.push({ name: table.name, columns: columns ?? [] });
+      const columns = await getColumns(table);
+      // The qualified name, so a diff between two servers lines up the tables
+      // that actually correspond rather than every same-named one.
+      snapshot.tables.push({ name: formatQualifiedTable(table), columns: columns ?? [] });
     }
     return snapshot;
   }, [connectionId, getColumns, listTables]);
 
-  /** Synchronous peek for callers that cannot await — returns null if unseen. */
-  const peekColumns = useCallback((table: string) => columnCache.current.get(table) ?? null, []);
+  /**
+   * Synchronous peek for callers that cannot await — returns null if unseen.
+   *
+   * Completion passes whatever the user typed, which is usually unqualified.
+   * An exact hit wins; failing that a bare name resolves only when exactly one
+   * schema holds it, since guessing between two is how the wrong columns get
+   * offered.
+   */
+  const peekColumns = useCallback((table: string) => {
+    const key = formatQualifiedTable(parseQualifiedTable(table));
+    const exact = columnCache.current.get(key);
+    if (exact) return exact;
+
+    const suffix = `.${key.toLowerCase()}`;
+    const candidates = [...columnCache.current.entries()].filter(
+      ([cached]) => cached.toLowerCase().endsWith(suffix),
+    );
+    return candidates.length === 1 ? candidates[0][1] : null;
+  }, []);
 
   return {
     tables, routines, triggers, loading, error, reload,

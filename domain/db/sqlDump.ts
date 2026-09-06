@@ -1,5 +1,5 @@
 import type { DbEngine } from '../models';
-import { quoteSqlIdentifier } from './previewQuery';
+import { type QualifiedTable, quoteQualifiedTable, quoteSqlIdentifier } from './identifiers';
 import { formatSqlValue } from './rowEditSql';
 
 /**
@@ -27,7 +27,7 @@ export function buildInsertStatements({
   batchSize = DEFAULT_BATCH_SIZE,
 }: {
   engine: DbEngine;
-  table: string;
+  table: QualifiedTable | string;
   columns: DumpColumn[];
   rows: unknown[][];
   batchSize?: number;
@@ -40,7 +40,8 @@ export function buildInsertStatements({
   if (!rows?.length) return '';
 
   const q = (name: string) => quoteSqlIdentifier(engine, name);
-  const target = `INSERT INTO ${q(table)} (${columns.map((c) => q(c.name)).join(', ')}) VALUES`;
+  const target = `INSERT INTO ${quoteQualifiedTable(engine, table)}`
+    + ` (${columns.map((c) => q(c.name)).join(', ')}) VALUES`;
 
   const tuples = rows.map((row, index) => {
     if (row.length !== columns.length) {
@@ -50,7 +51,7 @@ export function buildInsertStatements({
         `Row ${index} has ${row.length} values but the result has ${columns.length} columns.`,
       );
     }
-    return `  (${row.map(formatSqlValue).join(', ')})`;
+    return `  (${row.map((cell) => formatSqlValue(cell, engine)).join(', ')})`;
   });
 
   const size = Number.isInteger(batchSize) && batchSize > 0 ? batchSize : DEFAULT_BATCH_SIZE;

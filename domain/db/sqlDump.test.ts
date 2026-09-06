@@ -42,8 +42,41 @@ test('a boolean is written bare', () => {
   assert.match(build([[1, true]]), /\(1, TRUE\)/);
 });
 
-test('a date is written as a quoted ISO timestamp', () => {
-  assert.match(build([[1, new Date(Date.UTC(2026, 0, 2))]]), /'2026-01-02T/);
+test('a date is written as local wall-clock time the server will read back', () => {
+  // toISOString() shifted the value by the local offset and appended a Z that
+  // MySQL's DATETIME rejects, so a dump either failed to restore or restored a
+  // different instant than it was taken from.
+  const value = new Date(2026, 0, 2, 3, 4, 5, 678);
+  assert.match(build([[1, value]]), /'2026-01-02 03:04:05\.678'/);
+});
+
+test('binary is dumped as a byte literal, not as a JSON object', () => {
+  // A bytea/BLOB column arrives as a Buffer and crosses IPC as a Uint8Array.
+  // Serialising it as {"0":170,"1":187} restores silently corrupted data.
+  assert.match(build([[1, new Uint8Array([0xaa, 0xbb])]]), /'\\xaabb'::bytea/);
+  assert.match(build([[1, new Uint8Array([0xaa, 0xbb])]], 'mysql'), /X'AABB'/);
+});
+
+test('every cell is formatted for the engine, whatever its position in the row', () => {
+  // row.map(formatSqlValue) handed Array#map's index to the engine parameter,
+  // so only column 0 was ever formatted for the real engine.
+  const sql = buildInsertStatements({
+    engine: 'mssql',
+    table: 'flags',
+    columns: [{ name: 'a' }, { name: 'b' }, { name: 'c' }],
+    rows: [[true, true, true]],
+  });
+  assert.match(sql, /\(1, 1, 1\)/, 'SQL Server has no TRUE keyword in any column');
+});
+
+test('a schema-qualified target keeps its two parts separate', () => {
+  const sql = buildInsertStatements({
+    engine: 'postgres',
+    table: { schema: 'tenant_a', name: 'patients' },
+    columns,
+    rows: [[1, 'Ada']],
+  });
+  assert.match(sql, /INSERT INTO "tenant_a"\."patients"/);
 });
 
 test('an object value is serialised as JSON, not [object Object]', () => {

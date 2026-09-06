@@ -934,20 +934,20 @@ function createPreloadApi(ctx) {
   listDbTables: async (connectionId) => {
     return ipcRenderer.invoke("magiesTerminal:db:listTables", { connectionId });
   },
-  listDbColumns: async (connectionId, table) => {
-    return ipcRenderer.invoke("magiesTerminal:db:listColumns", { connectionId, table });
+  listDbColumns: async (connectionId, table, schema) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listColumns", { connectionId, table, schema });
   },
-  listDbPrimaryKey: async (connectionId, table) => {
-    return ipcRenderer.invoke("magiesTerminal:db:listPrimaryKey", { connectionId, table });
+  listDbPrimaryKey: async (connectionId, table, schema) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listPrimaryKey", { connectionId, table, schema });
   },
-  getDbTableDdl: async (connectionId, table) => {
-    return ipcRenderer.invoke("magiesTerminal:db:getTableDdl", { connectionId, table });
+  getDbTableDdl: async (connectionId, table, schema) => {
+    return ipcRenderer.invoke("magiesTerminal:db:getTableDdl", { connectionId, table, schema });
   },
-  listDbIndexes: async (connectionId, table) => {
-    return ipcRenderer.invoke("magiesTerminal:db:listIndexes", { connectionId, table });
+  listDbIndexes: async (connectionId, table, schema) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listIndexes", { connectionId, table, schema });
   },
-  listDbForeignKeys: async (connectionId, table) => {
-    return ipcRenderer.invoke("magiesTerminal:db:listForeignKeys", { connectionId, table });
+  listDbForeignKeys: async (connectionId, table, schema) => {
+    return ipcRenderer.invoke("magiesTerminal:db:listForeignKeys", { connectionId, table, schema });
   },
   listDbRoutines: async (connectionId) => {
     return ipcRenderer.invoke("magiesTerminal:db:listRoutines", { connectionId });

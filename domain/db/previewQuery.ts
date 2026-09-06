@@ -1,4 +1,5 @@
 import type { DbEngine } from '../models';
+import { type QualifiedTable, quoteQualifiedTable, quoteSqlIdentifier } from './identifiers';
 
 /**
  * Builds the "show me this table" query the schema tree runs on double-click.
@@ -10,38 +11,18 @@ import type { DbEngine } from '../models';
  *   uses the SQL:2008 FETCH FIRST clause.
  *
  * - The table name is an identifier, not a literal, so it cannot be
- *   single-quoted. Each engine has its own delimiter and its own escape for it.
- *   Quoting is not optional: a table named `order` is otherwise a syntax error.
+ *   single-quoted, and it carries its schema — see ./identifiers.
  */
+
+// Re-exported because callers that only quote a column still reach for it here.
+export { quoteSqlIdentifier };
 
 const DEFAULT_PREVIEW_ROWS = 100;
 
-/** Identifier delimiters, per engine. SQL Server's pair is asymmetric. */
-const DELIMITERS: Record<DbEngine, { open: string; close: string }> = {
-  mysql: { open: '`', close: '`' },
-  postgres: { open: '"', close: '"' },
-  oracle: { open: '"', close: '"' },
-  mssql: { open: '[', close: ']' },
-};
+const ENGINES: DbEngine[] = ['mysql', 'mariadb', 'postgres', 'mssql', 'oracle', 'sqlite'];
 
 function assertEngine(engine: DbEngine): void {
-  if (!DELIMITERS[engine]) throw new Error(`Unsupported engine: ${engine}`);
-}
-
-/**
- * Wraps a name as a quoted identifier, doubling the engine's own closing
- * delimiter. Only that delimiter is escaped — a backtick means nothing to
- * Postgres, and escaping it there would corrupt the name.
- */
-export function quoteSqlIdentifier(engine: DbEngine, name: string): string {
-  assertEngine(engine);
-  if (typeof name !== 'string') {
-    throw new TypeError(`SQL identifier must be a string, received ${typeof name}`);
-  }
-  if (!name) throw new Error('SQL identifier must not be empty');
-
-  const { open, close } = DELIMITERS[engine];
-  return `${open}${name.split(close).join(close + close)}${close}`;
+  if (!ENGINES.includes(engine)) throw new Error(`Unsupported engine: ${engine}`);
 }
 
 function assertLimit(limit: number): void {
@@ -54,16 +35,18 @@ function assertLimit(limit: number): void {
 
 export function buildPreviewSelect(
   engine: DbEngine,
-  table: string,
+  table: QualifiedTable | string,
   limit: number = DEFAULT_PREVIEW_ROWS,
 ): string {
   assertEngine(engine);
   assertLimit(limit);
-  const name = quoteSqlIdentifier(engine, table);
+  const name = quoteQualifiedTable(engine, table);
 
   switch (engine) {
     case 'mysql':
+    case 'mariadb':
     case 'postgres':
+    case 'sqlite':
       return `SELECT * FROM ${name} LIMIT ${limit}`;
     case 'mssql':
       return `SELECT TOP ${limit} * FROM ${name}`;

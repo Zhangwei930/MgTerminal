@@ -3,13 +3,23 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import { useIsDbWorkspaceTabActive } from '../../application/state/activeTabStore';
 import { useDbClientBackend } from '../../application/state/useDbClientBackend';
+import { useLocalTextFile } from '../../application/state/useLocalTextFile';
 import { useDbSchema } from '../../application/state/useDbSchema';
 import { useDbTransaction } from '../../application/state/useDbTransaction';
 import { useDbRowEditing } from '../../application/state/useDbRowEditing';
 import { dbQueryHistoryStore, useDbQueryHistory } from '../../application/state/dbQueryHistoryStore';
 import { resolveEditableTable } from '../../domain/db/editableResult';
+import { formatQualifiedTable } from '../../domain/db/identifiers';
+import { assembleDatabaseDump, type DumpTable, dumpFileName } from '../../domain/db/databaseDump';
+import { buildPagedQuery, canPaginate } from '../../domain/db/pagedQuery';
 import { buildPreviewSelect } from '../../domain/db/previewQuery';
-import { UTF8_BOM, toCsv, toJson } from '../../domain/db/resultExport';
+import { splitSqlStatements } from '../../domain/db/splitStatements';
+import { buildDropTable } from '../../domain/db/tableDesignerSql';
+import type { DesignerRow } from '../../domain/db/tableDesignerDiff';
+import { DbTableDesigner } from './DbTableDesigner';
+import { DbImportPanel } from './DbImportPanel';
+import { DbQueryBuilderPanel } from './DbQueryBuilderPanel';
+import { UTF8_BOM, toCsv, toHtml, toJson, toMarkdown, toXml } from '../../domain/db/resultExport';
 import { buildInsertStatements } from '../../domain/db/sqlDump';
 import { buildExplainQuery, canExplain, explainFollowUpQuery } from '../../domain/db/explainQuery';
 import { dbWorkspaceTabStore, useDbWorkspaceTabs } from '../../application/state/dbWorkspaceTabStore';
@@ -38,6 +48,18 @@ interface DbWorkspaceTabViewProps {
 
 type ConnectionStatus = 'connecting' | 'connected' | 'error';
 
+/** Rows fetched per page. Small enough that a big table opens instantly. */
+const DEFAULT_PAGE_SIZE = 200;
+const PAGE_SIZES = [100, 200, 500, 1000];
+/**
+ * Rows per table in a whole-database dump.
+ *
+ * A cap rather than everything: the rows are buffered in the renderer before
+ * the file is written, and a table with millions of rows would exhaust memory
+ * long before it reached disk. The header does not claim the dump is complete.
+ */
+const DUMP_ROW_CAP = 100000;
+
 export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   connectionProfile,
   connections,
@@ -48,7 +70,8 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
 }) => {
   const { t } = useI18n();
   const isVisible = useIsDbWorkspaceTabActive(connectionProfile.id);
-  const { connect, close, runQuery, cancelQuery, exportResult } = useDbClientBackend();
+  const { connect, close, runQuery, runStatements, collectQuery, cancelQuery, exportResult } = useDbClientBackend();
+  const { pickAndRead } = useLocalTextFile();
   const tabs = useDbWorkspaceTabs();
   const sqlDraft = tabs.find((tab) => tab.connectionId === connectionProfile.id)?.sqlDraft ?? '';
 
@@ -64,6 +87,19 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [erOpen, setErOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
+  /** Null when closed; `table: null` designs a new one. */
+  const [designer, setDesigner] = useState<
+    { table: DbSchemaTable | null; columns: DesignerRow[] } | null
+  >(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  /** Page of the current result. Reset whenever a new query is run. */
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  /** The SQL the pager pages — the user's, not the wrapped form. */
+  const [pagedSource, setPagedSource] = useState<string | null>(null);
+  /** Non-null while a dump or restore is running; blocks the buttons. */
+  const [busyMessage, setBusyMessage] = useState<string | null>(null);
   const queryHistory = useDbQueryHistory();
 
   const connectionId = connectionProfile.id;
@@ -152,7 +188,167 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
     );
   }, [status, isRunning, connectionId, runQuery]);
 
-  const handleRun = useCallback(() => runSql(sqlDraft), [runSql, sqlDraft]);
+  /**
+   * Runs everything in the editor, not just the first statement.
+   *
+   * The leading statements go through runStatements, which stops at the first
+   * failure and says which one it was; the last one goes through runSql so its
+   * rows land in the grid. That is the behaviour a script needs — setup
+   * statements followed by the select you actually wanted to look at.
+   */
+  /**
+   * Runs one page of a query. The pager holds the user's own SQL and wraps it
+   * per engine — see pagedQuery — so moving between pages never edits what is
+   * in the editor.
+   */
+  const runPage = useCallback((source: string, nextPage: number) => {
+    setPagedSource(source);
+    setPage(nextPage);
+    runSql(buildPagedQuery(connectionProfile.engine, source, {
+      limit: pageSize,
+      offset: nextPage * pageSize,
+    }));
+  }, [connectionProfile.engine, pageSize, runSql]);
+
+  const handleRun = useCallback(() => {
+    if (status !== 'connected' || isRunning) return;
+    setPagedSource(null);
+    setPage(0);
+    const statements = splitSqlStatements(sqlDraft);
+    if (statements.length <= 1) {
+      const only = statements[0] ?? sqlDraft;
+      // A SELECT is fetched a page at a time; anything else runs as written.
+      if (canPaginate(only)) runPage(only, 0);
+      else runSql(only);
+      return;
+    }
+
+    const leading = statements.slice(0, -1);
+    const last = statements[statements.length - 1];
+    setIsRunning(true);
+    void runStatements(connectionId, leading).then((failure) => {
+      setIsRunning(false);
+      if (failure) {
+        setQueryError(failure);
+        return;
+      }
+      if (canPaginate(last)) runPage(last, 0);
+      else runSql(last);
+    });
+  }, [connectionId, isRunning, runPage, runSql, runStatements, sqlDraft, status]);
+
+  /**
+   * Loads a table's current shape into the designer. The columns come from the
+   * same catalog read the tree uses, so an expanded table costs nothing extra.
+   */
+  const openDesigner = useCallback(async (table: DbSchemaTable) => {
+    const columns = await schema.getColumns(table);
+    setDesigner({
+      table,
+      columns: (columns ?? []).map((column) => ({
+        name: column.name,
+        originalName: column.name,
+        dataType: column.dataType,
+        nullable: column.nullable,
+      })),
+    });
+  }, [schema]);
+
+  /**
+   * Runs the designer's statements, then reloads the schema — the tree and the
+   * completion cache both describe a shape that has just changed.
+   */
+  const applyDesign = useCallback(async (statements: string[]) => {
+    const failure = await runStatements(connectionId, statements);
+    if (!failure) await schema.reload();
+    return failure;
+  }, [connectionId, runStatements, schema]);
+
+  /**
+   * Dumps every table: its DDL, then its rows as INSERTs.
+   *
+   * One query per table rather than one big join — the row reads are already
+   * capped per table by the bridge, and a failure on one table is recorded in
+   * the file instead of losing the whole dump.
+   */
+  const dumpDatabase = useCallback(async () => {
+    setBusyMessage(t('db.dump.running'));
+    try {
+      const list = (schema.tables ?? []).filter((entry) => entry.kind === 'table');
+      const dumped: DumpTable[] = [];
+
+      for (const entry of list) {
+        const target = { schema: entry.schema, name: entry.name };
+        const ddl = await schema.loadTableDdl(entry);
+        const rows = await collectQuery(connectionId, buildPreviewSelect(
+          connectionProfile.engine, target, DUMP_ROW_CAP,
+        ));
+
+        dumped.push({
+          table: target,
+          // loadTableDdl reports failure as a SQL comment rather than throwing.
+          ddl: ddl.trim().startsWith('--') ? null : ddl,
+          error: ddl.trim().startsWith('--') ? ddl.replace(/^--\s*/, '') : undefined,
+          inserts: rows.success && rows.rows.length
+            ? buildInsertStatements({
+                engine: connectionProfile.engine,
+                table: target,
+                columns: rows.columns,
+                rows: rows.rows,
+              }).split('\n\n')
+            : [],
+        });
+      }
+
+      const generatedAt = new Date();
+      const outcome = await exportResult({
+        content: assembleDatabaseDump({
+          engine: connectionProfile.engine,
+          database: connectionProfile.database ?? '',
+          generatedAt,
+          tables: dumped,
+        }),
+        defaultFileName: dumpFileName(connectionProfile.database ?? '', generatedAt),
+        format: 'sql',
+      });
+      if (!outcome.success && !outcome.canceled) setQueryError(outcome.error ?? 'Export failed');
+    } finally {
+      setBusyMessage(null);
+    }
+  }, [collectQuery, connectionId, connectionProfile, exportResult, schema, t]);
+
+  /** Replays a .sql file statement by statement. */
+  const restoreDump = useCallback(async () => {
+    let picked;
+    try {
+      picked = await pickAndRead(t('db.dump.chooseFile'), [{ name: 'SQL', extensions: ['sql'] }]);
+    } catch (err) {
+      setQueryError(err instanceof Error ? err.message : String(err));
+      return;
+    }
+    if (!picked) return;
+
+    const statements = splitSqlStatements(picked.text);
+    if (!statements.length) {
+      setQueryError(t('db.dump.empty'));
+      return;
+    }
+    if (!window.confirm(t('db.dump.restoreConfirm', { count: statements.length }))) return;
+
+    setBusyMessage(t('db.dump.restoring'));
+    try {
+      const failure = await runStatements(connectionId, statements);
+      if (failure) setQueryError(failure);
+      else await schema.reload();
+    } finally {
+      setBusyMessage(null);
+    }
+  }, [connectionId, pickAndRead, runStatements, schema, t]);
+
+  const dropTable = useCallback((table: DbSchemaTable) => {
+    if (!window.confirm(t('db.schema.dropTableConfirm', { name: formatQualifiedTable(table) }))) return;
+    void applyDesign([buildDropTable({ engine: connectionProfile.engine, table })]);
+  }, [applyDesign, connectionProfile.engine, t]);
 
   /**
    * Asking for a plan must not be a write, which is why buildExplainQuery
@@ -186,7 +382,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
   }, [connectionId, connectionProfile.engine, runQuery, runSql, sqlDraft, t]);
 
   const handleExport = useCallback(
-    async (format: 'csv' | 'json' | 'sql') => {
+    async (format: 'csv' | 'json' | 'sql' | 'md' | 'xml' | 'html') => {
       if (!result) return;
       const sourceTable = resultSql ? resolveEditableTable(resultSql) : null;
       const base = sourceTable || 'query-result';
@@ -198,6 +394,12 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
         content = UTF8_BOM + toCsv(result.columns, result.rows);
       } else if (format === 'json') {
         content = toJson(result.columns, result.rows);
+      } else if (format === 'md') {
+        content = toMarkdown(result.columns, result.rows);
+      } else if (format === 'xml') {
+        content = toXml(result.columns, result.rows);
+      } else if (format === 'html') {
+        content = toHtml(result.columns, result.rows);
       } else {
         // INSERT statements need a table to insert into. A result assembled
         // from several tables has none, so the statements are emitted against a
@@ -223,7 +425,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
       const outcome = await exportResult({
         content,
         defaultFileName: `${base.replace(/[^\w.-]/g, '_')}.${format}`,
-        format: format === 'sql' ? 'sql' : format,
+        format,
       });
       if (!outcome.success && !outcome.canceled) setQueryError(outcome.error ?? 'Export failed');
     },
@@ -329,11 +531,49 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
             <Button size="sm" variant="ghost" onClick={() => void handleExport('json')}>
               {t('db.export.json')}
             </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('md')}>
+              {t('db.export.markdown')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('xml')}>
+              {t('db.export.xml')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleExport('html')}>
+              {t('db.export.html')}
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => void handleExport('sql')}>
               {t('db.export.sql')}
             </Button>
           </div>
         )}
+
+        {/* Whole-database dump and restore do not need a result on screen, so
+            they sit outside the export row rather than inside it. */}
+        <div className="flex items-center gap-1 border-l border-border/60 pl-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={status !== 'connected'}
+            onClick={() => setBuilderOpen((open) => !open)}
+          >
+            {t('db.builder.open')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={Boolean(busyMessage) || status !== 'connected'}
+            onClick={() => void dumpDatabase()}
+          >
+            {t('db.dump.export')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={Boolean(busyMessage) || status !== 'connected'}
+            onClick={() => void restoreDump()}
+          >
+            {t('db.dump.restore')}
+          </Button>
+        </div>
 
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {status === 'connecting' && (
@@ -365,6 +605,12 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
           <AlertTriangle size={13} /> {queryError}
         </div>
       )}
+      {busyMessage && (
+        <div className="border-b border-border/60 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+          {busyMessage}
+        </div>
+      )}
+
       {meta?.truncated && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-600">
           {t('db.workspace.truncated', { count: meta.rowCount })}
@@ -388,6 +634,10 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
               void schema.loadTableDdl(table).then((ddl) =>
                 dbWorkspaceTabStore.setSqlDraft(connectionId, ddl));
             }}
+            onDesignTable={(table) => { void openDesigner(table); }}
+            onNewTable={() => setDesigner({ table: null, columns: [] })}
+            onDropTable={dropTable}
+            onImport={() => setImportOpen(true)}
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
@@ -405,11 +655,86 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
                 columns={result.columns}
                 rows={result.rows}
                 onCommitEdit={rowEditing.editable ? rowEditing.commitEdit : undefined}
+                onDeleteRow={rowEditing.editable ? rowEditing.deleteRow : undefined}
                 readOnlyReason={rowEditing.reason ? t(`db.edit.${rowEditing.reason}`) : undefined}
+                filterPlaceholder={t('db.workspace.filterRows')}
               />
             )}
           </div>
+          {pagedSource && result && (
+            <div className="flex shrink-0 items-center gap-2 border-t border-border/60 px-2 py-1 text-xs">
+              <button
+                type="button"
+                disabled={page === 0 || isRunning}
+                onClick={() => runPage(pagedSource, page - 1)}
+                className="rounded border border-border/60 px-2 py-0.5 hover:bg-muted disabled:opacity-40"
+              >
+                {t('db.workspace.prevPage')}
+              </button>
+              <span className="text-muted-foreground">
+                {t('db.workspace.pageRange', {
+                  from: page * pageSize + 1,
+                  to: page * pageSize + result.rows.length,
+                })}
+              </span>
+              <button
+                type="button"
+                // A full page means there may be another; a short one is the end.
+                disabled={result.rows.length < pageSize || isRunning}
+                onClick={() => runPage(pagedSource, page + 1)}
+                className="rounded border border-border/60 px-2 py-0.5 hover:bg-muted disabled:opacity-40"
+              >
+                {t('db.workspace.nextPage')}
+              </button>
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  const size = Number(event.target.value);
+                  setPageSize(size);
+                  // Re-fetch from the top: the old page numbers no longer line up.
+                  runSql(buildPagedQuery(connectionProfile.engine, pagedSource, { limit: size, offset: 0 }));
+                  setPage(0);
+                }}
+                className="ml-auto rounded border border-border/60 bg-background px-1 py-0.5"
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>{t('db.workspace.perPage', { count: size })}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+        {designer && (
+          <div className="w-96 shrink-0">
+            <DbTableDesigner
+              engine={connectionProfile.engine}
+              table={designer.table}
+              columns={designer.columns}
+              onApply={applyDesign}
+              onClose={() => setDesigner(null)}
+            />
+          </div>
+        )}
+        {builderOpen && (
+          <div className="w-96 shrink-0">
+            <DbQueryBuilderPanel
+              engine={connectionProfile.engine}
+              tables={schema.tables ?? []}
+              getColumns={schema.getColumns}
+              onApply={(sql) => dbWorkspaceTabStore.setSqlDraft(connectionId, sql)}
+              onClose={() => setBuilderOpen(false)}
+            />
+          </div>
+        )}
+        {importOpen && (
+          <div className="w-96 shrink-0">
+            <DbImportPanel
+              engine={connectionProfile.engine}
+              onApply={applyDesign}
+              onClose={() => setImportOpen(false)}
+            />
+          </div>
+        )}
         {historyOpen && (
           <DbQueryHistoryPanel
             history={queryHistory}
@@ -434,7 +759,7 @@ export const DbWorkspaceTabView: React.FC<DbWorkspaceTabViewProps> = ({
 
       {erOpen && (
         <DbErDiagram
-          tables={(schema.tables ?? []).filter((t2) => t2.kind === 'table').map((t2) => t2.name)}
+          tables={(schema.tables ?? []).filter((t2) => t2.kind === 'table').map(formatQualifiedTable)}
           relations={(schema.relations ?? []).map((fk) => ({
             from: fk.table,
             to: fk.referencedTable,

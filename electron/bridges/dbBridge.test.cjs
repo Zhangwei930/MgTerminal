@@ -840,3 +840,71 @@ test("listForeignKeys without a table returns the whole schema, tagged by table"
     { name: "fk_m", table: "meds", column: "visit_id", referencedTable: "visits", referencedColumn: "id" },
   ]);
 });
+
+// ── schema qualification ────────────────────────────────────────────────────
+//
+// The tree lists every schema on the server. Reporting only the table name
+// collapsed same-named tables into one node whose columns and primary key were
+// whatever the catalog happened to merge — which is how a grid edit ends up
+// keyed on a column the table on screen does not have.
+
+test("listTables reports the schema each table belongs to", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.tables": {
+      columns: [{ name: "name" }, { name: "schema_name" }, { name: "kind" }],
+      rows: [["users", "public", "table"], ["users", "tenant_a", "table"]],
+    },
+  });
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  const result = await dbBridge.listTables({ connectionId: "s1" });
+
+  assert.deepEqual(result.tables, [
+    { name: "users", schema: "public", kind: "table" },
+    { name: "users", schema: "tenant_a", kind: "table" },
+  ]);
+});
+
+test("a schema given to listColumns reaches the catalog query", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "information_schema.columns": {
+      columns: [{ name: "name" }, { name: "data_type" }, { name: "is_nullable" }, { name: "position" }],
+      rows: [["id", "integer", "NO", 1]],
+    },
+  });
+  const calls = adapter.calls;
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  await dbBridge.listColumns({ connectionId: "s1", table: "users", schema: "tenant_a" });
+
+  const sql = calls.queries.find((q) => q.includes("information_schema.columns"));
+  assert.ok(sql.includes("'tenant_a'"), `schema was dropped: ${sql}`);
+});
+
+test("a schema given to listPrimaryKey reaches the catalog query", async () => {
+  await dbBridge.stopAllDbConnections();
+  const adapter = createSchemaAdapter({
+    "table_constraints": {
+      columns: [{ name: "name" }, { name: "position" }],
+      rows: [["id", 1]],
+    },
+  });
+  const calls = adapter.calls;
+  setup({ adapter });
+  await dbBridge.connect({ sender: createSender() }, {
+    connectionId: "s1", engine: "postgres", hostId: "", remoteHost: "db", remotePort: 5432, database: "app",
+  });
+
+  await dbBridge.listPrimaryKey({ connectionId: "s1", table: "users", schema: "tenant_a" });
+
+  const sql = calls.queries.find((q) => q.includes("table_constraints"));
+  assert.ok(sql.includes("'tenant_a'"), `schema was dropped: ${sql}`);
+});

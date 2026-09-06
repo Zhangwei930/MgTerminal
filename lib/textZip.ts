@@ -29,11 +29,11 @@ const pushUint32 = (parts: number[], value: number) => {
   parts.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
 };
 
-const concatZipParts = (header: number[], ...parts: Uint8Array[]): Uint8Array => {
+const concatZipParts = (header: number[], ...parts: Uint8Array[]): Uint8Array<ArrayBuffer> => {
   const headerBytes = Uint8Array.from(header);
   const chunk = new Uint8Array(
     headerBytes.length + parts.reduce((total, part) => total + part.length, 0),
-  );
+  ) as Uint8Array<ArrayBuffer>;
   let offset = 0;
   chunk.set(headerBytes, offset);
   offset += headerBytes.length;
@@ -46,8 +46,8 @@ const concatZipParts = (header: number[], ...parts: Uint8Array[]): Uint8Array =>
 
 export const buildTextFilesZipBlob = (files: TextZipFile[]): Blob => {
   const encoder = new TextEncoder();
-  const chunks: Uint8Array[] = [];
-  const centralDirectory: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  const centralDirectory: Uint8Array<ArrayBuffer>[] = [];
   let offset = 0;
 
   files.forEach((file) => {
@@ -104,7 +104,7 @@ export const buildTextFilesZipBlob = (files: TextZipFile[]): Blob => {
   pushUint32(endRecord, offset);
   pushUint16(endRecord, 0);
 
-  return new Blob([...chunks, ...centralDirectory, new Uint8Array(endRecord)], {
+  return new Blob([...chunks, ...centralDirectory, Uint8Array.from(endRecord)], {
     type: "application/zip",
   });
 };

@@ -32,7 +32,12 @@ export function hasOnlyEncryptedCredentials(
   const identity = host.identityId
     ? identities.find((candidate) => candidate.id === host.identityId)
     : undefined;
-  const keyId = host.keyId || identity?.keyId;
+  // A host's own key is identityFileId; `keyId` is what the *resolver* calls it
+  // after picking between the override, the identity and the host (sshAuth.ts).
+  // Reading host.keyId here always found undefined, so a host with a key
+  // attached directly was never checked — and got exactly the misleading
+  // "all authentication methods failed" this module exists to prevent.
+  const keyId = identity?.keyId || host.identityFileId;
   const key = keyId ? keys.find((candidate) => candidate.id === keyId) : undefined;
 
   const credentials = [host.password, identity?.password, key?.privateKey]

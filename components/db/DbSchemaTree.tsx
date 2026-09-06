@@ -1,8 +1,16 @@
-import { AlertTriangle, ChevronDown, ChevronRight, Code2, Eye, FunctionSquare, Key, Link2, Loader2, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Code2, Eye, FunctionSquare, Key, Link2, FileUp, Loader2, Plus, RefreshCw, Table2, Terminal, Zap } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { useI18n } from '../../application/i18n/I18nProvider';
 import type { DbEngine } from '../../domain/models';
+import { formatQualifiedTable } from '../../domain/db/identifiers';
 import { buildPreviewSelect } from '../../domain/db/previewQuery';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '../ui/context-menu';
 
 interface DbSchemaTreeProps {
   engine: DbEngine;
@@ -14,11 +22,19 @@ interface DbSchemaTreeProps {
   /** Only true once the connection is live — the catalog queries need it. */
   ready: boolean;
   onReload: () => void;
-  getTableDetail: (table: string) => Promise<TableDetail | null>;
+  getTableDetail: (table: DbSchemaTable) => Promise<TableDetail | null>;
   /** Double-clicking a table hands its preview SQL to the editor. */
   onOpenTable: (sql: string) => void;
   /** Shows a table's CREATE TABLE in the editor. */
-  onShowDdl: (table: string) => void;
+  onShowDdl: (table: DbSchemaTable) => void;
+  /** Opens the structure editor for an existing table. */
+  onDesignTable: (table: DbSchemaTable) => void;
+  /** Opens the structure editor with nothing in it. */
+  onNewTable: () => void;
+  /** Drops a table. The caller confirms first — this does not ask. */
+  onDropTable: (table: DbSchemaTable) => void;
+  /** Opens the CSV/JSON import panel. */
+  onImport: () => void;
 }
 
 interface TableDetail {
@@ -55,22 +71,29 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
   getTableDetail,
   onOpenTable,
   onShowDdl,
+  onDesignTable,
+  onNewTable,
+  onDropTable,
+  onImport,
 }) => {
   const { t } = useI18n();
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, ColumnState | undefined>>({});
 
   const toggleTable = useCallback(
-    async (name: string) => {
-      if (expanded[name]) {
-        setExpanded((prev) => ({ ...prev, [name]: undefined }));
+    async (table: DbSchemaTable) => {
+      // Keyed by the qualified name: two schemas can hold the same table, and
+      // keying on the bare name would expand and cache them as one row.
+      const key = formatQualifiedTable(table);
+      if (expanded[key]) {
+        setExpanded((prev) => ({ ...prev, [key]: undefined }));
         return;
       }
-      setExpanded((prev) => ({ ...prev, [name]: { status: 'loading' } }));
-      const detail = await getTableDetail(name);
+      setExpanded((prev) => ({ ...prev, [key]: { status: 'loading' } }));
+      const detail = await getTableDetail(table);
       setExpanded((prev) => ({
         ...prev,
-        [name]: detail ? { status: 'loaded', detail } : { status: 'error' },
+        [key]: detail ? { status: 'loaded', detail } : { status: 'error' },
       }));
     },
     [expanded, getTableDetail],
@@ -85,7 +108,10 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
 
   const needle = filter.trim().toLowerCase();
   const matches = (name: string) => !needle || name.toLowerCase().includes(needle);
-  const visible = (tables ?? []).filter((table) => matches(table.name));
+  const visible = (tables ?? []).filter((table) => matches(formatQualifiedTable(table)));
+  // The schema prefix is noise on a server that only has one, and the only way
+  // to tell two rows apart on a server that has several.
+  const showSchema = new Set((tables ?? []).map((table) => table.schema ?? '')).size > 1;
   const visibleRoutines = routines.filter((routine) => matches(routine.name));
   const visibleTriggers = triggers.filter((trigger) => matches(trigger.name));
 
@@ -95,10 +121,28 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
         <span className="text-xs font-medium text-muted-foreground">{t('db.schema.title')}</span>
         <button
           type="button"
+          onClick={onImport}
+          disabled={!ready}
+          title={t('db.schema.import')}
+          className="ml-auto rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-40"
+        >
+          <FileUp size={12} />
+        </button>
+        <button
+          type="button"
+          onClick={onNewTable}
+          disabled={!ready}
+          title={t('db.schema.newTable')}
+          className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-40"
+        >
+          <Plus size={12} />
+        </button>
+        <button
+          type="button"
           onClick={handleRefresh}
           disabled={!ready || loading}
           title={t('db.schema.refresh')}
-          className="ml-auto rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-40"
+          className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-40"
         >
           {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
         </button>
@@ -126,16 +170,19 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
         )}
 
         {visible.map((table) => {
-          const state = expanded[table.name];
+          const qualified = formatQualifiedTable(table);
+          const state = expanded[qualified];
           return (
-            <div key={`${table.kind}:${table.name}`}>
+            <div key={`${table.kind}:${qualified}`}>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => void toggleTable(table.name)}
-                onDoubleClick={() => onOpenTable(buildPreviewSelect(engine, table.name))}
+                onClick={() => void toggleTable(table)}
+                onDoubleClick={() => onOpenTable(buildPreviewSelect(engine, table))}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') onOpenTable(buildPreviewSelect(engine, table.name));
+                  if (event.key === 'Enter') onOpenTable(buildPreviewSelect(engine, table));
                 }}
                 title={t('db.schema.openHint')}
                 className="group flex cursor-default items-center gap-1 px-2 py-0.5 text-xs hover:bg-muted/60"
@@ -144,16 +191,45 @@ export const DbSchemaTree: React.FC<DbSchemaTreeProps> = ({
                 {table.kind === 'view'
                   ? <Eye size={11} className="shrink-0 text-muted-foreground" />
                   : <Table2 size={11} className="shrink-0 text-muted-foreground" />}
-                <span className="truncate">{table.name}</span>
+                <span className="truncate">
+                  {showSchema && table.schema && (
+                    <span className="text-muted-foreground/70">{table.schema}.</span>
+                  )}
+                  {table.name}
+                </span>
                 <button
                   type="button"
-                  onClick={(event) => { event.stopPropagation(); onShowDdl(table.name); }}
+                  onClick={(event) => { event.stopPropagation(); onShowDdl(table); }}
                   title={t('db.schema.showDdl')}
                   className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100"
                 >
                   <Code2 size={10} />
                 </button>
               </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onSelect={() => onOpenTable(buildPreviewSelect(engine, table))}>
+                    {t('db.schema.openHint')}
+                  </ContextMenuItem>
+                  <ContextMenuItem onSelect={() => onShowDdl(table)}>
+                    {t('db.schema.showDdl')}
+                  </ContextMenuItem>
+                  {table.kind === 'table' && (
+                    <>
+                      <ContextMenuItem onSelect={() => onDesignTable(table)}>
+                        {t('db.schema.design')}
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => onDropTable(table)}
+                      >
+                        {t('db.schema.dropTable')}
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
 
               {state?.status === 'loading' && (
                 <div className="flex items-center gap-1 py-0.5 pl-7 text-xs text-muted-foreground">

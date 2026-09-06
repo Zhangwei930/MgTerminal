@@ -10,7 +10,7 @@ import type { DbEngine } from '../models';
  * ANALYZE.
  */
 
-const SUPPORTED: DbEngine[] = ['mysql', 'postgres', 'mssql', 'oracle'];
+const SUPPORTED: DbEngine[] = ['mysql', 'mariadb', 'postgres', 'mssql', 'oracle', 'sqlite'];
 
 function assertEngine(engine: DbEngine): void {
   if (!SUPPORTED.includes(engine)) throw new Error(`Unsupported engine: ${engine}`);
@@ -44,7 +44,12 @@ export function buildExplainQuery(engine: DbEngine, sql: string): string {
 
   switch (engine) {
     case 'mysql':
+    case 'mariadb':
       return `EXPLAIN ${statement}`;
+    case 'sqlite':
+      // SQLite's plain EXPLAIN prints VDBE opcodes, which describe the virtual
+      // machine rather than the query. QUERY PLAN is the readable form.
+      return `EXPLAIN QUERY PLAN ${statement}`;
     case 'postgres':
       // Deliberately no ANALYZE: that would execute the statement.
       return `EXPLAIN ${statement}`;

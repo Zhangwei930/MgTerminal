@@ -144,7 +144,7 @@ export function useVaultImportHandlers({
             });
   
             onUpdateManagedSources([...managedSources, newSource]);
-            onUpdateHosts([...updatedHosts, ...newHosts].map(sanitizeHost));
+            onUpdateHosts([...updatedHosts, ...newHosts].map((host) => sanitizeHost(host)));
   
             const nextGroups = Array.from(
               new Set([

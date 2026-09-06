@@ -29,6 +29,7 @@ export interface DbConnectParams {
   remoteHost: string;
   remotePort: number;
   database?: string;
+  ssl?: DbConnectionProfile['ssl'];
   dbUsername?: string;
   dbPassword?: string;
 }
@@ -60,6 +61,9 @@ export function buildDbConnectRequest({
     remoteHost: connectionProfile.remoteHost,
     remotePort: connectionProfile.remotePort,
     database: connectionProfile.database,
+    // Only reaches the driver on the direct path — dbBridge drops it when it
+    // tunnels, where the SSH leg already encrypts the transport.
+    ssl: connectionProfile.ssl,
     dbUsername: connectionProfile.dbUsername,
     dbPassword: connectionProfile.dbPassword,
   };

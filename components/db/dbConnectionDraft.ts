@@ -1,4 +1,4 @@
-import { defaultPortForEngine, type DbConnectionProfile, type DbEngine } from '../../domain/models';
+import { defaultPortForEngine, isFileEngine, type DbConnectionProfile, type DbEngine } from '../../domain/models';
 
 /** The in-progress state of the "new database connection" form. */
 export interface DbConnectionDraft {
@@ -10,6 +10,12 @@ export interface DbConnectionDraft {
   database: string;
   dbUsername: string;
   dbPassword: string;
+  /**
+   * TLS for a direct connection. 'disable' is right inside an SSH tunnel,
+   * where the transport is already encrypted; on a direct dial it is what
+   * sends the password in clear text.
+   */
+  sslMode: 'disable' | 'require' | 'verify';
 }
 
 export function emptyDbConnectionDraft(): DbConnectionDraft {
@@ -22,6 +28,7 @@ export function emptyDbConnectionDraft(): DbConnectionDraft {
     database: '',
     dbUsername: '',
     dbPassword: '',
+    sslMode: 'disable',
   };
 }
 
@@ -33,7 +40,11 @@ export function emptyDbConnectionDraft(): DbConnectionDraft {
  * to carry two different "host" fields.
  */
 export function canSaveDbConnectionDraft(draft: DbConnectionDraft): boolean {
-  return Boolean(draft.label.trim());
+  if (!draft.label.trim()) return false;
+  // A file engine with no path cannot connect at all, and the error it would
+  // produce arrives long after the form is gone.
+  if (isFileEngine(draft.engine) && !draft.remoteHost.trim()) return false;
+  return true;
 }
 
 /**
@@ -63,6 +74,19 @@ export function applyEngineToDraft(draft: DbConnectionDraft, engine: DbEngine): 
 export function buildDbConnectionPayload(
   draft: DbConnectionDraft,
 ): Omit<DbConnectionProfile, 'id' | 'order' | 'createdAt'> {
+  // A file engine has no server to reach: remoteHost carries the database file
+  // path, and defaulting it to 127.0.0.1 would turn a blank path into a
+  // nonsense filename rather than an obvious "no file chosen".
+  if (isFileEngine(draft.engine)) {
+    return {
+      label: draft.label.trim(),
+      engine: draft.engine,
+      hostId: '',
+      remoteHost: draft.remoteHost.trim(),
+      remotePort: 0,
+    };
+  }
+
   return {
     label: draft.label.trim(),
     engine: draft.engine,
@@ -72,6 +96,9 @@ export function buildDbConnectionPayload(
     database: draft.database.trim() || undefined,
     dbUsername: draft.dbUsername.trim() || undefined,
     dbPassword: draft.dbPassword || undefined,
+    // Stored only when it is on: an absent field reads as 'disable', which
+    // keeps every connection saved before this existed behaving as it did.
+    ssl: draft.sslMode === 'disable' ? undefined : { mode: draft.sslMode },
   };
 }
 
@@ -89,11 +116,12 @@ export function draftFromDbConnection(profile: DbConnectionProfile): DbConnectio
     label: profile.label,
     engine: profile.engine,
     hostId: profile.hostId,
-    remoteHost: profile.remoteHost || '127.0.0.1',
+    remoteHost: profile.remoteHost || (isFileEngine(profile.engine) ? '' : '127.0.0.1'),
     remotePort: profile.remotePort,
     database: profile.database ?? '',
     dbUsername: profile.dbUsername ?? '',
     dbPassword: '',
+    sslMode: profile.ssl?.mode ?? 'disable',
   };
 }
 

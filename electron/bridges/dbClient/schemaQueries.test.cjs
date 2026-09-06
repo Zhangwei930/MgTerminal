@@ -4,6 +4,12 @@ const assert = require("node:assert/strict");
 const {
   buildTableListQuery,
   buildColumnListQuery,
+  buildPrimaryKeyQuery,
+  buildIndexListQuery,
+  buildForeignKeyListQuery,
+  buildRoutineListQuery,
+  buildTriggerListQuery,
+  buildNativeDdlQuery,
   quoteSqlLiteral,
   ENGINES_WITH_SCHEMA_SUPPORT,
 } = require("./schemaQueries.cjs");
@@ -174,9 +180,14 @@ test("a table name with a quote cannot break the primary key query", () => {
 // The remaining node types the schema tree shows: stored procedures, functions
 // and triggers.
 
-test("every engine can list routines, tagged procedure or function", () => {
+// SQLite has no stored procedures or functions at all. Its query is a SELECT
+// that returns nothing, which is the honest answer and keeps the tree from
+// having to know which engines have routines.
+const ENGINES_WITH_ROUTINES = ENGINES_WITH_SCHEMA_SUPPORT.filter((e) => e !== "sqlite");
+
+test("every engine that has routines can list them, tagged procedure or function", () => {
   const { buildRoutineListQuery } = require("./schemaQueries.cjs");
-  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+  for (const engine of ENGINES_WITH_ROUTINES) {
     const sql = buildRoutineListQuery(engine, "appdb");
     assert.match(sql, /select/i, `${engine} is not a SELECT`);
     assert.match(
@@ -215,10 +226,19 @@ test("postgres does not list a trigger once per event", () => {
 
 test("routine and trigger queries come back ordered", () => {
   const { buildRoutineListQuery, buildTriggerListQuery } = require("./schemaQueries.cjs");
-  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
+  for (const engine of ENGINES_WITH_ROUTINES) {
     assert.match(buildRoutineListQuery(engine, "db").toLowerCase(), /order by/, `${engine} routines`);
+  }
+  for (const engine of ENGINES_WITH_SCHEMA_SUPPORT) {
     assert.match(buildTriggerListQuery(engine, "db").toLowerCase(), /order by/, `${engine} triggers`);
   }
+});
+
+test("an engine with no routines returns an empty result rather than failing", () => {
+  const { buildRoutineListQuery } = require("./schemaQueries.cjs");
+  const sql = buildRoutineListQuery("sqlite", "db").toLowerCase();
+  assert.match(sql, /^select/, "still a SELECT the adapter can run");
+  assert.match(sql, /where 0/, "and one that returns no rows");
 });
 
 test("a database name with a quote cannot break either query", () => {
@@ -377,4 +397,86 @@ test("passing a table still narrows the result", () => {
       engine,
     );
   }
+});
+
+// ── schema qualification ────────────────────────────────────────────────────
+//
+// The tree lists tables from every schema on the server but used to hand back
+// a bare name, and the column / primary-key lookups filtered on that name
+// alone. Two schemas holding the same table therefore appeared twice in the
+// tree and had each other's columns and keys merged into one answer — which is
+// how a row edit ends up keyed on a column the table on screen does not have.
+
+const SCHEMA_ENGINES = ["mysql", "postgres", "mssql", "oracle"];
+
+test("the table list reports which schema each table came from", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildTableListQuery(engine, "appdb");
+    assert.match(sql, /schema_name/i, `${engine} does not report a schema`);
+  }
+});
+
+test("the column list narrows to one schema when it is given", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildColumnListQuery(engine, "appdb", "patients", "tenant_a");
+    assert.ok(sql.includes("'tenant_a'"), `${engine} ignores the schema`);
+    assert.ok(sql.includes("'patients'"), `${engine} lost the table`);
+  }
+});
+
+test("the primary key lookup narrows to one schema when it is given", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildPrimaryKeyQuery(engine, "appdb", "patients", "tenant_a");
+    assert.ok(sql.includes("'tenant_a'"), `${engine} ignores the schema`);
+  }
+});
+
+test("the index lookup narrows to one schema when it is given", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildIndexListQuery(engine, "appdb", "patients", "tenant_a");
+    assert.ok(sql.includes("'tenant_a'"), `${engine} ignores the schema`);
+  }
+});
+
+test("the foreign key lookup narrows to one schema when it is given", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildForeignKeyListQuery(engine, "appdb", "patients", "tenant_a");
+    assert.ok(sql.includes("'tenant_a'"), `${engine} ignores the schema`);
+  }
+});
+
+test("omitting the schema keeps the previous, unnarrowed behaviour", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildColumnListQuery(engine, "appdb", "patients");
+    assert.ok(sql.includes("'patients'"), `${engine} lost the table`);
+    assert.ok(!sql.includes("'tenant_a'"), `${engine} invented a schema`);
+  }
+});
+
+test("a schema name is quoted as a literal, like every other interpolation", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    const sql = buildColumnListQuery(engine, "db", "t", "s'; DROP TABLE t; --");
+    assert.equal((sql.match(/'/g) || []).length % 2, 0, `${engine} left unbalanced quotes`);
+    assert.ok(sql.includes("s''; DROP"), `${engine} did not double the embedded quote`);
+  }
+});
+
+test("routines and triggers report their schema too", () => {
+  for (const engine of SCHEMA_ENGINES) {
+    assert.match(buildRoutineListQuery(engine, "appdb"), /schema_name/i, `${engine} routines`);
+    assert.match(buildTriggerListQuery(engine, "appdb"), /schema_name/i, `${engine} triggers`);
+  }
+});
+
+test("the native DDL query addresses the table by schema when one is known", () => {
+  assert.match(buildNativeDdlQuery("mysql", "db", "patients", "shop"), /`shop`\.`patients`/);
+  assert.ok(buildNativeDdlQuery("oracle", "db", "patients", "APP").includes("'APP'"));
+});
+
+test("a qualified name quotes its two parts separately", () => {
+  const { quoteQualifiedName } = require("./schemaQueries.cjs");
+  assert.equal(quoteQualifiedName("postgres", { schema: "public", name: "users" }), '"public"."users"');
+  assert.equal(quoteQualifiedName("mssql", { schema: "dbo", name: "users" }), "[dbo].[users]");
+  assert.equal(quoteQualifiedName("mysql", { name: "users" }), "`users`");
+  assert.equal(quoteQualifiedName("mysql", "users"), "`users`");
 });

@@ -31,13 +31,13 @@ test("a host with no configured credential at all is not reported", () => {
 
 test("a referenced key that is still ciphertext is reported", () => {
   const keys = [{ id: "k1", label: "k", type: "ED25519", privateKey: ENC, source: "imported", category: "key", created: 0 }] as never;
-  assert.equal(hasOnlyEncryptedCredentials(host({ keyId: "k1" }), keys, []), true);
+  assert.equal(hasOnlyEncryptedCredentials(host({ identityFileId: "k1" }), keys, []), true);
 });
 
 test("a mix of one usable and one encrypted credential is not reported", () => {
   const keys = [{ id: "k1", label: "k", type: "ED25519", privateKey: ENC, source: "imported", category: "key", created: 0 }] as never;
   assert.equal(
-    hasOnlyEncryptedCredentials(host({ keyId: "k1", password: "hunter2" }), keys, []),
+    hasOnlyEncryptedCredentials(host({ identityFileId: "k1", password: "hunter2" }), keys, []),
     false,
     "the password still works, so the probe is worth running",
   );

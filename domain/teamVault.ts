@@ -371,7 +371,9 @@ export async function signTeamVaultAuditEvent(
   if (!auditKeyHex) return { ...event };
   const cryptoApi = globalThis.crypto;
   if (!cryptoApi?.subtle) return { ...event };
-  const keyBytes = hexToBytes(auditKeyHex);
+  // Uint8Array alone is Uint8Array<ArrayBufferLike>, which importKey will not
+  // take — a SharedArrayBuffer-backed view is not a BufferSource.
+  const keyBytes = hexToBytes(auditKeyHex) as Uint8Array<ArrayBuffer>;
   if (keyBytes.length < 16) return { ...event };
   const key = await cryptoApi.subtle.importKey(
     "raw",

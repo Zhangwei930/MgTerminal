@@ -139,7 +139,9 @@ export const normalizeHostIconSelection = <T extends Partial<Pick<Host, "iconMod
     : undefined;
   const iconColor = iconColorMode === "manual" && isHostIconColorId(host.iconColor) ? host.iconColor : undefined;
   const iconColorCustom = iconColorMode === "manual" && isHostIconCustomColor(host.iconColorCustom) ? host.iconColorCustom : undefined;
-  const colorFields = {
+  // Annotated because a conditional spread widens the literal types back to
+  // string, and the return type is the narrow Host fields.
+  const colorFields: Pick<Host, "iconColorMode" | "iconColor" | "iconColorCustom"> = {
     ...(iconColorMode ? { iconColorMode } : {}),
     ...(iconColor ? { iconColor } : {}),
     ...(iconColorCustom ? { iconColorCustom } : {}),
@@ -160,7 +162,9 @@ export const sanitizeHostIconFields = <T extends Partial<Pick<Host, "iconMode" |
     : undefined;
   const iconColor = iconColorMode === "manual" && isHostIconColorId(host.iconColor) ? host.iconColor : undefined;
   const iconColorCustom = iconColorMode === "manual" && isHostIconCustomColor(host.iconColorCustom) ? host.iconColorCustom : undefined;
-  const colorFields = {
+  // Annotated because a conditional spread widens the literal types back to
+  // string, and the return type is the narrow Host fields.
+  const colorFields: Pick<Host, "iconColorMode" | "iconColor" | "iconColorCustom"> = {
     ...(iconColorMode ? { iconColorMode } : {}),
     ...(iconColor ? { iconColor } : {}),
     ...(iconColorCustom ? { iconColorCustom } : {}),

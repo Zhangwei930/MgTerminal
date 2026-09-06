@@ -101,11 +101,11 @@ declare global {
     // Lightweight DB client (SSH-tunneled MySQL/PostgreSQL)
     startDbConnection?(options: DbConnectOptions): Promise<DbConnectResult>;
     listDbTables?(connectionId: string): Promise<DbListTablesResult>;
-    listDbColumns?(connectionId: string, table: string): Promise<DbListColumnsResult>;
-    listDbPrimaryKey?(connectionId: string, table: string): Promise<DbListPrimaryKeyResult>;
-    getDbTableDdl?(connectionId: string, table: string): Promise<DbTableDdlResult>;
-    listDbIndexes?(connectionId: string, table: string): Promise<DbListIndexesResult>;
-    listDbForeignKeys?(connectionId: string, table?: string): Promise<DbListForeignKeysResult>;
+    listDbColumns?(connectionId: string, table: string, schema?: string): Promise<DbListColumnsResult>;
+    listDbPrimaryKey?(connectionId: string, table: string, schema?: string): Promise<DbListPrimaryKeyResult>;
+    getDbTableDdl?(connectionId: string, table: string, schema?: string): Promise<DbTableDdlResult>;
+    listDbIndexes?(connectionId: string, table: string, schema?: string): Promise<DbListIndexesResult>;
+    listDbForeignKeys?(connectionId: string, table?: string, schema?: string): Promise<DbListForeignKeysResult>;
     listDbRoutines?(connectionId: string): Promise<DbListRoutinesResult>;
     listDbTriggers?(connectionId: string): Promise<DbListTriggersResult>;
     exportDbResult?(payload: DbExportPayload): Promise<DbExportResult>;

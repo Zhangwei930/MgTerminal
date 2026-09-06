@@ -2,6 +2,7 @@
 
 const { Client, types } = require("pg");
 const { emitRowBatches } = require("./rowBatching.cjs");
+const { resolveSslOptions } = require("./sslOptions.cjs");
 
 const NUMBER_OIDS = new Set([
   types.builtins.INT2, types.builtins.INT4, types.builtins.INT8,
@@ -30,7 +31,7 @@ function createPostgresAdapter() {
   let client = null;
 
   return {
-    async connect({ host, port, database, username, password }) {
+    async connect({ host, port, database, username, password, ssl }) {
       client = new Client({
         host,
         port,
@@ -38,6 +39,7 @@ function createPostgresAdapter() {
         user: username,
         password,
         connectionTimeoutMillis: 15000,
+        ...resolveSslOptions("postgres", ssl),
       });
       await client.connect();
       const result = await client.query("SELECT version() AS version");

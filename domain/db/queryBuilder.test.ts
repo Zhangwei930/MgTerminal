@@ -6,6 +6,9 @@ const table = { schema: 'app', name: 'patients' };
 const spec = (over: Partial<Parameters<typeof buildSelectFromSpec>[0]> = {}) =>
   buildSelectFromSpec({ engine: 'postgres', table, columns: [], filters: [], sorts: [], ...over });
 
+/** Column types for the fixtures that mean to compare numerically. */
+const NUMERIC_COLUMNS = { age: 'integer', n: 'integer', id: 'integer', dose: 'numeric' };
+
 test('no columns selected means every column', () => {
   assert.equal(spec(), 'SELECT *\nFROM "app"."patients"');
 });
@@ -30,13 +33,15 @@ test('several filters are ANDed in the order given', () => {
       { column: 'age', operator: '>', value: '40' },
       { column: 'city', operator: '=', value: 'Oslo' },
     ],
+    columnTypes: NUMERIC_COLUMNS,
   });
   assert.match(sql, /WHERE "age" > 40 AND "city" = 'Oslo'/);
 });
 
-test('a numeric-looking value is written as a number, text is quoted', () => {
-  assert.match(spec({ filters: [{ column: 'n', operator: '=', value: '42' }] }), /= 42$/);
-  assert.match(spec({ filters: [{ column: 'n', operator: '=', value: '42x' }] }), /= '42x'$/);
+test('a numeric value on a numeric column is bare; anything else is quoted', () => {
+  const numeric = { columnTypes: NUMERIC_COLUMNS };
+  assert.match(spec({ filters: [{ column: 'n', operator: '=', value: '42' }], ...numeric }), /= 42$/);
+  assert.match(spec({ filters: [{ column: 'n', operator: '=', value: '42x' }], ...numeric }), /= '42x'$/);
 });
 
 test('IS NULL and IS NOT NULL take no value', () => {
@@ -77,6 +82,7 @@ test('everything together comes out in clause order', () => {
     filters: [{ column: 'age', operator: '>=', value: '18' }],
     sorts: [{ column: 'id', direction: 'asc' }],
     limit: 5,
+    columnTypes: NUMERIC_COLUMNS,
   });
   assert.equal(
     sql,
@@ -118,4 +124,58 @@ test('the operator list is the one the UI offers', () => {
   assert.ok(COMPARISON_OPERATORS.includes('='));
   assert.ok(COMPARISON_OPERATORS.includes('IS NULL'));
   assert.ok(!COMPARISON_OPERATORS.includes('' as never));
+});
+
+// ── the value is typed by its column ────────────────────────────────────────
+//
+// A digit string was always written bare. Filtering a text column by 123 then
+// produced `"code" = 123`, which PostgreSQL refuses outright ("operator does
+// not exist: text = integer") and MySQL answers by coercing — so '123abc'
+// matches. A leading zero was worse: '007' never found the row holding "007".
+
+test('a digit string is quoted when the column is not numeric', () => {
+  const sql = buildSelectFromSpec({
+    engine: 'postgres', table, columns: [], sorts: [],
+    filters: [{ column: 'code', operator: '=', value: '007' }],
+    columnTypes: { code: 'text' },
+  });
+  assert.match(sql, /WHERE "code" = '007'$/);
+});
+
+test('a digit string is written bare when the column is numeric', () => {
+  const sql = buildSelectFromSpec({
+    engine: 'postgres', table, columns: [], sorts: [],
+    filters: [{ column: 'age', operator: '=', value: '40' }],
+    columnTypes: { age: 'integer' },
+  });
+  assert.match(sql, /WHERE "age" = 40$/);
+});
+
+test('the column type is matched however the catalog spells it', () => {
+  for (const t of ['integer', 'bigint', 'INT', 'numeric(10,2)', 'double precision', 'NUMBER']) {
+    const sql = buildSelectFromSpec({
+      engine: 'postgres', table, columns: [], sorts: [],
+      filters: [{ column: 'n', operator: '=', value: '5' }],
+      columnTypes: { n: t },
+    });
+    assert.match(sql, /= 5$/, `${t} should compare as a number`);
+  }
+});
+
+test('without a known type the value is quoted, which every column accepts', () => {
+  // A quoted digit compares fine against a numeric column on all four engines;
+  // a bare one against a text column does not. Quoting is the safe default.
+  const sql = buildSelectFromSpec({
+    engine: 'postgres', table, columns: [], filters: [{ column: 'n', operator: '=', value: '5' }], sorts: [],
+  });
+  assert.match(sql, /WHERE "n" = '5'$/);
+});
+
+test('a non-numeric value is quoted whatever the column type says', () => {
+  const sql = buildSelectFromSpec({
+    engine: 'postgres', table, columns: [], sorts: [],
+    filters: [{ column: 'age', operator: '=', value: 'forty' }],
+    columnTypes: { age: 'integer' },
+  });
+  assert.match(sql, /= 'forty'$/);
 });

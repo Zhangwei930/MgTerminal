@@ -36,21 +36,43 @@ export interface QuerySort {
 const VALUELESS = new Set<ComparisonOperator>(['IS NULL', 'IS NOT NULL']);
 const LIKE_OPERATORS = new Set<ComparisonOperator>(['LIKE', 'NOT LIKE']);
 
-/** A bare integer or decimal, written unquoted so numeric columns compare. */
+/** A bare integer or decimal. Only written unquoted for a numeric column. */
 const NUMERIC = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Every spelling the four catalogs use for a number.
+ *
+ * Postgres reports `integer`, `numeric`, `double precision`; MySQL `int`,
+ * `decimal`, `float`; SQL Server `money`, `smallint`; Oracle `NUMBER`. SQLite
+ * declares whatever the table said, so `INT` and `INTEGER` both turn up.
+ */
+const NUMERIC_TYPE = /\b(int|integer|smallint|bigint|tinyint|mediumint|dec|decimal|numeric|number|float|double|real|money|serial)\b/i;
+
+function isNumericColumn(dataType: string | undefined): boolean {
+  return Boolean(dataType) && NUMERIC_TYPE.test(dataType as string);
+}
 
 function quoteLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-function formatFilterValue(operator: ComparisonOperator, value: string): string {
+function formatFilterValue(
+  operator: ComparisonOperator,
+  value: string,
+  dataType: string | undefined,
+): string {
   if (LIKE_OPERATORS.has(operator)) {
     // Someone who typed their own wildcards meant them; someone who did not
     // meant "contains", which is what a filter box is for.
     const pattern = /[%_]/.test(value) ? value : `%${value}%`;
     return quoteLiteral(pattern);
   }
-  return NUMERIC.test(value.trim()) ? value.trim() : quoteLiteral(value);
+  // Bare only for a column that is actually numeric. A quoted digit compares
+  // fine against a numeric column everywhere; a bare one against a text column
+  // is an error on Postgres and a silent coercion on MySQL, and '007' would
+  // never find the row holding "007".
+  if (isNumericColumn(dataType) && NUMERIC.test(value.trim())) return value.trim();
+  return quoteLiteral(value);
 }
 
 export function buildSelectFromSpec({
@@ -60,6 +82,7 @@ export function buildSelectFromSpec({
   filters,
   sorts,
   limit,
+  columnTypes,
 }: {
   engine: DbEngine;
   table: QualifiedTable | string;
@@ -68,6 +91,8 @@ export function buildSelectFromSpec({
   filters: QueryFilter[];
   sorts: QuerySort[];
   limit?: number;
+  /** Declared type per column name, so a filter value can be typed. */
+  columnTypes?: Record<string, string>;
 }): string {
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
     // Interpolated into SQL, so anything else is both wrong and an injection.
@@ -93,7 +118,8 @@ export function buildSelectFromSpec({
       }
       const column = quoteSqlIdentifier(engine, filter.column);
       if (VALUELESS.has(filter.operator)) return `${column} ${filter.operator}`;
-      return `${column} ${filter.operator} ${formatFilterValue(filter.operator, filter.value)}`;
+      return `${column} ${filter.operator} `
+        + formatFilterValue(filter.operator, filter.value, columnTypes?.[filter.column]);
     });
     lines.push(`WHERE ${conditions.join(' AND ')}`);
   }

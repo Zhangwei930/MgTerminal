@@ -74,6 +74,10 @@ export const DbQueryBuilderPanel: React.FC<DbQueryBuilderPanelProps> = ({
         engine,
         table: { schema: table.schema, name: table.name },
         columns: picked,
+        // So a digit string is compared as a number only where the column is
+        // one. Bare against a text column errors on Postgres and silently
+        // coerces on MySQL.
+        columnTypes: Object.fromEntries(columns.map((c) => [c.name, c.dataType])),
         // A half-typed filter would otherwise appear in the SQL as an empty
         // comparison the moment the row is added.
         filters: filters.filter((filter) => filter.column),
@@ -83,7 +87,7 @@ export const DbQueryBuilderPanel: React.FC<DbQueryBuilderPanelProps> = ({
     } catch {
       return '';
     }
-  }, [engine, filters, limit, picked, sorts, table]);
+  }, [columns, engine, filters, limit, picked, sorts, table]);
 
   const toggleColumn = useCallback((name: string) => {
     setPicked((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
